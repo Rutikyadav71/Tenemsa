@@ -1,0 +1,57 @@
+/* ── Mobile sidebar additions (add to existing App.css) ──────────────── */
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+  /* Sidebar: hidden off-screen by default on mobile */
+  .layout-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: -260px;   /* slide off-screen */
+    height: 100vh;
+    z-index: 999;
+    transition: left 0.25s ease;
+    width: 240px !important;
+  }
+
+  /* When mobile-open class added, slide in */
+  .layout-sidebar.mobile-open {
+    left: 0;
+  }
+
+  /* Body always full-width on mobile */
+  .layout-body {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Sidebar overlay backdrop */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 998;
+    backdrop-filter: blur(2px);
+  }
+
+  /* Hamburger visible on mobile */
+  .navbar-hamburger {
+    display: flex !important;
+  }
+
+  /* Hide desktop collapse arrows on mobile */
+  .navbar-hamburger svg.collapse-icon {
+    display: none;
+  }
+}
+
+/* Desktop: hamburger hides the sidebar via collapsed state */
+@media (min-width: 769px) {
+  .layout-sidebar {
+    position: relative;
+    left: 0;
+    transition: width 0.2s ease;
+  }
+  .sidebar-overlay {
+    display: none;
+  }
+}
