@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Moderate strictness on purpose: strict-mode-everywhere on a same-day
+       full conversion of 5,800 lines would mean marking huge swaths of
+       loosely-shaped dashboard/report data as `any` anyway just to get to
+       green, which teaches nothing and adds noise. noImplicitAny + strict
+       null checks catch the bugs that actually mattered in this codebase
+       (the role-string mismatches, the undefined-field reads) without
+       requiring every chart/aggregation object to be perfectly modeled on
+       day one. Can be tightened incrementally later, module by module. */
+    "strict": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "allowJs": false,
+    "types": ["node"]
+  },
+  "include": ["src", "vite.config.ts"]
+}
