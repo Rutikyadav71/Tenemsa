@@ -1,0 +1,161 @@
+package com.tenemsa.platform.controller;
+
+import com.tenemsa.platform.model.Attendance;
+import com.tenemsa.platform.model.AttendanceStatus;
+import com.tenemsa.platform.repository.AttendanceRepository;
+import com.tenemsa.platform.security.AuthContext;
+import com.tenemsa.platform.security.SecurityRoles;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/attendance")
+public class AttendanceController {
+
+    @Autowired AttendanceRepository repo;
+    @Autowired AuthContext authContext;
+    // NOTE: the original file also injected EmployeeRepository here, but
+    // never actually called it anywhere in the class — dead field, removed.
+
+    /** Employee self check-in. Previously had no @PreAuthorize at all, so any
+     *  authenticated user could check in as ANY empId, not just their own —
+     *  same class of gap already fixed on EmployeeController/LeaveController. */
+    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @PostMapping("/checkin/{empId}")
+    public ResponseEntity<?> checkIn(@PathVariable int empId) {
+        LocalDate today = LocalDate.now();
+        Optional<Attendance> existing = repo.findByEmpIdAndDate(empId, today);
+        if (existing.isPresent() && existing.get().getCheckIn() != null)
+            return ResponseEntity.badRequest().body("Already checked in today");
+
+        Attendance a = existing.orElseGet(() -> {
+            Attendance n = new Attendance();
+            n.setEmpId(empId); n.setDate(today); return n;
+        });
+        a.setCheckIn(LocalTime.now().withSecond(0).withNano(0));
+        a.setStatus(LocalTime.now().isAfter(LocalTime.of(10, 0))
+            ? AttendanceStatus.LATE : AttendanceStatus.PRESENT);
+        a.setMarkedBy("SELF");
+        return ResponseEntity.ok(repo.save(a));
+    }
+
+    /** Employee self check-out */
+    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @PostMapping("/checkout/{empId}")
+    public ResponseEntity<?> checkOut(@PathVariable int empId) {
+        Optional<Attendance> opt = repo.findByEmpIdAndDate(empId, LocalDate.now());
+        if (opt.isEmpty() || opt.get().getCheckIn() == null)
+            return ResponseEntity.badRequest().body("No check-in found for today");
+        Attendance a = opt.get();
+        if (a.getCheckOut() != null)
+            return ResponseEntity.badRequest().body("Already checked out");
+
+        LocalTime out = LocalTime.now().withSecond(0).withNano(0);
+        a.setCheckOut(out);
+        double hrs = Duration.between(a.getCheckIn(), out).toMinutes() / 60.0;
+        a.setWorkHours(Math.round(hrs * 100.0) / 100.0);
+        if      (hrs < 4)                                    a.setStatus(AttendanceStatus.HALF_DAY);
+        else if (a.getCheckIn().isAfter(LocalTime.of(10, 0))) a.setStatus(AttendanceStatus.LATE);
+        else                                                   a.setStatus(AttendanceStatus.PRESENT);
+        return ResponseEntity.ok(repo.save(a));
+    }
+
+    /** Today's record for an employee */
+    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @GetMapping("/today/{empId}")
+    public ResponseEntity<?> getToday(@PathVariable int empId) {
+        return ResponseEntity.ok(repo.findByEmpIdAndDate(empId, LocalDate.now()).orElse(null));
+    }
+
+    /** Employee's records in a date range */
+    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @GetMapping("/employee/{empId}")
+    public ResponseEntity<List<Attendance>> getByEmployee(
+            @PathVariable int empId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+        if (start == null) start = LocalDate.now().withDayOfMonth(1);
+        if (end   == null) end   = LocalDate.now();
+        return ResponseEntity.ok(repo.findByEmpIdAndDateBetween(empId, start, end));
+    }
+
+    /** All attendance for a specific date (admin) */
+    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @GetMapping("/date/{date}")
+    public ResponseEntity<List<Attendance>> getByDate(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(repo.findByDate(date));
+    }
+
+    /** Admin: mark / update attendance for any employee */
+    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PostMapping("/mark")
+    public ResponseEntity<Attendance> mark(@RequestBody Attendance a) {
+        // Was hardcoded to the literal string "ADMIN" regardless of which
+        // admin actually made the change — real caller identity was
+        // available via the JWT the whole time, just never used for this.
+        String marker = authContext.currentEmail();
+        a.setMarkedBy(marker);
+        Optional<Attendance> existing = repo.findByEmpIdAndDate(a.getEmpId(), a.getDate());
+        if (existing.isPresent()) {
+            Attendance ex = existing.get();
+            ex.setStatus(a.getStatus());
+            if (a.getCheckIn()  != null) ex.setCheckIn(a.getCheckIn());
+            if (a.getCheckOut() != null) ex.setCheckOut(a.getCheckOut());
+            if (a.getNotes()    != null) ex.setNotes(a.getNotes());
+            ex.setMarkedBy(marker);
+            if (ex.getCheckIn() != null && ex.getCheckOut() != null) {
+                double h = Duration.between(ex.getCheckIn(), ex.getCheckOut()).toMinutes() / 60.0;
+                ex.setWorkHours(Math.round(h * 100.0) / 100.0);
+            }
+            return ResponseEntity.ok(repo.save(ex));
+        }
+        return ResponseEntity.ok(repo.save(a));
+    }
+
+    /** Admin: all attendance between two dates */
+    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @GetMapping("/range")
+    public ResponseEntity<List<Attendance>> getRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+        return ResponseEntity.ok(repo.findByDateBetween(start, end));
+    }
+
+    /** Monthly summary stats for one employee */
+    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @GetMapping("/summary/{empId}")
+    public ResponseEntity<Map<String, Object>> summary(
+            @PathVariable int empId,
+            @RequestParam(defaultValue = "0") int month,
+            @RequestParam(defaultValue = "0") int year) {
+        if (month == 0) month = LocalDate.now().getMonthValue();
+        if (year  == 0) year  = LocalDate.now().getYear();
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end   = start.withDayOfMonth(start.lengthOfMonth());
+        List<Attendance> recs = repo.findByEmpIdAndDateBetween(empId, start, end);
+
+        long present  = recs.stream().filter(r -> r.getStatus() == AttendanceStatus.PRESENT).count();
+        long late     = recs.stream().filter(r -> r.getStatus() == AttendanceStatus.LATE).count();
+        long absent   = recs.stream().filter(r -> r.getStatus() == AttendanceStatus.ABSENT).count();
+        long halfDay  = recs.stream().filter(r -> r.getStatus() == AttendanceStatus.HALF_DAY).count();
+        long onLeave  = recs.stream().filter(r -> r.getStatus() == AttendanceStatus.ON_LEAVE).count();
+        double totalH = recs.stream().mapToDouble(r -> r.getWorkHours() != null ? r.getWorkHours() : 0).sum();
+        int workDays  = start.lengthOfMonth();
+
+        Map<String, Object> s = new LinkedHashMap<>();
+        s.put("empId", empId); s.put("month", month); s.put("year", year);
+        s.put("present", present); s.put("late", late);
+        s.put("absent", absent);   s.put("halfDay", halfDay);
+        s.put("onLeave", onLeave); s.put("totalWorkHours", Math.round(totalH * 100.0) / 100.0);
+        s.put("attendanceRate", workDays > 0
+            ? Math.round((present + late) * 100.0 / workDays * 100.0) / 100.0 : 0);
+        return ResponseEntity.ok(s);
+    }
+}
