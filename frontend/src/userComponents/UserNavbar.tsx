@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../services/axiosInstance";
+import { performLogout } from "../services/logout";
 import type { Notification } from "../types/models";
 
 const pageTitles: Record<string, string> = {
@@ -159,7 +160,7 @@ export default function UserNavbar({ toggleSidebar, toggleCollapsed, sidebarColl
             <div style={{ display:"flex",gap:10 }}>
               <button className="btn-ems btn-secondary-ems" style={{ flex:1,justifyContent:"center" }} onClick={()=>setShowSignout(false)}>Cancel</button>
               <button className="btn-ems btn-danger-ems" style={{ flex:1,justifyContent:"center" }}
-                onClick={()=>{ localStorage.clear(); window.location.href="/"; }}>
+                onClick={()=>{ performLogout().finally(() => { window.location.href="/"; }); }}>
                 <LogoutIcon/> Sign Out
               </button>
             </div>

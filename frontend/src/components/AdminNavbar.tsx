@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../services/axiosInstance";
+import { performLogout } from "../services/logout";
 import type { Notification } from "../types/models";
 
 const pageTitles: Record<string, string> = {
@@ -172,7 +173,7 @@ export default function AdminNavbar({ toggleSidebar, toggleCollapsed, sidebarCol
 
       {showSignout && (
         <SignOutModal
-          onConfirm={()=>{ localStorage.clear(); navigate("/"); }}
+          onConfirm={()=>{ performLogout().finally(() => navigate("/")); }}
           onCancel={()=>setShowSignout(false)}
         />
       )}
