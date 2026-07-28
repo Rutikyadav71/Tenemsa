@@ -7,9 +7,10 @@ import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.repository.CompanyRepository;
 import com.tenemsa.platform.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.security.JwtUtil;
+import com.tenemsa.platform.security.PasswordPolicy;
 import com.tenemsa.platform.security.SecurityRoles;
 import com.tenemsa.platform.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,7 +27,6 @@ public class AdminController {
     @Autowired CompanyRepository companyRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired AuthService authService;
-    @Autowired JwtUtil jwtUtil;
     @Autowired AuthContext authContext;
 
     private static final List<Role> ADMIN_ROLES = List.of(Role.OWNER, Role.SUPER_ADMIN);
@@ -39,6 +39,9 @@ public class AdminController {
     // Public register: ONLY when zero admins exist (first admin/company owner)
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+        String policyError = PasswordPolicy.validate(req.getPassword());
+        if (policyError != null) return ResponseEntity.badRequest().body(policyError);
+
         Company company = getOrCreateDefaultCompany();
         long existingAdmins = userRepository.countByCompanyIdAndRoleIn(company.getId(), ADMIN_ROLES);
         if (existingAdmins >= 1) {
@@ -48,6 +51,7 @@ public class AdminController {
         User owner = buildAdminUser(req, company);
         owner.setPrimaryOwner(true);
         userRepository.save(owner);
+        authService.sendVerificationEmail(owner);
         return ResponseEntity.ok("Main admin registered successfully");
     }
 
@@ -55,6 +59,9 @@ public class AdminController {
     @PostMapping("/register-by-admin")
     @PreAuthorize(SecurityRoles.IS_ADMIN)
     public ResponseEntity<?> registerByAdmin(@RequestBody RegisterRequest req) {
+        String policyError = PasswordPolicy.validate(req.getPassword());
+        if (policyError != null) return ResponseEntity.badRequest().body(policyError);
+
         Long companyId = authContext.currentCompanyId();
         long existingAdmins = userRepository.countByCompanyIdAndRoleIn(companyId, ADMIN_ROLES);
         if (existingAdmins >= 4) {
@@ -68,18 +75,15 @@ public class AdminController {
         User admin = buildAdminUser(req, company);
         admin.setPrimaryOwner(false);
         userRepository.save(admin);
+        authService.sendVerificationEmail(admin);
         return ResponseEntity.ok(Map.of("message", "Admin added successfully"));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest httpRequest) {
         try {
             User admin = authService.adminLogin(req);
-            String token = jwtUtil.generateToken(admin.getEmail(), admin.getRole(), admin.getCompany().getId());
-            AuthResponse resp = new AuthResponse(token, admin.getRole().name(), admin.getName(), admin.getEmail());
-            resp.setId(admin.getId());
-            resp.setCompanyId(admin.getCompany().getId());
-            resp.setPrimaryOwner(admin.isPrimaryOwner());
+            AuthResponse resp = authService.issueAuthResponse(admin, req.isRememberMe(), deviceLabel(httpRequest));
             return ResponseEntity.ok(resp);
         } catch (RuntimeException e) {
             String msg = e.getMessage();
@@ -168,5 +172,10 @@ public class AdminController {
     private Company getOrCreateDefaultCompany() {
         return companyRepository.findBySlug(DEFAULT_COMPANY_SLUG)
                 .orElseGet(() -> companyRepository.save(new Company("Default Company", DEFAULT_COMPANY_SLUG)));
+    }
+
+    private String deviceLabel(HttpServletRequest request) {
+        String ua = request.getHeader("User-Agent");
+        return ua != null && ua.length() > 255 ? ua.substring(0, 255) : ua;
     }
 }

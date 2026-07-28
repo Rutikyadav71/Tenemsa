@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import axiosInstance from "../services/axiosInstance";
-import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../services/apiConfig";
+import { storeAuthResponse } from "../services/authStorage";
+import { useNavigate, Link } from "react-router-dom";
 import type { AuthResponse } from "../types/models";
 
 const EyeIcon = ({ open }: { open: boolean }) => open
@@ -11,6 +13,7 @@ export default function AdminAuthPage() {
   const [firstTime, setFirstTime] = useState(false); // no admins at all
   const [adminFull, setAdminFull] = useState(false); // 4 admins
   const [form, setForm] = useState({ name: "", email: "admin1@gmail.com", password: "Admin@1" });
+  const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState("error");
   const [loading, setLoading] = useState(false);
@@ -32,24 +35,17 @@ export default function AdminAuthPage() {
     setLoading(true);
     try {
       // Only the very first admin uses public /register. Everyone else logs in.
-      const url = firstTime ? "/api/admin/register" : "/api/admin/login";
-      const res = await axiosInstance.post<Partial<AuthResponse> & { accessToken?: string; jwt?: string }>(url, form);
-      const data = res.data;
-
       if (firstTime) {
-        setMessage("Main admin registered! Please log in."); setMsgType("success");
+        await axiosInstance.post("/api/admin/register", form);
+        setMessage("Main admin registered! Check your email to verify your address, then log in."); setMsgType("success");
         setFirstTime(false);
       } else {
-        localStorage.clear();
-        const token = data.token || data.accessToken || data.jwt;
-        if (token) localStorage.setItem("token", token);
-        localStorage.setItem("role", "ADMIN");
-        localStorage.setItem("name", data.name || "");
-        localStorage.setItem("email", data.email || "");
-        localStorage.setItem("adminEmail", data.email || "");
-        localStorage.setItem("adminName", data.name || "");
-        localStorage.setItem("id", String(data.id ?? ""));
-        localStorage.setItem("primaryOwner", String(data.primaryOwner || false));
+        const res = await axiosInstance.post<AuthResponse>("/api/admin/login", { ...form, rememberMe });
+        storeAuthResponse(res.data, "ADMIN");
+        // Kept for AdminProfile/AdminNavbar reads that predate the shared
+        // storeAuthResponse helper's canonical "name"/"email" keys.
+        localStorage.setItem("adminEmail", res.data.email || "");
+        localStorage.setItem("adminName", res.data.name || "");
         navigate("/admin/dashboard");
       }
     } catch (err: any) {
@@ -78,7 +74,7 @@ export default function AdminAuthPage() {
             </svg>
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 800, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 10, letterSpacing: "-0.5px" }}>
-            EMS Admin
+            Tenemsa Admin
           </h1>
           <p style={{ fontSize: 15, color: "var(--text-3)", lineHeight: 1.7, marginBottom: 40 }}>
             {firstTime
@@ -121,7 +117,7 @@ export default function AdminAuthPage() {
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
-          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 15 }}>EMS</span>
+          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 15 }}>Tenemsa</span>
         </div>
 
         <div className="auth-form-title">
@@ -134,6 +130,21 @@ export default function AdminAuthPage() {
         </div>
 
         {message && <div className={`alert-ems alert-${msgType}`}>{message}</div>}
+
+        {!firstTime && (
+          <>
+            <a href={`${API_BASE_URL}/oauth2/authorization/google`}
+              className="btn-ems btn-secondary-ems"
+              style={{ width: "100%", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+              Continue with Google
+            </a>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0 16px", color: "var(--text-3)", fontSize: 12 }}>
+              <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+              or sign in with email
+              <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit}>
           {firstTime && (
@@ -164,6 +175,16 @@ export default function AdminAuthPage() {
               </span>
             </div>
           </div>
+
+          {!firstTime && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 8px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
+                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                Remember me
+              </label>
+              <Link to="/forgot-password" style={{ fontSize: 13, color: "var(--accent-light)" }}>Forgot password?</Link>
+            </div>
+          )}
 
           <button type="submit" className="btn-ems btn-primary-ems"
             disabled={loading}

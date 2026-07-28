@@ -6,12 +6,7 @@ import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.repository.CompanyRepository;
 import com.tenemsa.platform.repository.NotificationRepository;
 import com.tenemsa.platform.repository.UserRepository;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +19,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Autowired private UserRepository repo;
     @Autowired private CompanyRepository companyRepo;
     @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private JavaMailSender mailSender;
     @Autowired private NotificationRepository notificationRepo;
-
-    @Value("${app.email.enabled}")
-    private boolean emailEnabled;
+    // Was a private sendWelcomeEmail() built directly on JavaMailSender here,
+    // duplicating what a separate (unused) EmailService.java already
+    // attempted elsewhere. Consolidated into one real, shared EmailService —
+    // see that class for why, and for the other emails it now sends
+    // (verification, password reset) that this class has no reason to know about.
+    @Autowired private EmailService emailService;
 
     @Override
     public List<User> getAll(Long companyId) {
@@ -51,17 +48,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         User saved = repo.save(user);
         notificationRepo.save(new Notification("Employee added: " + saved.getName()));
-
-        if (emailEnabled) {
-            try {
-                sendWelcomeEmail(user.getEmail(), user.getName(), plainPassword);
-            } catch (MessagingException e) {
-                System.err.println("Failed to send email to " + user.getEmail());
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("Email disabled. Skipping email to: " + user.getEmail());
-        }
+        emailService.sendWelcomeEmail(user.getEmail(), user.getName(), plainPassword);
 
         return saved;
     }
@@ -102,24 +89,5 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     public void deleteMultiple(Long companyId, List<Integer> empIds) {
         repo.deleteAllByCompanyIdAndEmpIdIn(companyId, empIds);
-    }
-
-    private void sendWelcomeEmail(String toEmail, String name, String password) throws MessagingException {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true);
-
-        helper.setTo(toEmail);
-        helper.setSubject("Welcome to EMS - Your Login Credentials");
-        helper.setText(
-                "<p>Hello <strong>" + name + "</strong>,</p>" +
-                        "<p>You have been successfully added as an employee to our EMS system.</p>" +
-                        "<p><strong>Email:</strong> " + toEmail + "<br>" +
-                        "<strong>Password:</strong> " + password + "</p>" +
-                        "<p>Regards,<br>EMS Admin</p>",
-                true
-        );
-
-        mailSender.send(message);
-        System.out.println("Email sent successfully to " + toEmail);
     }
 }

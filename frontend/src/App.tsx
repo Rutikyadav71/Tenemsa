@@ -4,6 +4,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-
 
 import HomePage from "./pages/HomePage";
 import EmployeeLogin from "./pages/AuthPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import AdminAuthPage from "./pages/AdminAuthPage";
 import ChatPage from "./pages/ChatPage";
 import AttendancePage from "./pages/Attendance";
@@ -138,6 +142,10 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/auth/employee" element={<EmployeeLogin />} />
         <Route path="/auth/admin" element={<AdminAuthPage />} />
         <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
