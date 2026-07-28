@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../services/axiosInstance";
+import { performLogout, performLogoutAllDevices } from "../services/logout";
 import ProfileImageUpload from "./ProfileImageUpload";
 
 const LogoutIcon = () => <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -9,11 +10,25 @@ export default function AdminProfile() {
   const navigate = useNavigate();
   const name = localStorage.getItem("adminName") || "Admin";
   const email = localStorage.getItem("adminEmail") || "—";
+  const companyName = localStorage.getItem("companyName") || "";
+  const emailVerified = localStorage.getItem("emailVerified") === "true";
   const isMain = localStorage.getItem("primaryOwner") === "true";
   const adminId = Number(localStorage.getItem("id") || 0);
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   const [profileImg, setProfileImg] = useState<string | null>(localStorage.getItem("adminProfileImageUrl") || null);
   const [showSignout, setShowSignout] = useState(false);
+  const [signoutAllDevices, setSignoutAllDevices] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleConfirmSignOut = async () => {
+    setLoggingOut(true);
+    try {
+      if (signoutAllDevices) await performLogoutAllDevices();
+      else await performLogout();
+    } finally {
+      navigate("/");
+    }
+  };
 
   // Admin profile upload uses a dedicated backend endpoint
   const handleAdminImageUpload = async (croppedFile: File): Promise<string> => {
@@ -68,6 +83,10 @@ export default function AdminProfile() {
             { label: "Admin ID", value: `#${adminId}` },
             { label: "Role", value: <span className="badge badge-blue">ADMIN</span> },
             { label: "Access Level", value: <span className={`badge ${isMain ? "badge-teal" : "badge-blue"}`}>{isMain ? "Main Admin" : "Sub-Admin"}</span> },
+            { label: "Company", value: companyName || "—" },
+            { label: "Email Verified", value: emailVerified
+              ? <span className="badge badge-green">Verified</span>
+              : <span className="badge badge-amber">Unverified</span> },
             { label: "Status", value: <span className="badge badge-green">Active</span> },
           ].map(({ label, value }) => (
             <div className="profile-field" key={label}>
@@ -92,10 +111,14 @@ export default function AdminProfile() {
               <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>Sign out?</div>
               <div style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.6 }}>You will be returned to the login page.</div>
             </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-3)", marginBottom: 16, cursor: "pointer" }}>
+              <input type="checkbox" checked={signoutAllDevices} onChange={e => setSignoutAllDevices(e.target.checked)} />
+              Sign out of all devices (revokes every active session)
+            </label>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="btn-ems btn-secondary-ems" style={{ flex: 1, justifyContent: "center" }} onClick={() => setShowSignout(false)}>Cancel</button>
-              <button className="btn-ems btn-danger-ems" style={{ flex: 1, justifyContent: "center" }} onClick={() => { localStorage.clear(); navigate("/"); }}>
-                <LogoutIcon /> Sign Out
+              <button className="btn-ems btn-danger-ems" style={{ flex: 1, justifyContent: "center" }} disabled={loggingOut} onClick={handleConfirmSignOut}>
+                <LogoutIcon /> {loggingOut ? "Signing out..." : "Sign Out"}
               </button>
             </div>
           </div>
