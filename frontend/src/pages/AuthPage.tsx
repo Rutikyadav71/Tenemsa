@@ -1,43 +1,47 @@
-import React, { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import axiosInstance from "../services/axiosInstance";
+import { API_BASE_URL } from "../services/apiConfig";
+import { storeAuthResponse } from "../services/authStorage";
 import { useNavigate, Link } from "react-router-dom";
+import type { AuthResponse } from "../types/models";
 
-const EyeIcon = ({ open }) => open
+const EyeIcon = ({ open }: { open: boolean }) => open
   ? <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M1 1l22 22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
   : <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" /></svg>;
 
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24">
+    <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.87c2.27-2.09 3.58-5.17 3.58-8.82z"/>
+    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.94-2.91l-3.87-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.1A12 12 0 0 0 12 24z"/>
+    <path fill="#FBBC05" d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28v-3.1H1.27A12 12 0 0 0 0 12c0 1.94.46 3.77 1.27 5.38l4-3.1z"/>
+    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.27 6.62l4 3.1C6.22 6.86 8.87 4.75 12 4.75z"/>
+  </svg>
+);
+
 export default function AuthPage() {
   const [form, setForm] = useState({ email: "Employee1@gmail.com", password: "Employee@1" });
+  const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async e => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault(); setMessage("");
     if (form.password.length < 6) { setMessage("Password must be at least 6 characters."); return; }
     setLoading(true);
     try {
-      const res = await axiosInstance.post("/api/auth/login", form);
-      const data = res.data;
-      localStorage.clear();
-
-      const token = data.token || data.accessToken || data.jwt;
-      if (token) localStorage.setItem("token", token);
-
-      localStorage.setItem("role", "USER");
-      localStorage.setItem("name", data.name || "");
-      localStorage.setItem("email", data.email || "");
-      localStorage.setItem("empId", data.empId || "");
-      // These now come from AuthResponse (department + salary added to backend)
-      localStorage.setItem("department", data.department || "");
-      localStorage.setItem("salary", data.salary != null ? String(data.salary) : "");
-
+      const res = await axiosInstance.post<AuthResponse>("/api/auth/login", { ...form, rememberMe });
+      storeAuthResponse(res.data, "USER");
       navigate("/user/dashboard");
     } catch (err: any) {
       const msg = err.response?.data;
       if (typeof msg === "string" && msg.includes("ACCOUNT_FROZEN")) {
         setMessage("Your account has been frozen. Contact your administrator.");
+      } else if (typeof msg === "string" && msg.includes("Google")) {
+        setMessage(msg);
       } else {
         setMessage(err.response?.data?.message || msg || "Invalid credentials.");
       }
@@ -96,7 +100,7 @@ export default function AuthPage() {
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
-          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 15 }}>EMS</span>
+          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 15 }}>Tenemsa</span>
         </div>
 
         <div className="auth-form-title">Welcome back</div>
@@ -104,23 +108,42 @@ export default function AuthPage() {
 
         {message && <div className="alert-ems alert-error">{message}</div>}
 
+        <a href={`${API_BASE_URL}/oauth2/authorization/google`}
+          className="btn-ems btn-secondary-ems"
+          style={{ width: "100%", justifyContent: "center", gap: 10, marginBottom: 16 }}>
+          <GoogleIcon /> Continue with Google
+        </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0 16px", color: "var(--text-3)", fontSize: 12 }}>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          or sign in with email
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        </div>
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">Email Address</label>
-            <input type="email" className="form-control-ems" value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
+            <input type="email" name="email" className="form-control-ems" value={form.email}
+              onChange={handleChange}
               placeholder="your@email.com" required autoComplete="email" />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
             <div className="input-wrap">
-              <input type={showPassword ? "text" : "password"} className="form-control-ems"
-                value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
+              <input type={showPassword ? "text" : "password"} name="password" className="form-control-ems"
+                value={form.password} onChange={handleChange}
                 placeholder="Enter your password" style={{ paddingRight: 40 }} required autoComplete="current-password" />
               <span className="input-icon-right" onClick={() => setShowPassword(v => !v)}>
                 <EyeIcon open={showPassword} />
               </span>
             </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 8px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
+              <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+              Remember me
+            </label>
+            <Link to="/forgot-password" style={{ fontSize: 13, color: "var(--teal)" }}>Forgot password?</Link>
           </div>
 
           <button type="submit" className="btn-ems" disabled={loading}
