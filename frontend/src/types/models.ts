@@ -43,15 +43,21 @@ export interface EmployeeFormInput {
 
 export interface AuthResponse {
   token: string;
+  // Phase 2: access tokens are short-lived (15 min) — this is used to
+  // silently renew them via /api/auth/refresh instead of forcing a
+  // re-login every 15 minutes. See axiosInstance.ts.
+  refreshToken: string;
   role: Role;
   name: string;
   email: string;
   id: number;
   empId: number | null;
   companyId: number;
+  companyName: string | null;
   department: string | null;
   salary: number | null;
   primaryOwner: boolean | null;
+  emailVerified: boolean | null;
 }
 
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
