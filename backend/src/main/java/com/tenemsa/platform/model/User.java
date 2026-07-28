@@ -69,9 +69,32 @@ public class User {
     // this in exactly one place (getAllAdmins()) via a manual
     // `.setPassword(null)` loop; every other endpoint was still exposed. This
     // fixes it at the source so no future endpoint can reintroduce the leak.
+    //
+    // Nullable as of Phase 2: a user who signs up via Google OAuth2 has no
+    // password at all — AuthService rejects password-login attempts for
+    // such accounts with a clear message rather than failing a null
+    // comparison silently.
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @Column(nullable = false)
     private String password;
+
+    public enum AuthProvider { LOCAL, GOOGLE }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, length = 20, columnDefinition = "varchar(20) default 'LOCAL'")
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    // Google-authenticated accounts are auto-verified (Google already
+    // confirmed the email address); LOCAL accounts start false and go
+    // through the email-verification-token flow.
+    //
+    // columnDefinition sets a DB-level default — without it, Hibernate's
+    // ddl-auto=update would try to ALTER TABLE ADD COLUMN ... NOT NULL on an
+    // already-populated users table with no default, which Postgres
+    // rejects outright. Same landmine class documented at length in
+    // migration-phase1.sql; solved here at the annotation level instead
+    // since a straightforward default is all that's needed this time.
+    @Column(name = "email_verified", nullable = false, columnDefinition = "boolean default false")
+    private boolean emailVerified = false;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -160,6 +183,12 @@ public class User {
 
     public boolean isPrimaryOwner() { return primaryOwner; }
     public void setPrimaryOwner(boolean primaryOwner) { this.primaryOwner = primaryOwner; }
+
+    public AuthProvider getAuthProvider() { return authProvider; }
+    public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
+
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
