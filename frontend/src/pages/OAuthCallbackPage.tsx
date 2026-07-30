@@ -55,7 +55,10 @@ export default function OAuthCallbackPage() {
           <>
             <h1>Sign-in failed</h1>
             <p className="auth-error">{error}</p>
-            <a href="/auth/employee">Back to sign in</a>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12 }}>
+              <a href="/auth/employee">Employee sign in</a>
+              <a href="/auth/admin">Admin sign in</a>
+            </div>
           </>
         ) : (
           <p>Signing you in...</p>
