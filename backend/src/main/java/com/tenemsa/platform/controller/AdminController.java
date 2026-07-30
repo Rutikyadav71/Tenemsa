@@ -1,6 +1,7 @@
 package com.tenemsa.platform.controller;
 
 import com.tenemsa.platform.dto.*;
+import com.tenemsa.platform.mapper.UserMapper;
 import com.tenemsa.platform.model.Company;
 import com.tenemsa.platform.model.Role;
 import com.tenemsa.platform.model.User;
@@ -28,6 +29,7 @@ public class AdminController {
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired AuthService authService;
     @Autowired AuthContext authContext;
+    @Autowired UserMapper userMapper;
 
     private static final List<Role> ADMIN_ROLES = List.of(Role.OWNER, Role.SUPER_ADMIN);
     // TEMPORARY (Phase 1 only, see CompanyRepository.findFirstByOrderByIdAsc):
@@ -102,13 +104,18 @@ public class AdminController {
 
     @GetMapping("/all")
     @PreAuthorize(SecurityRoles.IS_ADMIN)
-    public ResponseEntity<List<User>> getAllAdmins() {
-        // No more manual `.setPassword(null)` scrub loop needed here — User's
-        // password field is @JsonProperty(WRITE_ONLY), so it can never be
-        // serialized out regardless of which endpoint returns the entity.
-        List<User> admins = userRepository.findAllByCompanyId(authContext.currentCompanyId())
+    public ResponseEntity<List<UserResponseDTO>> getAllAdmins() {
+        // Returns UserResponseDTO now, not raw User — see UserResponseDTO's
+        // class comment. The old comment here about @JsonProperty(WRITE_ONLY)
+        // covering the password field was true but incomplete: it protected
+        // against leaking the password, not against the separate
+        // Hibernate-proxy serialization crash on User.company (see
+        // UserRepository's history) — a DTO fixes both categories at once
+        // by construction, not by remembering to annotate every risky field.
+        List<UserResponseDTO> admins = userRepository.findAllByCompanyId(authContext.currentCompanyId())
                 .stream()
                 .filter(u -> ADMIN_ROLES.contains(u.getRole()))
+                .map(userMapper::toDto)
                 .toList();
         return ResponseEntity.ok(admins);
     }
