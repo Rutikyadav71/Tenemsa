@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../services/axiosInstance";
+import { getEmployees } from "../services/EmployeeService";
 import type { Team, TeamStatus, User } from "../types/models";
 
 interface TeamFormState {
@@ -261,7 +262,7 @@ export default function TeamManagement({ isAdmin, empId: propEmpId }: TeamManage
           // Admin: get ALL teams + employee list for member display
           const [tRes, eRes] = await Promise.all([
             axiosInstance.get<Team[]>("/api/teams"),
-            axiosInstance.get<User[]>("/api/employees"),
+            getEmployees(),
           ]);
           setTeams(tRes.data || []);
           setEmployees(eRes.data || []);
