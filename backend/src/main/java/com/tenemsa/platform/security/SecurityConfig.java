@@ -80,7 +80,10 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/ws/**",
-                    "/api/health"
+                    "/api/health",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
                 ).permitAll()
                 // Upload endpoints — authenticated (any valid token) but NOT admin-only
                 // Must come before anyRequest().authenticated() to take effect
