@@ -31,11 +31,11 @@
 	</properties>
 	<dependencies>
 
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.postgresql</groupId>-->
+<!--			<artifactId>postgresql</artifactId>-->
+<!--			<scope>runtime</scope>-->
+<!--		</dependency>-->
 
 		<!-- Web -->
 		<dependency>
@@ -55,12 +55,12 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- MySQL -->
-<!--		<dependency>-->
-<!--			<groupId>com.mysql</groupId>-->
-<!--			<artifactId>mysql-connector-j</artifactId>-->
-<!--			<scope>runtime</scope>-->
-<!--		</dependency>-->
+<!--		 MySQL -->
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 
 		<!-- Mail -->
 		<dependency>
@@ -142,6 +142,27 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+		</dependency>
+
+		<!-- Makes Jackson serialization Hibernate-proxy-aware. Without this,
+		     any lazy JPA relation reaching a controller's JSON response
+		     unserialized crashes with InvalidDefinitionException on the raw
+		     Hibernate proxy object (ByteBuddyInterceptor has no bean
+		     properties Jackson can see) — this happened with User.company
+		     even though the proxy WAS initialized, because Jackson's default
+		     introspection doesn't know to look through Hibernate's generated
+		     proxy subclass to the real entity underneath. Version is managed
+		     by Spring Boot's parent BOM, same as the other Jackson artifacts. -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-hibernate6</artifactId>
+		</dependency>
+
+		<!-- API documentation (Swagger UI at /swagger-ui.html, OpenAPI spec at /v3/api-docs) -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.5</version>
 		</dependency>
 
 	</dependencies>

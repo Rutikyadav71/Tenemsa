@@ -41,6 +41,16 @@ export interface EmployeeFormInput {
   role: Role;
 }
 
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number; // current page, 0-indexed
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
 export interface AuthResponse {
   token: string;
   // Phase 2: access tokens are short-lived (15 min) — this is used to

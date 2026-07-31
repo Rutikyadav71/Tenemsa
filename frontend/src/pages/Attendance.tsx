@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "../services/axiosInstance";
+import { getEmployees } from "../services/EmployeeService";
 import type { Attendance, AttendanceStatus, User } from "../types/models";
 
 // WEEKEND/HOLIDAY are synthetic, frontend-only calendar states — never
@@ -76,7 +77,7 @@ export default function AttendancePage({ isAdmin }: AttendancePageProps) {
       if (isAdmin) {
         const [rangeRes, empRes] = await Promise.all([
           axiosInstance.get<Attendance[]>(`/api/attendance/range?start=${start}&end=${end}`),
-          axiosInstance.get<User[]>("/api/employees"),
+          getEmployees(),
         ]);
         setRecords(rangeRes.data || []);
         setEmployees(empRes.data || []);

@@ -1,11 +1,14 @@
 package com.tenemsa.platform.service;
 
 import com.tenemsa.platform.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 public interface EmployeeService {
 
-    List<User> getAll(Long companyId);
+    Page<User> getAll(Long companyId, Pageable pageable);
 
     User getById(Long companyId, int empId);
 

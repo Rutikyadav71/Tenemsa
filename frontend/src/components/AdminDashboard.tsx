@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../services/axiosInstance";
+import { getEmployees } from "../services/EmployeeService";
 import { Link } from "react-router-dom";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -76,7 +77,7 @@ export default function AdminDashboard() {
   const fetchAll = async () => {
     try {
       const [e, l, n] = await Promise.all([
-        axiosInstance.get<User[]>("/api/employees"),
+        getEmployees(),
         axiosInstance.get<Leave[]>("/api/leaves"),
         axiosInstance.get<Notification[]>("/api/notifications"),
       ]);

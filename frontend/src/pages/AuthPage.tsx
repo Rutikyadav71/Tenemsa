@@ -1,8 +1,8 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent, useEffect } from "react";
 import axiosInstance from "../services/axiosInstance";
 import { API_BASE_URL } from "../services/apiConfig";
 import { storeAuthResponse } from "../services/authStorage";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import type { AuthResponse } from "../types/models";
 
 const EyeIcon = ({ open }: { open: boolean }) => open
@@ -25,6 +25,16 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Google sign-in failures (no matching account, frozen account, etc.)
+  // redirect back here with ?error=... — see backend's
+  // OAuth2LoginSuccessHandler. Without this, that redirect silently landed
+  // on a blank login form with no explanation of what went wrong.
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) setMessage(oauthError);
+  }, [searchParams]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [e.target.name]: e.target.value });
 
