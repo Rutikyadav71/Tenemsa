@@ -9,9 +9,27 @@ const EyeIcon = ({open}: {open: boolean}) => open
 
 const departments = ["Engineering","Marketing","HR","Finance","Operations","Sales","Design","Product","Legal","Support"];
 
+// Mirrors the backend's RoleAssignmentRegistry (who may create a user of
+// which role) — purely a UX nicety so the dropdown doesn't offer options
+// that would always be rejected server-side. The backend is the real
+// enforcement point regardless; if this ever drifts out of sync with
+// RoleAssignmentRegistry, the worst outcome is a confusing 403, not a
+// security gap.
+const ASSIGNABLE_ROLES: Record<string, { value: Role; label: string }[]> = {
+  OWNER: [
+    { value: "ADMIN", label: "Admin" }, { value: "HR", label: "HR" },
+    { value: "MANAGER", label: "Manager" }, { value: "EMPLOYEE", label: "Employee" },
+    { value: "INTERN", label: "Intern" },
+  ],
+  ADMIN: [{ value: "MANAGER", label: "Manager" }],
+  HR: [{ value: "EMPLOYEE", label: "Employee" }, { value: "INTERN", label: "Intern" }],
+};
+
 export default function AddEmployee() {
   const navigate = useNavigate();
-  const [employee, setEmployee] = useState<EmployeeFormInput>({empId:"",name:"",department:"",email:"",password:"",salary:"",role:"EMPLOYEE"});
+  const callerRole = localStorage.getItem("userRole") || "";
+  const roleOptions = ASSIGNABLE_ROLES[callerRole] || [];
+  const [employee, setEmployee] = useState<EmployeeFormInput>({empId:"",name:"",department:"",email:"",password:"",salary:"",role:roleOptions[0]?.value || "EMPLOYEE"});
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState("success");
   const [showPassword, setShowPassword] = useState(false);
@@ -94,13 +112,10 @@ export default function AddEmployee() {
             <div className="form-group">
               <label className="form-label">Role</label>
               <select name="role" value={employee.role} onChange={handleChange} className="form-control-ems">
-                <option value="EMPLOYEE">Employee</option>
-                <option value="INTERN">Intern</option>
-                <option value="MANAGER">Manager</option>
-                <option value="HR">HR</option>
+                {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {/* Admin/Owner accounts are created from Admin Management, not here —
-                  that flow goes through a separate, more tightly-guarded endpoint. */}
+              {/* Admin/HR accounts specifically are created from Admin Management
+                  (Owner-only), not here — see RoleAssignmentRegistry on the backend. */}
             </div>
 
             <div style={{display:"flex",gap:10,marginTop:8}}>

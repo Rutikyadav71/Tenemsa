@@ -32,7 +32,10 @@ public class AuthService {
     @Autowired private EmailService emailService;
     @Autowired private JwtUtil jwtUtil;
 
-    private static final List<Role> ADMIN_EQUIVALENT_ROLES = List.of(Role.OWNER, Role.SUPER_ADMIN);
+    // RBAC phase 3: ADMIN added as its own role (was previously conflated
+    // with OWNER) — without it here, a newly created Admin account would be
+    // rejected by adminLogin() despite genuinely being an admin-tier account.
+    private static final List<Role> ADMIN_EQUIVALENT_ROLES = List.of(Role.OWNER, Role.ADMIN, Role.SUPER_ADMIN);
 
     // Builds the full login/refresh response: short-lived JWT access token +
     // long-lived opaque refresh token + every profile field the frontend

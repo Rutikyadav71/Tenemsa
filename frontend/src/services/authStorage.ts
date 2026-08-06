@@ -13,6 +13,15 @@ export function storeAuthResponse(resp: AuthResponse, roleTag: ChatRoleTag): voi
   localStorage.setItem("token", resp.token);
   localStorage.setItem("refreshToken", resp.refreshToken || "");
   localStorage.setItem("role", roleTag);
+  // Distinct from "role" above on purpose — "role" is the two-value chat/
+  // WebSocket routing tag (see ChatRoleTag), "userRole" is the actual
+  // business role (OWNER/ADMIN/HR/MANAGER/EMPLOYEE/INTERN). Nothing stored
+  // this before RBAC phase 3, meaning no frontend component had any way to
+  // make a role-aware UI decision beyond the coarse admin/employee split —
+  // e.g. which target roles to offer in the "add employee" form, which
+  // depends on the CALLER's specific role, not just whether they're
+  // "admin-tier" at all.
+  localStorage.setItem("userRole", resp.role || "");
   localStorage.setItem("id", String(resp.id ?? ""));
   localStorage.setItem("empId", resp.empId != null ? String(resp.empId) : "");
   localStorage.setItem("name", resp.name || "");

@@ -4,7 +4,6 @@ import com.tenemsa.platform.model.Attendance;
 import com.tenemsa.platform.model.AttendanceStatus;
 import com.tenemsa.platform.repository.AttendanceRepository;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.security.SecurityRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -20,13 +19,18 @@ public class AttendanceController {
 
     @Autowired AttendanceRepository repo;
     @Autowired AuthContext authContext;
-    // NOTE: the original file also injected EmployeeRepository here, but
-    // never actually called it anywhere in the class — dead field, removed.
 
-    /** Employee self check-in. Previously had no @PreAuthorize at all, so any
-     *  authenticated user could check in as ANY empId, not just their own —
-     *  same class of gap already fixed on EmployeeController/LeaveController. */
-    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    private static final String VIEW_SCOPED =
+        "hasAuthority('attendance:manage:any') or " +
+        "(hasAuthority('attendance:view:team') and @teamSecurity.managesEmployee(#empId)) or " +
+        "@employeeSecurity.isSelf(#empId)";
+
+    private static final String MARK_SELF_OR_MANAGE =
+        "hasAuthority('attendance:manage:any') or " +
+        "(hasAuthority('attendance:mark:self') and @employeeSecurity.isSelf(#empId))";
+
+    /** Employee self check-in, or HR marking someone in directly. */
+    @PreAuthorize(MARK_SELF_OR_MANAGE)
     @PostMapping("/checkin/{empId}")
     public ResponseEntity<?> checkIn(@PathVariable int empId) {
         LocalDate today = LocalDate.now();
@@ -46,7 +50,7 @@ public class AttendanceController {
     }
 
     /** Employee self check-out */
-    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @PreAuthorize(MARK_SELF_OR_MANAGE)
     @PostMapping("/checkout/{empId}")
     public ResponseEntity<?> checkOut(@PathVariable int empId) {
         Optional<Attendance> opt = repo.findByEmpIdAndDate(empId, LocalDate.now());
@@ -66,15 +70,15 @@ public class AttendanceController {
         return ResponseEntity.ok(repo.save(a));
     }
 
-    /** Today's record for an employee */
-    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    /** Today's record for an employee — any-view (HR), team-view (Manager, scoped), or self. */
+    @PreAuthorize(VIEW_SCOPED)
     @GetMapping("/today/{empId}")
     public ResponseEntity<?> getToday(@PathVariable int empId) {
         return ResponseEntity.ok(repo.findByEmpIdAndDate(empId, LocalDate.now()).orElse(null));
     }
 
     /** Employee's records in a date range */
-    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @PreAuthorize(VIEW_SCOPED)
     @GetMapping("/employee/{empId}")
     public ResponseEntity<List<Attendance>> getByEmployee(
             @PathVariable int empId,
@@ -85,16 +89,16 @@ public class AttendanceController {
         return ResponseEntity.ok(repo.findByEmpIdAndDateBetween(empId, start, end));
     }
 
-    /** All attendance for a specific date (admin) */
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    /** All attendance for a specific date — company-wide, HR/Owner only. */
+    @PreAuthorize("hasAuthority('attendance:manage:any')")
     @GetMapping("/date/{date}")
     public ResponseEntity<List<Attendance>> getByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(repo.findByDate(date));
     }
 
-    /** Admin: mark / update attendance for any employee */
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    /** HR: mark / update attendance for any employee */
+    @PreAuthorize("hasAuthority('attendance:manage:any')")
     @PostMapping("/mark")
     public ResponseEntity<Attendance> mark(@RequestBody Attendance a) {
         // Was hardcoded to the literal string "ADMIN" regardless of which
@@ -119,8 +123,8 @@ public class AttendanceController {
         return ResponseEntity.ok(repo.save(a));
     }
 
-    /** Admin: all attendance between two dates */
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    /** HR: all attendance between two dates */
+    @PreAuthorize("hasAuthority('attendance:manage:any')")
     @GetMapping("/range")
     public ResponseEntity<List<Attendance>> getRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
@@ -129,7 +133,7 @@ public class AttendanceController {
     }
 
     /** Monthly summary stats for one employee */
-    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @PreAuthorize(VIEW_SCOPED)
     @GetMapping("/summary/{empId}")
     public ResponseEntity<Map<String, Object>> summary(
             @PathVariable int empId,

@@ -10,6 +10,7 @@ import com.tenemsa.platform.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import com.tenemsa.platform.security.PasswordPolicy;
 import com.tenemsa.platform.security.SecurityRoles;
+import com.tenemsa.platform.security.rbac.RoleAssignmentRegistry;
 import com.tenemsa.platform.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,19 @@ public class AdminController {
     @Autowired AuthContext authContext;
     @Autowired UserMapper userMapper;
 
-    private static final List<Role> ADMIN_ROLES = List.of(Role.OWNER, Role.SUPER_ADMIN);
+    // RBAC phase 3: ADMIN added as its own role — this list now covers
+    // everyone who counts as "an admin panel account" for headcount/listing
+    // purposes (was previously just OWNER/SUPER_ADMIN, before ADMIN existed
+    // as a distinct value).
+    private static final List<Role> ADMIN_ROLES = List.of(Role.OWNER, Role.ADMIN, Role.SUPER_ADMIN);
+
+    // Only Owner creates Admin or HR accounts (spec: "Owner: Create Admins,
+    // Create HR users") — Manager/Employee/Intern creation goes through
+    // EmployeeController.create() instead, which has its own broader
+    // RoleAssignmentRegistry-driven check for Admin/HR creating their
+    // respective tiers.
+    private static final Set<Role> REGISTERABLE_BY_ADMIN_PANEL = Set.of(Role.ADMIN, Role.HR);
+
     // TEMPORARY (Phase 1 only, see CompanyRepository.findFirstByOrderByIdAsc):
     // the app is still single-tenant in practice, so registration bootstraps
     // against one default company rather than letting the caller create one.
@@ -50,35 +63,51 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body("Registration closed. Ask your system administrator to add you via Admin Control.");
         }
-        User owner = buildAdminUser(req, company);
+        // Always OWNER regardless of any role sent in the request body —
+        // this is specifically the bootstrap-the-company endpoint.
+        User owner = buildUser(req, company, Role.OWNER);
         owner.setPrimaryOwner(true);
         userRepository.save(owner);
         authService.sendVerificationEmail(owner);
         return ResponseEntity.ok("Main admin registered successfully");
     }
 
-    // Admin-panel register: authenticated OWNER/SUPER_ADMIN can add up to 4 total
+    // Admin-panel register: Owner-only, creates an Admin or HR account.
+    // (Previously open to anyone passing SecurityRoles.IS_ADMIN and always
+    // created another OWNER — wrong on both counts once ADMIN became a
+    // distinct role: Admin creating more Owners has no basis in the spec,
+    // and Admin/HR accounts are what this endpoint should actually produce.)
     @PostMapping("/register-by-admin")
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> registerByAdmin(@RequestBody RegisterRequest req) {
         String policyError = PasswordPolicy.validate(req.getPassword());
         if (policyError != null) return ResponseEntity.badRequest().body(policyError);
 
+        Role targetRole = req.getRole();
+        if (targetRole == null || !REGISTERABLE_BY_ADMIN_PANEL.contains(targetRole)) {
+            return ResponseEntity.badRequest().body("role must be ADMIN or HR for this endpoint.");
+        }
+        Role callerRole = authContext.currentRole();
+        if (!RoleAssignmentRegistry.canAssign(callerRole, targetRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Your role (" + callerRole + ") cannot create a user with role " + targetRole + ".");
+        }
+
         Long companyId = authContext.currentCompanyId();
         long existingAdmins = userRepository.countByCompanyIdAndRoleIn(companyId, ADMIN_ROLES);
         if (existingAdmins >= 4) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Maximum of 4 admins reached.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Maximum of 4 admin-tier accounts reached.");
         }
         if (userRepository.findByEmail(req.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already registered.");
         }
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
-        User admin = buildAdminUser(req, company);
-        admin.setPrimaryOwner(false);
-        userRepository.save(admin);
-        authService.sendVerificationEmail(admin);
-        return ResponseEntity.ok(Map.of("message", "Admin added successfully"));
+        User newUser = buildUser(req, company, targetRole);
+        newUser.setPrimaryOwner(false);
+        userRepository.save(newUser);
+        authService.sendVerificationEmail(newUser);
+        return ResponseEntity.ok(Map.of("message", targetRole + " added successfully"));
     }
 
     @PostMapping("/login")
@@ -103,15 +132,8 @@ public class AdminController {
     }
 
     @GetMapping("/all")
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(SecurityRoles.IS_OWNER_OR_ADMIN)
     public ResponseEntity<List<UserResponseDTO>> getAllAdmins() {
-        // Returns UserResponseDTO now, not raw User — see UserResponseDTO's
-        // class comment. The old comment here about @JsonProperty(WRITE_ONLY)
-        // covering the password field was true but incomplete: it protected
-        // against leaking the password, not against the separate
-        // Hibernate-proxy serialization crash on User.company (see
-        // UserRepository's history) — a DTO fixes both categories at once
-        // by construction, not by remembering to annotate every risky field.
         List<UserResponseDTO> admins = userRepository.findAllByCompanyId(authContext.currentCompanyId())
                 .stream()
                 .filter(u -> ADMIN_ROLES.contains(u.getRole()))
@@ -120,9 +142,12 @@ public class AdminController {
         return ResponseEntity.ok(admins);
     }
 
-    // Only the primary owner can freeze/unfreeze/delete other admins
+    // Only the primary owner can freeze/unfreeze/delete other admin-tier
+    // accounts — the @PreAuthorize gate below narrows to Owner-tier callers
+    // at all, withMainAdminCheck narrows further to the specific primary
+    // owner (a data fact, not a role — see User.primaryOwner).
     @PutMapping("/{id}/freeze")
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> freeze(@PathVariable Long id) {
         return withMainAdminCheck(() -> userRepository.findById(id).map(a -> {
             if (a.isPrimaryOwner()) return ResponseEntity.badRequest().body((Object) "Cannot freeze main admin");
@@ -133,7 +158,7 @@ public class AdminController {
     }
 
     @PutMapping("/{id}/unfreeze")
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> unfreeze(@PathVariable Long id) {
         return withMainAdminCheck(() -> userRepository.findById(id).map(a -> {
             a.setFrozen(false);
@@ -143,7 +168,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> delete(@PathVariable Long id) {
         return withMainAdminCheck(() -> {
             User a = userRepository.findById(id).orElse(null);
@@ -165,13 +190,13 @@ public class AdminController {
         return action.get();
     }
 
-    private User buildAdminUser(RegisterRequest req, Company company) {
+    private User buildUser(RegisterRequest req, Company company, Role role) {
         User u = new User();
         u.setCompany(company);
         u.setName(req.getName());
         u.setEmail(req.getEmail());
         u.setPassword(passwordEncoder.encode(req.getPassword()));
-        u.setRole(Role.OWNER);
+        u.setRole(role);
         u.setFrozen(false);
         return u;
     }

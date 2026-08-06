@@ -2,7 +2,6 @@ package com.tenemsa.platform.controller;
 
 import com.tenemsa.platform.model.Team;
 import com.tenemsa.platform.repository.TeamRepository;
-import com.tenemsa.platform.security.SecurityRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,9 +16,10 @@ import java.util.stream.Collectors;
 public class TeamController {
 
     @Autowired TeamRepository repo;
-    // NOTE: original file also injected EmployeeRepository here but never
-    // called it anywhere in the class — dead field, removed (same pattern
-    // found in AttendanceController).
+
+    private static final String MANAGE_ANY_OR_OWN =
+        "hasAuthority('team:manage:any') or " +
+        "(hasAuthority('team:manage:own') and @teamSecurity.isTeamLead(#id))";
 
     /** Get ALL teams — accessible to any authenticated user */
     @GetMapping
@@ -53,18 +53,17 @@ public class TeamController {
             .collect(Collectors.toList());
     }
 
-    // Write operations previously had no @PreAuthorize at all — any
-    // authenticated employee (not just admins) could create, edit, or delete
-    // any team, or add/remove members from any team. Same class of gap
-    // already fixed elsewhere; closing it here too.
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    // Creating/deleting a team outright is Owner/Admin only — a Manager
+    // manages the membership and details of a team they already lead
+    // (team:manage:own, below), but doesn't stand up or tear down teams.
+    @PreAuthorize("hasAuthority('team:manage:any')")
     @PostMapping
     public Team create(@RequestBody Team team) {
         if (team.getCreatedDate() == null) team.setCreatedDate(LocalDate.now());
         return repo.save(team);
     }
 
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(MANAGE_ANY_OR_OWN)
     @PutMapping("/{id}")
     public ResponseEntity<Team> update(@PathVariable Long id, @RequestBody Team team) {
         return repo.findById(id).map(t -> {
@@ -79,14 +78,14 @@ public class TeamController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize("hasAuthority('team:manage:any')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         repo.deleteById(id);
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(MANAGE_ANY_OR_OWN)
     @PostMapping("/{id}/members/{empId}")
     public ResponseEntity<?> addMember(@PathVariable Long id, @PathVariable int empId) {
         return repo.findById(id).map(t -> {
@@ -97,7 +96,7 @@ public class TeamController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(MANAGE_ANY_OR_OWN)
     @DeleteMapping("/{id}/members/{empId}")
     public ResponseEntity<?> removeMember(@PathVariable Long id, @PathVariable int empId) {
         return repo.findById(id).map(t -> {
