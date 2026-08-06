@@ -19,7 +19,7 @@ export default function AdminManagement() {
   const [confirm,   setConfirm]   = useState<ConfirmAction | null>(null);
   const [showAdd,   setShowAdd]   = useState(false);
   const [message,   setMessage]   = useState({ text:"", type:"" });
-  const [addForm,   setAddForm]   = useState({ name:"", email:"", password:"" });
+  const [addForm,   setAddForm]   = useState({ name:"", email:"", password:"", role:"ADMIN" as "ADMIN" | "HR" });
   const [showPwd,   setShowPwd]   = useState(false);
   const [adding,    setAdding]    = useState(false);
 
@@ -42,8 +42,8 @@ export default function AdminManagement() {
     setAdding(true);
     try {
       await axiosInstance.post("/api/admin/register-by-admin", addForm);
-      setMessage({ text:`Admin ${addForm.name} added successfully!`, type:"success" });
-      setShowAdd(false); setAddForm({ name:"", email:"", password:"" });
+      setMessage({ text:`${addForm.role === "HR" ? "HR" : "Admin"} ${addForm.name} added successfully!`, type:"success" });
+      setShowAdd(false); setAddForm({ name:"", email:"", password:"", role:"ADMIN" });
       fetchAdmins();
     } catch (e: any) {
       setMessage({ text: e.response?.data || "Failed to add admin.", type:"error" });
@@ -198,7 +198,15 @@ export default function AdminManagement() {
         <div className="ems-modal-backdrop" onClick={() => setShowAdd(false)}>
           <div className="ems-modal" style={{ width:420 }} onClick={e => e.stopPropagation()}>
             <div className="modal-title">Add New Admin</div>
-            <div className="modal-sub">This admin will have full EMS access ({admins.length}/4 used)</div>
+            <div className="modal-sub">Grants elevated access — choose the role carefully ({admins.length}/4 used)</div>
+            <div className="form-group">
+              <label className="form-label">Role</label>
+              <select className="form-control-ems" value={addForm.role}
+                onChange={e => setAddForm({...addForm, role: e.target.value as "ADMIN" | "HR"})}>
+                <option value="ADMIN">Admin — technical/operational config, manages departments &amp; teams</option>
+                <option value="HR">HR — employee lifecycle, leave, attendance, payroll</option>
+              </select>
+            </div>
             <div className="form-group">
               <label className="form-label">Full Name</label>
               <input className="form-control-ems" value={addForm.name}
