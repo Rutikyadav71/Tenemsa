@@ -1,16 +1,27 @@
 package com.tenemsa.platform.model;
 
 /**
- * Full role hierarchy. Only two tiers are enforced by @PreAuthorize checks
- * as of Phase 1 — OWNER/SUPER_ADMIN (admin-equivalent) and everything else
- * (HR/MANAGER/EMPLOYEE/INTERN, employee-equivalent) — because no role-specific
- * business logic exists yet to tell HR apart from a Manager. The distinct
- * values exist now so Phase 3's dynamic permission layer has something real
- * to attach to, instead of introducing another breaking schema change later.
+ * Full role hierarchy:
+ *
+ *   SUPER_ADMIN (platform, future)
+ *   OWNER  — company owner, full control, creates Admins + HR
+ *     ├── ADMIN — technical/operational config, creates Managers, NOT payroll/HR-primary
+ *     └── HR    — employee lifecycle, creates Employees, leave/attendance/payroll
+ *           └── MANAGER — own-team scope only, cannot create users
+ *                 ├── EMPLOYEE
+ *                 └── INTERN — same as Employee minus payroll/confidential reports
+ *
+ * ADMIN added as its own value here (RBAC design phase 3a) — it was
+ * previously conflated with OWNER, meaning "company owner" and "technical
+ * admin" were indistinguishable. See docs/rbac-design.md for the full
+ * design rationale. What each role can actually DO lives in
+ * RolePermissionRegistry / RoleAssignmentRegistry, not here — this enum is
+ * intentionally just the list of values.
  */
 public enum Role {
-    SUPER_ADMIN, // platform-level, spans companies (reserved for future platform admin tooling)
-    OWNER,       // company owner — full control within their own company
+    SUPER_ADMIN,
+    OWNER,
+    ADMIN,
     HR,
     MANAGER,
     EMPLOYEE,
