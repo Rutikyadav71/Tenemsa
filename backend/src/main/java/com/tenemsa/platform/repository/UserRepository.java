@@ -57,6 +57,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u JOIN FETCH u.company WHERE u.company.id = :companyId AND u.role = :role")
     List<User> findAllByCompanyIdAndRole(@Param("companyId") Long companyId, @Param("role") Role role);
 
+    // Manager-scoped employee listing (holds user:view:team, not
+    // user:view:any) — see EmployeeController.getAll() and
+    // TeamSecurity.teamMemberEmpIds().
+    @Query("SELECT u FROM User u JOIN FETCH u.company WHERE u.company.id = :companyId AND u.empId IN :empIds")
+    List<User> findAllByCompanyIdAndEmpIdIn(@Param("companyId") Long companyId, @Param("empIds") java.util.Collection<Integer> empIds);
+
     long countByCompanyIdAndRoleIn(Long companyId, List<Role> roles);
 
     @Modifying
