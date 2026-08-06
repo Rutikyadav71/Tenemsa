@@ -2,7 +2,7 @@
 // Kept here instead of duplicated per-component so a future backend field
 // rename only needs one edit here, not a grep across 30 files.
 
-export type Role = "SUPER_ADMIN" | "OWNER" | "HR" | "MANAGER" | "EMPLOYEE" | "INTERN";
+export type Role = "SUPER_ADMIN" | "OWNER" | "ADMIN" | "HR" | "MANAGER" | "EMPLOYEE" | "INTERN";
 
 // The two-tier chat/WebSocket routing tag — deliberately NOT the same type
 // as Role. See ChatUserController on the backend: this is a fixed
