@@ -10,6 +10,10 @@ public interface EmployeeService {
 
     Page<User> getAll(Long companyId, Pageable pageable);
 
+    // Manager-scoped listing — see EmployeeController.getAll() and
+    // TeamSecurity.teamMemberEmpIds().
+    List<User> getByEmpIds(Long companyId, java.util.Collection<Integer> empIds);
+
     User getById(Long companyId, int empId);
 
     User create(Long companyId, User user);

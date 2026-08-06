@@ -35,6 +35,11 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    public List<User> getByEmpIds(Long companyId, java.util.Collection<Integer> empIds) {
+        return repo.findAllByCompanyIdAndEmpIdIn(companyId, empIds);
+    }
+
+    @Override
     public User getById(Long companyId, int empId) {
         return repo.findByCompanyIdAndEmpId(companyId, empId).orElse(null);
     }
