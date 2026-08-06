@@ -25,7 +25,7 @@ public class UploadController {
     // overwrite any OTHER employee's or admin's profile photo just by passing
     // a different empId/adminId in the URL. Same class of gap fixed
     // elsewhere; closed here too.
-    @PreAuthorize(SecurityRoles.IS_ADMIN + " or @employeeSecurity.isSelf(#empId)")
+    @PreAuthorize("hasAuthority('user:update') or (hasAuthority('profile:update:self') and @employeeSecurity.isSelf(#empId))")
     @PostMapping(value = "/profile/{empId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadEmployeeProfile(@PathVariable int empId,
             @RequestParam("file") MultipartFile file) {
@@ -44,7 +44,7 @@ public class UploadController {
     // adminId here is the User's surrogate primary key (id), same as before
     // when it referred to Admin's own primary key — unchanged meaning, just
     // now resolved against the unified users table.
-    @PreAuthorize(SecurityRoles.IS_ADMIN)
+    @PreAuthorize(SecurityRoles.IS_OWNER_OR_ADMIN)
     @PostMapping(value = "/admin-profile/{adminId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadAdminProfile(@PathVariable Long adminId,
             @RequestParam("file") MultipartFile file) {
