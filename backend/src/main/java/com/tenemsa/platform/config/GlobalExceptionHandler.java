@@ -5,6 +5,7 @@ import org.hibernate.LazyInitializationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConversionException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,6 +42,13 @@ public class GlobalExceptionHandler {
                 "A data-loading error occurred. This has been logged.");
     }
 
+    // Malformed JSON, a wrong type or an unknown enum value is the CLIENT's mistake, so 400,
+    // not the 500 the broader conversion handler below would give (this class extends it).
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<?> handleUnreadable(HttpMessageNotReadableException e) {
+        return error(HttpStatus.BAD_REQUEST, "The request body is not valid. Check the field types and allowed values.");
+    }
+
     @ExceptionHandler({InvalidDefinitionException.class, HttpMessageConversionException.class})
     public ResponseEntity<?> handleSerializationError(Exception e) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -57,7 +65,9 @@ public class GlobalExceptionHandler {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         e.getBindingResult().getFieldErrors().forEach(fe ->
                 fieldErrors.put(fe.getField(), fe.getDefaultMessage()));
-        Map<String, Object> body = baseBody(HttpStatus.BAD_REQUEST, "Validation failed.");
+        // The first field message becomes the headline so the UI can show it as-is.
+        String headline = fieldErrors.values().stream().findFirst().orElse("Validation failed.");
+        Map<String, Object> body = baseBody(HttpStatus.BAD_REQUEST, headline);
         body.put("fieldErrors", fieldErrors);
         return ResponseEntity.badRequest().body(body);
     }
