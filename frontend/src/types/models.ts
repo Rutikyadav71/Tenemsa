@@ -64,6 +64,7 @@ export interface AuthResponse {
   empId: number | null;
   companyId: number;
   companyName: string | null;
+  companySlug?: string | null;
   department: string | null;
   salary: number | null;
   primaryOwner: boolean | null;
@@ -147,4 +148,66 @@ export interface ChatUser {
   department: string | null;
   profileImageUrl: string | null;
   role: ChatRoleTag;
+}
+
+// ── Phase 4b: workspaces / company registration ───────────────────────────
+export interface CompanyInfo {
+  id: number;
+  name: string;
+  slug: string;
+  createdAt: string;
+  memberCount: number;
+}
+
+/** Public, minimal view returned by the "find your workspace" lookup. */
+export interface WorkspaceLookup {
+  name: string;
+  slug: string;
+}
+
+export interface CompanyRegisterInput {
+  companyName: string;
+  ownerName: string;
+  email: string;
+  password: string;
+}
+
+// ── Phase 4c: audit trail and invitations ─────────────────────────────────
+export interface AuditLogEntry {
+  id: number;
+  actorId: number | null;
+  actorName: string | null;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  details: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export interface AuditPage {
+  content: AuditLogEntry[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface InvitationItem {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+  department: string | null;
+  status: "PENDING" | "ACCEPTED" | "REVOKED";
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface InvitationPreview {
+  companyName: string;
+  companySlug: string;
+  email: string;
+  name: string;
+  role: Role;
 }
