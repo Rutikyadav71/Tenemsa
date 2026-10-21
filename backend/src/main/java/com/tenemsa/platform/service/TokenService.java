@@ -106,6 +106,13 @@ public class TokenService {
         verificationTokenRepository.save(token);
     }
 
+    // ---- Shared helpers (invitations reuse the same opaque-token scheme) --
+
+    /** A fresh random token; only its hash is ever stored. */
+    public String newRawToken() { return randomToken(); }
+
+    public String hashToken(String raw) { return hash(raw); }
+
     // ---- Internals ------------------------------------------------------
 
     private String randomToken() {
