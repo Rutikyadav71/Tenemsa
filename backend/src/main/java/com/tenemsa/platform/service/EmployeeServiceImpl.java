@@ -50,11 +50,25 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new RuntimeException("Company not found"));
         user.setCompany(company);
 
+        // Employee numbers are per company: use the one asked for if it is free,
+        // otherwise (or when none was given) the next free number.
+        if (user.getEmpId() == null) {
+            user.setEmpId(repo.nextEmpId(companyId));
+        } else if (repo.existsByCompanyIdAndEmpId(companyId, user.getEmpId())) {
+            throw new RuntimeException("Employee ID " + user.getEmpId() + " is already used in your company.");
+        }
+
+        if (repo.existsByEmailAndCompanyId(user.getEmail(), companyId)) {
+            throw new RuntimeException("An employee with this email already exists in your company.");
+        }
+
         String plainPassword = user.getPassword();
         user.setPassword(passwordEncoder.encode(plainPassword));
 
         User saved = repo.save(user);
-        notificationRepo.save(new Notification("Employee added: " + saved.getName()));
+        Notification notif = new Notification("Employee added: " + saved.getName());
+        notif.setCompanyId(companyId);
+        notificationRepo.save(notif);
         emailService.sendWelcomeEmail(user.getEmail(), user.getName(), plainPassword);
 
         return saved;
@@ -67,6 +81,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         existing.setName(user.getName());
         existing.setDepartment(user.getDepartment());
+        if (user.getEmail() != null && !user.getEmail().equalsIgnoreCase(existing.getEmail())
+                && repo.existsByEmailAndCompanyId(user.getEmail(), companyId)) {
+            throw new RuntimeException("Another employee in your company already uses this email.");
+        }
         existing.setEmail(user.getEmail());
         existing.setSalary(user.getSalary());
 

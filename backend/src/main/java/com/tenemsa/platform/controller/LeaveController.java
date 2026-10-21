@@ -1,8 +1,12 @@
 package com.tenemsa.platform.controller;
 
+import com.tenemsa.platform.model.AuditAction;
 import com.tenemsa.platform.model.Leave;
 import com.tenemsa.platform.model.LeaveStatus;
 import com.tenemsa.platform.security.AuthContext;
+import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.service.AuditService;
+import org.springframework.security.access.AccessDeniedException;
 import com.tenemsa.platform.service.LeaveService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PostAuthorize;
@@ -18,6 +22,8 @@ public class LeaveController {
 
     @Autowired private LeaveService leaveService;
     @Autowired private AuthContext authContext;
+    @Autowired private AuditService auditService;
+    @Autowired private UserRepository userRepository;
 
     // Every role holds leave:apply:self (see RolePermissionRegistry) — this
     // is functionally the same gate as the old isAuthenticated(), just
@@ -25,13 +31,23 @@ public class LeaveController {
     @PreAuthorize("hasAuthority('leave:apply:self')")
     @PostMapping
     public Leave applyLeave(@RequestBody Leave leave) {
+        // Phase 4d: previously any user could file leave for ANY empId in the company.
+        // Applying for yourself is always allowed; applying for someone else needs
+        // leave:approve:any (Owner, HR), the same people who can act on leave anyway.
+        Integer callerEmpId = userRepository
+                .findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId())
+                .map(u -> u.getEmpId()).orElse(null);
+        boolean self = callerEmpId != null && callerEmpId == leave.getEmpId();
+        if (!self && !authContext.hasAuthority("leave:approve:any")) {
+            throw new AccessDeniedException("You can only apply for leave for yourself.");
+        }
         return leaveService.applyLeave(leave, authContext.currentCompanyId());
     }
 
     @PreAuthorize("hasAuthority('leave:view:any')")
     @GetMapping
     public List<Leave> getAllLeaves() {
-        return leaveService.getAllLeaves();
+        return leaveService.getAllLeaves(authContext.currentCompanyId());
     }
 
     @PreAuthorize("hasAuthority('leave:view:any') or " +
@@ -39,7 +55,7 @@ public class LeaveController {
             "@employeeSecurity.isSelf(#empId)")
     @GetMapping("/employee/{empId}")
     public List<Leave> getLeavesByEmpId(@PathVariable("empId") int empId) {
-        return leaveService.getLeavesByEmpId(empId);
+        return leaveService.getLeavesByEmpId(authContext.currentCompanyId(), empId);
     }
 
     // Direct status set — kept as the Owner/HR "any" path only. Manager
@@ -48,7 +64,7 @@ public class LeaveController {
     @PreAuthorize("hasAuthority('leave:approve:any')")
     @PutMapping("/{id}")
     public Leave updateLeaveStatus(@PathVariable Long id, @RequestBody Leave leave) {
-        return leaveService.updateLeaveStatus(id, leave.getStatus());
+        return leaveService.updateLeaveStatus(authContext.currentCompanyId(), id, leave.getStatus());
     }
 
     // approve/reject/delete/export/ML-insight previously had no @PreAuthorize
@@ -62,32 +78,37 @@ public class LeaveController {
             "(hasAuthority('leave:approve:team') and @leaveSecurity.managesLeave(#id))")
     @PutMapping("/{id}/approve")
     public Leave approveLeave(@PathVariable Long id) {
-        return leaveService.updateLeaveStatus(id, LeaveStatus.APPROVED);
+        Leave leave = leaveService.updateLeaveStatus(authContext.currentCompanyId(), id, LeaveStatus.APPROVED);
+        auditService.recordCurrent(AuditAction.LEAVE_APPROVED, "LEAVE", String.valueOf(id), "Approved leave of empId " + leave.getEmpId());
+        return leave;
     }
 
     @PreAuthorize("hasAuthority('leave:approve:any') or " +
             "(hasAuthority('leave:approve:team') and @leaveSecurity.managesLeave(#id))")
     @PutMapping("/{id}/reject")
     public Leave rejectLeave(@PathVariable Long id) {
-        return leaveService.updateLeaveStatus(id, LeaveStatus.REJECTED);
+        Leave leave = leaveService.updateLeaveStatus(authContext.currentCompanyId(), id, LeaveStatus.REJECTED);
+        auditService.recordCurrent(AuditAction.LEAVE_REJECTED, "LEAVE", String.valueOf(id), "Rejected leave of empId " + leave.getEmpId());
+        return leave;
     }
 
     @PreAuthorize("hasAuthority('leave:approve:any')")
     @DeleteMapping("/{id}")
     public void deleteLeave(@PathVariable Long id) {
-        leaveService.deleteLeave(id);
+        leaveService.deleteLeave(authContext.currentCompanyId(), id);
+        auditService.recordCurrent(AuditAction.LEAVE_DELETED, "LEAVE", String.valueOf(id), "Deleted leave request " + id);
     }
 
     @PreAuthorize("hasAuthority('report:view:company')")
     @GetMapping("/admin/export")
     public List<Leave> exportLeavesForMLTraining() {
-        return leaveService.exportLeavesForTraining();
+        return leaveService.exportLeavesForTraining(authContext.currentCompanyId());
     }
 
     @PreAuthorize("hasAuthority('report:view:company')")
     @GetMapping("/admin/{id}/prediction")
     public Map<String, Object> getLeaveMLInsight(@PathVariable Long id) {
-        return leaveService.getLeaveMLInsight(id);
+        return leaveService.getLeaveMLInsight(authContext.currentCompanyId(), id);
     }
 
     // #result / returnObject is safe here specifically because this is a
@@ -100,6 +121,6 @@ public class LeaveController {
             "@employeeSecurity.isSelf(returnObject.empId)")
     @GetMapping("/{id}")
     public Leave getLeaveById(@PathVariable Long id) {
-        return leaveService.getLeaveById(id);
+        return leaveService.getLeaveById(authContext.currentCompanyId(), id);
     }
 }
