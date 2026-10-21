@@ -22,11 +22,23 @@ export function connect(
     webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
     reconnectDelay: 3000,
 
+    // The server rejects any STOMP CONNECT without a valid access token (HTTP
+    // security never sees frames inside an open WebSocket). Re-read the token
+    // on every (re)connect attempt so a refreshed token is picked up.
+    beforeConnect: () => {
+      stompClient!.connectHeaders = {
+        Authorization: `Bearer ${localStorage.getItem("token") ?? ""}`,
+      };
+    },
+
     onConnect: () => {
       isConnected = true;
-      // Subscribe to this user's personal queue
-      // Key pattern: {ROLE}_{userId}  e.g. "ADMIN_1" or "USER_101"
-      const userQueue = `/user/${role}_${userId}/queue/messages`;
+      // Subscribe to this user's personal queue.
+      // Key pattern: c{companyId}_{ROLE}_{userId}  e.g. "c1_ADMIN_1" or "c1_USER_101".
+      // companyId is part of the key because "USER_101" exists in every
+      // company — without it two tenants' employee 101 would share one queue.
+      const companyId = localStorage.getItem("companyId") ?? "";
+      const userQueue = `/user/c${companyId}_${role}_${userId}/queue/messages`;
       stompClient!.subscribe(userQueue, (frame: IMessage) => {
         try {
           const body: ChatMessage = JSON.parse(frame.body);
