@@ -7,10 +7,10 @@ const LogoIcon = () => (
 );
 
 const features = [
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>, label: "Employee Management", sub: "Add, update & manage team members" },
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>, label: "Leave Management", sub: "Apply, approve & track leave requests" },
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>, label: "Team Chat", sub: "Real-time messaging with your team" },
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>, label: "Analytics", sub: "Visual dashboards and reports" },
+  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>, label: "People Management", sub: "Directory, roles & role-based access" },
+  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>, label: "Leave Management", sub: "Apply, approve & track leave" },
+  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>, label: "Teams & Chat", sub: "Projects, teams and real-time chat" },
+  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>, label: "Attendance", sub: "Daily check-ins and work hours" },
 ];
 
 export default function HomePage() {
@@ -30,13 +30,13 @@ export default function HomePage() {
             <LogoIcon />
           </div>
           <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 44, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-1px", lineHeight: 1.1, marginBottom: 14 }}>
-            Employee Management<br />
+            Run your whole company<br />
             <span style={{ background: "linear-gradient(90deg, var(--accent-light), var(--teal))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              System
+              on Tenemsa
             </span>
           </div>
           <p style={{ fontSize: 16, color: "var(--text-3)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}>
-            A modern platform to manage employees, track leaves, and keep your team connected — all in one place.
+            Tenemsa gives every company its own private workspace for people, leave, attendance, teams and chat, with role-based access for owners, admins, HR, managers and employees.
           </p>
         </div>
 
@@ -53,11 +53,11 @@ export default function HomePage() {
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--teal-glow)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: "var(--teal)" }}>
               <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.8" /></svg>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 6 }}>Employee Portal</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>View profile, apply leave, and track your requests</div>
-            <Link to="/auth/employee">
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 6 }}>Create your workspace</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>Register your company in under a minute and become its Owner</div>
+            <Link to="/register">
               <button className="btn-ems" style={{ width: "100%", justifyContent: "center", background: "var(--teal-glow)", color: "var(--teal)", border: "1px solid rgba(45,212,191,0.3)" }}>
-                Login as Employee
+                Create workspace
               </button>
             </Link>
           </div>
@@ -73,11 +73,11 @@ export default function HomePage() {
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--accent-glow)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: "var(--accent-light)" }}>
               <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 6 }}>Admin Panel</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>Manage employees, leaves, and organization data</div>
-            <Link to="/auth/admin">
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 6 }}>Sign in to your workspace</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>Find your company and sign in as an employee or admin</div>
+            <Link to="/workspace">
               <button className="btn-ems btn-primary-ems" style={{ width: "100%", justifyContent: "center" }}>
-                Login as Admin
+                Find your workspace
               </button>
             </Link>
           </div>
@@ -96,22 +96,6 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Demo creds */}
-        <div style={{ maxWidth: 560, margin: "0 auto", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "16px 20px" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>Demo Credentials</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ padding: "10px 14px", background: "var(--bg-elevated)", borderRadius: 8, border: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 11, color: "var(--accent-light)", fontWeight: 600, marginBottom: 5 }}>ADMIN</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>admin1@gmail.com</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Admin@1</div>
-            </div>
-            <div style={{ padding: "10px 14px", background: "var(--bg-elevated)", borderRadius: 8, border: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 11, color: "var(--teal)", fontWeight: 600, marginBottom: 5 }}>EMPLOYEE</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Employee1@gmail.com</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Employee@1</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
