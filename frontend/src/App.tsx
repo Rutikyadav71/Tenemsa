@@ -9,6 +9,11 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import AdminAuthPage from "./pages/AdminAuthPage";
+import RegisterCompanyPage from "./pages/RegisterCompanyPage";
+import FindWorkspacePage from "./pages/FindWorkspacePage";
+import AcceptInvitePage from "./pages/AcceptInvitePage";
+import AuditLogPage from "./pages/AuditLogPage";
+import InvitationsPage from "./pages/InvitationsPage";
 import ChatPage from "./pages/ChatPage";
 import AttendancePage from "./pages/Attendance";
 import TeamManagement from "./pages/TeamManagement";
@@ -21,6 +26,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import AddEmployee from "./components/AddEmployee";
 import EmployeeList from "./components/EmployeeList";
 import UpdateEmployee from "./components/UpdateEmployee";
+import CompanySettings from "./components/CompanySettings";
 import AdminProfile from "./components/AdminProfile";
 import AdminNavbar from "./components/AdminNavbar";
 import AdminSidebar from "./components/AdminSidebar";
@@ -86,6 +92,9 @@ const AdminLayout = () => {
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="manage-admins" element={<AdminManagement />} />
+            <Route path="company" element={<CompanySettings />} />
+            <Route path="invitations" element={<InvitationsPage />} />
+            <Route path="audit" element={<AuditLogPage />} />
           </Routes>
         </main>
       </div>
@@ -146,6 +155,9 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+        <Route path="/register" element={<RegisterCompanyPage />} />
+        <Route path="/workspace" element={<FindWorkspacePage />} />
+        <Route path="/accept-invite" element={<AcceptInvitePage />} />
         <Route path="/auth/employee" element={<EmployeeLogin />} />
         <Route path="/auth/admin" element={<AdminAuthPage />} />
         <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
