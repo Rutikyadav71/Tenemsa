@@ -182,7 +182,7 @@ export default function AdminManagement() {
         <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)", marginBottom:10 }}>How Admin Access Works</div>
         {[
           ["Main Admin", "The first admin registered at setup. Can add up to 3 more sub-admins (4 total). Cannot be frozen or deleted."],
-          ["Sub-Admin", "Added by the Main Admin from this panel. Has full EMS access. Can be frozen/unfrozen/deleted by Main Admin."],
+          ["Sub-Admin", "Added by the Main Admin from this panel. Has full Tenemsa access. Can be frozen/unfrozen/deleted by Main Admin."],
           ["Freeze", "Temporarily blocks login. All data is preserved. The frozen admin is immediately logged out on next request."],
           ["Delete", "Permanently removes the admin account. The Main Admin account cannot be deleted."],
         ].map(([t,s]) => (
