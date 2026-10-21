@@ -2,6 +2,7 @@ package com.tenemsa.platform.service;
 
 import com.tenemsa.platform.dto.AuthResponse;
 import com.tenemsa.platform.dto.LoginRequest;
+import com.tenemsa.platform.model.AuditAction;
 import com.tenemsa.platform.model.Role;
 import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.model.VerificationToken;
@@ -31,6 +32,7 @@ public class AuthService {
     @Autowired private TokenService tokenService;
     @Autowired private EmailService emailService;
     @Autowired private JwtUtil jwtUtil;
+    @Autowired private AuditService auditService;
 
     // RBAC phase 3: ADMIN added as its own role (was previously conflated
     // with OWNER) — without it here, a newly created Admin account would be
@@ -53,6 +55,7 @@ public class AuthService {
         resp.setEmpId(user.getEmpId());
         resp.setCompanyId(user.getCompany().getId());
         resp.setCompanyName(user.getCompany().getName());
+        resp.setCompanySlug(user.getCompany().getSlug());
         resp.setDepartment(user.getDepartment());
         resp.setSalary(user.getSalary());
         resp.setPrimaryOwner(user.isPrimaryOwner());
@@ -61,21 +64,43 @@ public class AuthService {
     }
 
     public User login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+        String email = request.getEmail() == null ? "" : request.getEmail().trim();
+        String workspace = request.getWorkspace() == null ? "" : request.getWorkspace().trim();
 
-        // Phase 2: accounts created via Google OAuth2 have no password at
-        // all (see User.password now being nullable). Without this check,
-        // passwordEncoder.matches(raw, null) would throw an unchecked
-        // IllegalArgumentException from BCrypt instead of a clean, expected
-        // "use Google to sign in" message.
-        if (user.getAuthProvider() == User.AuthProvider.GOOGLE || user.getPassword() == null) {
-            throw new RuntimeException("This account signs in with Google. Use \"Continue with Google\" instead.");
+        // Phase 4c: the same email may exist in several workspaces, so the
+        // candidate set is every account with that email, narrowed to the
+        // chosen workspace when there is one.
+        List<User> candidates = userRepository.findAllByEmail(email).stream()
+                .filter(u -> workspace.isEmpty() || workspace.equalsIgnoreCase(u.getCompany().getSlug()))
+                .toList();
+        if (candidates.isEmpty()) {
+            throw new RuntimeException(workspace.isEmpty() ? "Invalid credentials" : "Invalid credentials for this workspace.");
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
+        // Accounts created via Google OAuth2 have no password. Only say so when
+        // that is the single candidate, so a mixed set cannot be probed.
+        List<User> passwordMatches = candidates.stream()
+                .filter(u -> u.getAuthProvider() != User.AuthProvider.GOOGLE && u.getPassword() != null)
+                .filter(u -> passwordEncoder.matches(request.getPassword(), u.getPassword()))
+                .toList();
+        if (passwordMatches.isEmpty()) {
+            if (candidates.size() == 1 && (candidates.get(0).getAuthProvider() == User.AuthProvider.GOOGLE
+                    || candidates.get(0).getPassword() == null)) {
+                throw new RuntimeException("This account signs in with Google. Use \"Continue with Google\" instead.");
+            }
+            if (candidates.size() == 1) {
+                User only = candidates.get(0);
+                auditService.record(only.getCompany().getId(), only.getId(), only.getName(),
+                        AuditAction.LOGIN_FAILED, "USER", String.valueOf(only.getId()), "Wrong password");
+            }
+            throw new RuntimeException(workspace.isEmpty() ? "Invalid credentials" : "Invalid credentials for this workspace.");
         }
+        // The password proves the caller owns more than one account with this
+        // email, so it is safe to tell them to pick a workspace.
+        if (passwordMatches.size() > 1) {
+            throw new RuntimeException("This email belongs to more than one workspace. Choose your workspace first.");
+        }
+        User user = passwordMatches.get(0);
 
         if (user.isFrozen()) {
             throw new RuntimeException("ACCOUNT_FROZEN: Your account has been frozen. Contact your administrator.");
@@ -112,6 +137,7 @@ public class AuthService {
         resp.setEmpId(user.getEmpId());
         resp.setCompanyId(user.getCompany().getId());
         resp.setCompanyName(user.getCompany().getName());
+        resp.setCompanySlug(user.getCompany().getSlug());
         resp.setDepartment(user.getDepartment());
         resp.setSalary(user.getSalary());
         resp.setPrimaryOwner(user.isPrimaryOwner());
@@ -137,6 +163,7 @@ public class AuthService {
         resp.setEmpId(user.getEmpId());
         resp.setCompanyId(user.getCompany().getId());
         resp.setCompanyName(user.getCompany().getName());
+        resp.setCompanySlug(user.getCompany().getSlug());
         resp.setDepartment(user.getDepartment());
         resp.setSalary(user.getSalary());
         resp.setPrimaryOwner(user.isPrimaryOwner());
@@ -162,8 +189,17 @@ public class AuthService {
 
     /** Silently no-ops for unknown emails and already-verified accounts — deliberately not revealing
      *  which case applies, same reasoning as requestPasswordReset() below. */
-    public void resendVerificationEmail(String email) {
-        userRepository.findByEmail(email).ifPresent(this::sendVerificationEmail);
+    public void resendVerificationEmail(String email, String workspace) {
+        accountsFor(email, workspace).forEach(this::sendVerificationEmail);
+    }
+
+    /** Accounts matching an email, narrowed to a workspace slug when one is given. */
+    private List<User> accountsFor(String email, String workspace) {
+        if (email == null) return List.of();
+        String ws = workspace == null ? "" : workspace.trim();
+        return userRepository.findAllByEmail(email.trim()).stream()
+                .filter(u -> ws.isEmpty() || ws.equalsIgnoreCase(u.getCompany().getSlug()))
+                .toList();
     }
 
     public void verifyEmail(String rawToken) {
@@ -180,13 +216,14 @@ public class AuthService {
     /** Deliberately does not throw or return any signal distinguishing "no such email" from
      *  "email sent" — telling an attacker which emails are registered is a real enumeration
      *  risk, so the controller always responds with the same generic message regardless. */
-    public void requestPasswordReset(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) return;
-        User user = userOpt.get();
-        if (user.getAuthProvider() == User.AuthProvider.GOOGLE) return; // nothing to reset
-        String rawToken = tokenService.issueVerificationToken(user, VerificationToken.Purpose.PASSWORD_RESET);
-        emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), rawToken);
+    public void requestPasswordReset(String email, String workspace) {
+        // Without a workspace every matching account gets its own link (the
+        // email names the company), so nothing reveals how many exist.
+        for (User user : accountsFor(email, workspace)) {
+            if (user.getAuthProvider() == User.AuthProvider.GOOGLE) continue; // nothing to reset
+            String rawToken = tokenService.issueVerificationToken(user, VerificationToken.Purpose.PASSWORD_RESET);
+            emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), user.getCompany().getName(), rawToken);
+        }
     }
 
     public void resetPassword(String rawToken, String newPassword) {
@@ -204,5 +241,7 @@ public class AuthService {
         // otherwise a leaked/stolen refresh token would survive the very
         // password change meant to lock the attacker out.
         tokenService.revokeAllRefreshTokensForUser(user.getId());
+        auditService.record(user.getCompany().getId(), user.getId(), user.getName(),
+                AuditAction.PASSWORD_RESET, "USER", String.valueOf(user.getId()), "Password reset via email link");
     }
 }
