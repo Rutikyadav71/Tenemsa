@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
 import axiosInstance from "../services/axiosInstance";
 import { Link } from "react-router-dom";
+import { getRememberedWorkspace } from "../services/companyService";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  // Optional: narrows the reset to one company when the same email is used in several workspaces.
+  const [workspace, setWorkspace] = useState(getRememberedWorkspace());
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,7 +19,7 @@ export default function ForgotPasswordPage() {
       // Backend deliberately returns the same response whether or not the
       // email exists (avoids confirming to an attacker which emails are
       // registered) — so this always shows the same success state.
-      await axiosInstance.post("/api/auth/forgot-password", { email });
+      await axiosInstance.post("/api/auth/forgot-password", { email, workspace: workspace.trim() || undefined });
       setSubmitted(true);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -48,6 +51,11 @@ export default function ForgotPasswordPage() {
                 required
                 autoFocus
               />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Workspace address (optional)</label>
+              <input className="form-control-ems" value={workspace} onChange={(e) => setWorkspace(e.target.value)}
+                placeholder="your-company" />
             </div>
             {error && <p className="auth-error">{error}</p>}
             <button type="submit" className="btn-ems btn-primary-ems" disabled={loading}>
