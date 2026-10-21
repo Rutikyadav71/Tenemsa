@@ -18,14 +18,16 @@ public class LeaveSecurity {
 
     private final LeaveRepository leaveRepository;
     private final TeamSecurity teamSecurity;
+    private final AuthContext authContext;
 
-    public LeaveSecurity(LeaveRepository leaveRepository, TeamSecurity teamSecurity) {
+    public LeaveSecurity(LeaveRepository leaveRepository, TeamSecurity teamSecurity, AuthContext authContext) {
         this.leaveRepository = leaveRepository;
         this.teamSecurity = teamSecurity;
+        this.authContext = authContext;
     }
 
     public boolean managesLeave(Long leaveId) {
-        return leaveRepository.findById(leaveId)
+        return leaveRepository.findByIdAndCompanyId(leaveId.intValue(), authContext.currentCompanyId())
                 .map(leave -> teamSecurity.managesEmployee(leave.getEmpId()))
                 .orElse(false);
     }
