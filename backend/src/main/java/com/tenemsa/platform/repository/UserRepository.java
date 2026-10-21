@@ -15,9 +15,11 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // Email is globally unique (see uniqueConstraint on User) so this needs
-    // no company scoping — used by login, which doesn't have a company
-    // context to filter by yet.
+    // Email is unique per company only (uk_users_company_email), so the
+    // same address can exist in several workspaces. Two finders follow:
+    // findByEmailAndCompanyId for anything with a tenant (JWT callers) and
+    // findAllByEmail for the pre-authentication flows (login, forgot
+    // password, Google sign-in) that must resolve the workspace themselves.
     //
     // JOIN FETCH u.company on every method below: every caller eventually
     // needs company data (companyId/companyName in responses, tenant claims
@@ -33,13 +35,29 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // wasn't written to expect one). Fetching eagerly here removes the
     // possibility of either, everywhere this repository is used, rather
     // than patching each call site reactively as new ones get hit.
+    @Query("SELECT u FROM User u JOIN FETCH u.company WHERE u.email = :email AND u.company.id = :companyId")
+    Optional<User> findByEmailAndCompanyId(@Param("email") String email, @Param("companyId") Long companyId);
+
     @Query("SELECT u FROM User u JOIN FETCH u.company WHERE u.email = :email")
-    Optional<User> findByEmail(@Param("email") String email);
+    List<User> findAllByEmail(@Param("email") String email);
+
+    boolean existsByEmailAndCompanyId(String email, Long companyId);
 
     // empId is only unique per company, so lookups by empId alone are
     // ambiguous across tenants and must always be scoped.
     @Query("SELECT u FROM User u JOIN FETCH u.company WHERE u.company.id = :companyId AND u.empId = :empId")
     Optional<User> findByCompanyIdAndEmpId(@Param("companyId") Long companyId, @Param("empId") Integer empId);
+
+    // Surrogate-id lookup that cannot cross tenants. Plain findById(id) is
+    // unscoped: any caller who guesses an id could reach another company's user.
+    @Query("SELECT u FROM User u JOIN FETCH u.company WHERE u.company.id = :companyId AND u.id = :id")
+    Optional<User> findByIdAndCompanyId(@Param("id") Long id, @Param("companyId") Long companyId);
+
+    // Next business id inside ONE company (empId is per-company, see uk_users_company_empid).
+    @Query("SELECT COALESCE(MAX(u.empId), 0) + 1 FROM User u WHERE u.company.id = :companyId")
+    int nextEmpId(@Param("companyId") Long companyId);
+
+    long countByCompanyId(Long companyId);
 
     boolean existsByCompanyIdAndEmpId(Long companyId, Integer empId);
 
