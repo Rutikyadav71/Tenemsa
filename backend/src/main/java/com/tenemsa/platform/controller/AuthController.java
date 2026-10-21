@@ -1,11 +1,14 @@
 package com.tenemsa.platform.controller;
 
 import com.tenemsa.platform.dto.*;
+import com.tenemsa.platform.model.AuditAction;
 import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
+import com.tenemsa.platform.service.AuditService;
 import com.tenemsa.platform.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +23,15 @@ public class AuthController {
     @Autowired private AuthService authService;
     @Autowired private UserRepository userRepository;
     @Autowired private AuthContext authContext;
+    @Autowired private AuditService auditService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         try {
             User user = authService.login(request);
             AuthResponse resp = authService.issueAuthResponse(user, request.isRememberMe(), deviceLabel(httpRequest));
+            auditService.record(user.getCompany().getId(), user.getId(), user.getName(),
+                    AuditAction.LOGIN_SUCCESS, "USER", String.valueOf(user.getId()), "Signed in with password");
             return ResponseEntity.ok(resp);
         } catch (RuntimeException e) {
             return errorResponse(e);
@@ -59,15 +65,15 @@ public class AuthController {
     // consequential action tied to "who is asking", not just "which token".
     @PostMapping("/logout-all")
     public ResponseEntity<?> logoutAllDevices() {
-        User user = userRepository.findByEmail(authContext.currentEmail())
+        User user = userRepository.findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId())
                 .orElseThrow(() -> new RuntimeException("Not authenticated"));
         authService.logoutAllDevices(user.getId());
         return ResponseEntity.ok(Map.of("message", "Signed out of all devices"));
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        authService.requestPasswordReset(request.getEmail());
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request.getEmail(), request.getWorkspace());
         // Same response regardless of whether the email exists — see
         // AuthService.requestPasswordReset for why.
         return ResponseEntity.ok(Map.of("message", "If an account exists for that email, a reset link has been sent."));
@@ -94,14 +100,14 @@ public class AuthController {
     }
 
     @PostMapping("/resend-verification")
-    public ResponseEntity<?> resendVerification(@RequestBody ResendVerificationRequest request) {
-        authService.resendVerificationEmail(request.getEmail());
+    public ResponseEntity<?> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerificationEmail(request.getEmail(), request.getWorkspace());
         return ResponseEntity.ok(Map.of("message", "If that account needs verification, a new link has been sent."));
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> me() {
-        User user = userRepository.findByEmail(authContext.currentEmail())
+        User user = userRepository.findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId())
                 .orElseThrow(() -> new RuntimeException("Not authenticated"));
         return ResponseEntity.ok(authService.getCurrentUserProfile(user));
     }
