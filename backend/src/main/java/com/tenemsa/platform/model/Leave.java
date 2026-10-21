@@ -1,21 +1,22 @@
 package com.tenemsa.platform.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 
 import java.time.LocalDate;
 
+// Plain hand-written entity (no Lombok): Hibernate and Jackson both need a real
+// no-argument constructor, and Lombok's @NoArgsConstructor was not being generated
+// on newer JDKs, which made GET /api/leaves fail with "No default constructor".
 @Entity
-@Table(name = "leaves")
-@Data
-@NoArgsConstructor
-//@AllArgsConstructor
-@Builder
+@Table(name = "leaves", indexes = @Index(name = "idx_leaves_company", columnList = "company_id"))
 public class Leave {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+
+    @Column(name = "company_id", nullable = false)
+    private Long companyId;
 
     @Column(name = "emp_id", nullable = false)
     private int empId;
@@ -31,8 +32,12 @@ public class Leave {
     @Enumerated(EnumType.STRING)
     private LeaveStatus status;
 
-    public Leave(int id, int empId, LocalDate startDate, LocalDate endDate, String reason, LeaveStatus status) {
+    public Leave() {
+    }
+
+    public Leave(int id, Long companyId, int empId, LocalDate startDate, LocalDate endDate, String reason, LeaveStatus status) {
         this.id = id;
+        this.companyId = companyId;
         this.empId = empId;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -49,6 +54,10 @@ public class Leave {
     public void setId(int id) {
         this.id = id;
     }
+
+    public Long getCompanyId() { return companyId; }
+
+    public void setCompanyId(Long companyId) { this.companyId = companyId; }
 
     public int getEmpId() {
         return empId;
