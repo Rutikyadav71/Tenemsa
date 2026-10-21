@@ -51,7 +51,7 @@ function UpdateEmployee() {
       const { role: _role, ...payload } = employee;
       await updateEmployee(employee.empId, payload);
       navigate("/admin/employees");
-    } catch(err) { setMessage("Failed to update employee."); setLoading(false); }
+    } catch(err: any) { setMessage(err.response?.data?.message || "Failed to update employee."); setLoading(false); }
   };
 
   return (
