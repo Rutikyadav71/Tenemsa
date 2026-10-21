@@ -26,13 +26,12 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_users_email", columnList = "email")
         },
         uniqueConstraints = {
-                // Email stays globally unique for now (not per-company) because
-                // login is still "email + password" with no company selector.
-                // Scoping email uniqueness to (company_id, email) is planned for
-                // Phase 4 alongside the login flow redesign that would actually
-                // let two different companies share an employee's email address
-                // without an ambiguous lookup.
-                @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+                // Phase 4c: email is unique PER COMPANY, so the same person can
+                // belong to two workspaces. Login is workspace-aware (see
+                // AuthService.login). Existing databases still carry the old
+                // global uk_users_email index and must drop it once, see
+                // backend/migration-phase4c.sql.
+                @UniqueConstraint(name = "uk_users_company_email", columnNames = {"company_id", "email"}),
                 // empId was previously globally unique, which is wrong for
                 // multi-tenancy — two unrelated companies would collide over
                 // "employee #1". Scoped to per-company instead.
