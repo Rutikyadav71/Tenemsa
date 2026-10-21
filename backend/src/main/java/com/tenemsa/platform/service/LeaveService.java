@@ -29,15 +29,20 @@ public class LeaveService {
 
     private static final String ML_API_URL = "http://localhost:5000/predict-leave";
 
-    // NOTE ON SCOPE: Leave rows themselves don't carry company_id yet — only
-    // this existence check does, because empId stopped being globally unique
-    // the moment User became company-scoped, so resolving "does this empId
-    // exist" now requires knowing which company to look in. The Leave table
-    // (and Attendance, Team) trusting empId uniqueness only holds because
-    // Phase 1 still enforces single-company operation end-to-end (see
-    // CompanyRepository.findFirstByOrderByIdAsc). Adding company_id to these
-    // tables and scoping every query by it is explicitly Phase 4 work
-    // (tenant isolation), not silently done here.
+    // TENANT ISOLATION (Phase 4): every Leave row carries company_id and every
+    // lookup below is scoped by it, so one company can never read, approve,
+    // delete or train-on another company's leave requests even if it guesses ids.
+    private Notification notify(Long companyId, String message, int leaveId) {
+        Notification n = new Notification(message, Long.valueOf(leaveId));
+        n.setCompanyId(companyId);
+        return notificationRepo.save(n);
+    }
+
+    private Leave requireLeave(Long companyId, Long id) {
+        return leaveRepository.findByIdAndCompanyId(id.intValue(), companyId)
+                .orElseThrow(() -> new RuntimeException("Leave not found with ID: " + id));
+    }
+
     public Leave applyLeave(Leave leave, Long companyId) {
 
         boolean exists = userRepository.existsByCompanyIdAndEmpId(companyId, leave.getEmpId());
@@ -47,70 +52,52 @@ public class LeaveService {
             );
         }
 
+        leave.setId(0);                 // create only
+        leave.setCompanyId(companyId);  // never trust a client-supplied companyId
         leave.setStatus(LeaveStatus.PENDING);
         Leave savedLeave = leaveRepository.save(leave);
 
-        notificationRepo.save(new Notification(
-                "New leave request submitted by Emp ID: " + savedLeave.getEmpId(),
-                Long.valueOf(savedLeave.getId())
-
-        ));
+        notify(companyId, "New leave request submitted by Emp ID: " + savedLeave.getEmpId(), savedLeave.getId());
 
         return savedLeave;
     }
 
-    public List<Leave> getAllLeaves() {
-        return leaveRepository.findAll();
+    public List<Leave> getAllLeaves(Long companyId) {
+        return leaveRepository.findByCompanyId(companyId);
     }
 
-    public List<Leave> getLeavesByEmpId(int empId) {
-        return leaveRepository.findByEmpId(empId);
+    public List<Leave> getLeavesByEmpId(Long companyId, int empId) {
+        return leaveRepository.findByCompanyIdAndEmpId(companyId, empId);
     }
 
-    public Leave updateLeaveStatus(Long id, LeaveStatus status) {
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Leave not found with ID: " + id)
-                );
+    public Leave updateLeaveStatus(Long companyId, Long id, LeaveStatus status) {
+        Leave leave = requireLeave(companyId, id);
 
         leave.setStatus(status);
         Leave updatedLeave = leaveRepository.save(leave);
 
-        notificationRepo.save(new Notification(
-                "Leave " + status.name().toLowerCase() +
-                        " for Emp ID: " + updatedLeave.getEmpId(),
-                Long.valueOf(updatedLeave.getId())
-        ));
+        notify(companyId, "Leave " + status.name().toLowerCase() +
+                " for Emp ID: " + updatedLeave.getEmpId(), updatedLeave.getId());
 
         return updatedLeave;
     }
 
-    public void deleteLeave(Long id) {
-        Leave leave = leaveRepository.findById(id).orElse(null);
+    public void deleteLeave(Long companyId, Long id) {
+        Leave leave = leaveRepository.findByIdAndCompanyId(id.intValue(), companyId).orElse(null);
 
         if (leave != null) {
-            leaveRepository.deleteById(id);
-
-            notificationRepo.save(new Notification(
-                    "Leave deleted for Emp ID: " + leave.getEmpId(),
-                    Long.valueOf(leave.getId())
-            ));
+            leaveRepository.delete(leave);
+            notify(companyId, "Leave deleted for Emp ID: " + leave.getEmpId(), leave.getId());
         }
     }
 
-    public Leave getLeaveById(Long id) {
-        return leaveRepository.findById(id.longValue())
-                .orElseThrow(() ->
-                        new RuntimeException("Leave not found with ID: " + id)
-                );
+    public Leave getLeaveById(Long companyId, Long id) {
+        return requireLeave(companyId, id);
     }
 
-    public Map<String, Object> getLeaveMLInsight(Long id) {
+    public Map<String, Object> getLeaveMLInsight(Long companyId, Long id) {
 
-        Leave leave = leaveRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Leave not found with ID: " + id)
-                );
+        Leave leave = requireLeave(companyId, id);
 
         int leaveDays = calculateLeaveDays(
                 leave.getStartDate(),
@@ -123,7 +110,7 @@ public class LeaveService {
         String leaveType = mapReasonToLeaveType(leave.getReason());
         int empId = leave.getEmpId();
 
-        List<Leave> empLeaves = leaveRepository.findByEmpId(empId);
+        List<Leave> empLeaves = leaveRepository.findByCompanyIdAndEmpId(companyId, empId);
 
         long monthlyLeaveDays = empLeaves.stream()
                 .filter(l -> l.getStatus() == LeaveStatus.APPROVED)
@@ -184,8 +171,8 @@ public class LeaveService {
         return response;
     }
 
-    public List<Leave> exportLeavesForTraining() {
-        return leaveRepository.findByStatusIn(
+    public List<Leave> exportLeavesForTraining(Long companyId) {
+        return leaveRepository.findByCompanyIdAndStatusIn(companyId,
                 List.of(LeaveStatus.APPROVED, LeaveStatus.REJECTED)
         );
     }
