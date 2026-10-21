@@ -56,7 +56,7 @@ export default function UserSidebar({ isOpen, collapsed, toggleSidebar }) {
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          {!collapsed && <div><div className="sidebar-logo-text">EMS</div><div className="sidebar-logo-sub">Employee Portal</div></div>}
+          {!collapsed && <div><div className="sidebar-logo-text">Tenemsa</div><div className="sidebar-logo-sub">{localStorage.getItem("companyName") || "Employee Portal"}</div></div>}
         </div>
 
         {!collapsed && <div className="sidebar-section-label">Main Menu</div>}

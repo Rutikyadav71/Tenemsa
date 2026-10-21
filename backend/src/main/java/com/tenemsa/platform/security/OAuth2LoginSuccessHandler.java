@@ -17,6 +17,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -43,13 +44,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final com.tenemsa.platform.service.AuditService auditService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    public OAuth2LoginSuccessHandler(UserRepository userRepository, AuthService authService) {
+    public OAuth2LoginSuccessHandler(UserRepository userRepository, AuthService authService,
+                                     com.tenemsa.platform.service.AuditService auditService) {
         this.userRepository = userRepository;
         this.authService = authService;
+        this.auditService = auditService;
     }
 
     @Override
@@ -62,7 +66,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        // Phase 4c: one Google account can belong to several workspaces. Google
+        // sign-in has no workspace context, so it only works while the address
+        // maps to exactly one account; otherwise the person must use the
+        // workspace-scoped password login.
+        List<User> matches = userRepository.findAllByEmail(email);
+        if (matches.size() > 1) {
+            redirectWithError(response, "This email belongs to more than one workspace. Find your workspace and sign in with your password.");
+            return;
+        }
+        Optional<User> userOpt = matches.stream().findFirst();
         if (userOpt.isEmpty()) {
             // Deliberately NOT "account already exists" style wording — this
             // is the opposite case: no account exists at all, and Google
@@ -85,6 +98,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         // additional valid credential for whoever owns this email, same as
         // the password is.
         AuthResponse authResp = authService.issueAuthResponse(user, false, request.getHeader("User-Agent"));
+        auditService.record(user.getCompany().getId(), user.getId(), user.getName(),
+                com.tenemsa.platform.model.AuditAction.LOGIN_SUCCESS, "USER", String.valueOf(user.getId()), "Signed in with Google");
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth/callback")
                 .queryParam("token", authResp.getToken())

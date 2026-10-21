@@ -3,7 +3,9 @@ import axiosInstance from "../services/axiosInstance";
 import { useNavigate } from "react-router-dom";
 
 export default function LeaveRequestForm() {
-  const [form, setForm] = useState({empId:"",startDate:"",endDate:"",reason:""});
+  const [form, setForm] = useState({empId:localStorage.getItem("empId") || "",startDate:"",endDate:"",reason:""});
+  // Only Owner and HR may file leave for someone else; the server enforces this too.
+  const canApplyForOthers = ["OWNER", "HR"].includes(localStorage.getItem("userRole") || "");
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState("success");
   const [loading, setLoading] = useState(false);
@@ -19,7 +21,7 @@ export default function LeaveRequestForm() {
     try {
       await axiosInstance.post("/api/leaves", form);
       setMessage("Leave request submitted successfully!"); setMsgType("success");
-      setForm({empId:"",startDate:"",endDate:"",reason:""});
+      setForm({empId:localStorage.getItem("empId") || "",startDate:"",endDate:"",reason:""});
     } catch(err: any) { setMessage(err.response?.data?.message || "Failed to submit leave."); setMsgType("error"); }
     finally { setLoading(false); }
   };
@@ -40,7 +42,7 @@ export default function LeaveRequestForm() {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label className="form-label">Employee ID</label>
-              <input name="empId" value={form.empId} onChange={handleChange} className="form-control-ems" placeholder="e.g. 1001" required/>
+              <input name="empId" value={form.empId} onChange={handleChange} className="form-control-ems" placeholder="e.g. 1001" readOnly={!canApplyForOthers} required/>
             </div>
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>

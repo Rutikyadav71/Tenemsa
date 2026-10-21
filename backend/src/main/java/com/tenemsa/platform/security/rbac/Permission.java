@@ -16,6 +16,8 @@ package com.tenemsa.platform.security.rbac;
  */
 public enum Permission {
     COMPANY_MANAGE("company:manage"),
+    // Phase 4c: read the company audit trail (Owner and Admin).
+    AUDIT_VIEW("audit:view"),
     SUBSCRIPTION_MANAGE("subscription:manage"),
 
     // user:create is intentionally coarse-grained here — WHICH roles a

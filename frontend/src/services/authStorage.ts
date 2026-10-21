@@ -28,6 +28,7 @@ export function storeAuthResponse(resp: AuthResponse, roleTag: ChatRoleTag): voi
   localStorage.setItem("email", resp.email || "");
   localStorage.setItem("companyId", String(resp.companyId ?? ""));
   localStorage.setItem("companyName", resp.companyName || "");
+  localStorage.setItem("companySlug", resp.companySlug || "");
   localStorage.setItem("department", resp.department || "");
   localStorage.setItem("salary", resp.salary != null ? String(resp.salary) : "");
   localStorage.setItem("primaryOwner", String(resp.primaryOwner || false));

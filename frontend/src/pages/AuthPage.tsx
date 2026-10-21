@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../services/apiConfig";
 import { storeAuthResponse } from "../services/authStorage";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import type { AuthResponse } from "../types/models";
+import { lookupWorkspace, rememberWorkspace } from "../services/companyService";
 
 const EyeIcon = ({ open }: { open: boolean }) => open
   ? <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M1 1l22 22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
@@ -19,13 +20,19 @@ const GoogleIcon = () => (
 );
 
 export default function AuthPage() {
-  const [form, setForm] = useState({ email: "Employee1@gmail.com", password: "Employee@1" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const workspace = searchParams.get("workspace") || "";
+  const [workspaceName, setWorkspaceName] = useState("");
+
+  useEffect(() => {
+    if (workspace) lookupWorkspace(workspace).then(w => setWorkspaceName(w?.name || "")).catch(() => {});
+  }, [workspace]);
 
   // Google sign-in failures (no matching account, frozen account, etc.)
   // redirect back here with ?error=... — see backend's
@@ -43,8 +50,9 @@ export default function AuthPage() {
     if (form.password.length < 6) { setMessage("Password must be at least 6 characters."); return; }
     setLoading(true);
     try {
-      const res = await axiosInstance.post<AuthResponse>("/api/auth/login", { ...form, rememberMe });
+      const res = await axiosInstance.post<AuthResponse>("/api/auth/login", { ...form, rememberMe, workspace: workspace || undefined });
       storeAuthResponse(res.data, "USER");
+      if (res.data.companySlug) rememberWorkspace(res.data.companySlug);
       navigate("/user/dashboard");
     } catch (err: any) {
       const msg = err.response?.data;
@@ -114,7 +122,7 @@ export default function AuthPage() {
         </div>
 
         <div className="auth-form-title">Welcome back</div>
-        <div className="auth-form-sub">Sign in to your employee account</div>
+        <div className="auth-form-sub">{workspaceName ? `Sign in to ${workspaceName}` : "Sign in to your employee account"}</div>
 
         {message && <div className="alert-ems alert-error">{message}</div>}
 
@@ -166,16 +174,7 @@ export default function AuthPage() {
         </form>
 
         <div style={{ marginTop: 20, textAlign: "center" }}>
-          <Link to="/" style={{ fontSize: 13, color: "var(--text-3)" }}>Back to home</Link>
-        </div>
-
-        <div style={{
-          marginTop: 24, padding: "14px 16px", background: "var(--bg-elevated)",
-          borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)"
-        }}>
-          <div style={{ fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Demo Credentials</div>
-          <div>Email: Employee1@gmail.com</div>
-          <div>Password: Employee@1</div>
+          <Link to="/workspace" style={{ fontSize: 13, color: "var(--text-3)" }}>Use a different workspace</Link>
         </div>
       </div>
     </div>

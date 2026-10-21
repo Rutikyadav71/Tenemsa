@@ -38,6 +38,8 @@ public final class RolePermissionRegistry {
         MATRIX.put(Role.ADMIN, EnumSet.of(
                 USER_CREATE, USER_UPDATE, USER_FREEZE, USER_VIEW_ANY, // creation target restricted to Manager only — enforced by RoleAssignmentRegistry, not here
                 DEPARTMENT_MANAGE, TEAM_MANAGE_ANY,
+                COMPANY_MANAGE, // spec: "Manage company settings (except subscription)"
+        AUDIT_VIEW,
                 REPORT_VIEW_COMPANY,
                 CHAT_USE, PROFILE_UPDATE_SELF, ATTENDANCE_MARK_SELF, LEAVE_APPLY_SELF, PAYROLL_VIEW_SELF
                 // Deliberately NOT: user:delete, leave:approve:*, attendance:manage:any,

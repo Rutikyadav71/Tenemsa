@@ -1,12 +1,16 @@
 package com.tenemsa.platform.controller;
 
+import com.tenemsa.platform.dto.EmployeeCreateRequest;
+import com.tenemsa.platform.dto.EmployeeUpdateRequest;
 import com.tenemsa.platform.dto.UserResponseDTO;
 import com.tenemsa.platform.mapper.UserMapper;
+import com.tenemsa.platform.model.AuditAction;
 import com.tenemsa.platform.model.Role;
 import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.security.AuthContext;
 import com.tenemsa.platform.security.TeamSecurity;
 import com.tenemsa.platform.security.rbac.RoleAssignmentRegistry;
+import com.tenemsa.platform.service.AuditService;
 import com.tenemsa.platform.service.EmployeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +22,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -37,6 +43,9 @@ public class EmployeeController {
 
     @Autowired
     private TeamSecurity teamSecurity;
+
+    @Autowired
+    private AuditService auditService;
 
     @Operation(summary = "List employees in the caller's company",
             description = "Owner/Admin/HR see the whole company (paginated). A Manager (user:view:team only, " +
@@ -78,21 +87,45 @@ public class EmployeeController {
                     "See RoleAssignmentRegistry.")
     @PreAuthorize("hasAuthority('user:create')")
     @PostMapping
-    public UserResponseDTO create(@RequestBody User user) {
-        requireAssignable(user.getRole());
-        return userMapper.toDto(service.create(authContext.currentCompanyId(), user));
+    public UserResponseDTO create(@Valid @RequestBody EmployeeCreateRequest req) {
+        requireAssignable(req.role());
+        // Copy only the fields an admin may choose; nothing else from the body reaches the entity.
+        User user = new User();
+        user.setEmpId(req.empId());
+        user.setName(req.name().trim());
+        user.setEmail(req.email().trim());
+        user.setPassword(req.password());
+        user.setRole(req.role());
+        user.setDepartment(req.department());
+        user.setSalary(req.salary());
+        User created = service.create(authContext.currentCompanyId(), user);
+        auditService.recordCurrent(AuditAction.USER_CREATED, "USER", String.valueOf(created.getId()),
+                "Created " + created.getRole() + " " + created.getName() + " (empId " + created.getEmpId() + ")");
+        return userMapper.toDto(created);
     }
 
     @PreAuthorize("hasAuthority('user:update')")
     @PutMapping("/{id}")
-    public UserResponseDTO update(@PathVariable("id") int empId, @RequestBody User user) {
-        return userMapper.toDto(service.update(authContext.currentCompanyId(), empId, user));
+    public UserResponseDTO update(@PathVariable("id") int empId, @Valid @RequestBody EmployeeUpdateRequest req) {
+        User user = new User();
+        user.setName(req.name().trim());
+        user.setEmail(req.email().trim());
+        user.setPassword(req.password());
+        user.setDepartment(req.department());
+        user.setSalary(req.salary());
+        User updated = service.update(authContext.currentCompanyId(), empId, user);
+        if (updated != null) {
+            auditService.recordCurrent(AuditAction.USER_UPDATED, "USER", String.valueOf(updated.getId()),
+                    "Updated " + updated.getName() + " (empId " + empId + ")");
+        }
+        return userMapper.toDto(updated);
     }
 
     @PreAuthorize("hasAuthority('user:delete')")
     @DeleteMapping("/{id}")
     public void delete(@PathVariable("id") int empId) {
         service.delete(authContext.currentCompanyId(), empId);
+        auditService.recordCurrent(AuditAction.USER_DELETED, "USER", String.valueOf(empId), "Deleted employee with empId " + empId);
     }
 
     @PreAuthorize("hasAuthority('user:view:any')")
@@ -105,6 +138,7 @@ public class EmployeeController {
     @PostMapping("/delete-multiple")
     public void deleteMultiple(@RequestBody List<Integer> empIds) {
         service.deleteMultiple(authContext.currentCompanyId(), empIds);
+        auditService.recordCurrent(AuditAction.USER_DELETED, "USER", null, "Deleted " + empIds.size() + " employees (empIds " + empIds + ")");
     }
 
     // Holding user:create only establishes the caller can create SOME user —

@@ -50,14 +50,26 @@ public class EmailService {
                 "<p>— Tenemsa</p>");
     }
 
-    public void sendPasswordResetEmail(String toEmail, String name, String rawToken) {
+    public void sendPasswordResetEmail(String toEmail, String name, String companyName, String rawToken) {
         String link = frontendUrl + "/reset-password?token=" + rawToken;
         send(toEmail, "Reset your Tenemsa password",
                 "<p>Hi <strong>" + name + "</strong>,</p>" +
-                "<p>Someone requested a password reset for this account. If that was you:</p>" +
+                "<p>Someone requested a password reset for your account at <strong>" + companyName + "</strong>. If that was you:</p>" +
                 "<p><a href=\"" + link + "\">Reset my password</a></p>" +
                 "<p>This link expires in 30 minutes. If you didn't request this, your password is still safe — " +
                 "just ignore this email.</p>" +
+                "<p>— Tenemsa</p>");
+    }
+
+    public void sendInviteEmail(String toEmail, String inviteeName, String companyName,
+                                String inviterName, String roleLabel, String rawToken) {
+        String link = frontendUrl + "/accept-invite?token=" + rawToken;
+        send(toEmail, inviterName + " invited you to " + companyName + " on Tenemsa",
+                "<p>Hi <strong>" + inviteeName + "</strong>,</p>" +
+                "<p><strong>" + inviterName + "</strong> invited you to join <strong>" + companyName +
+                "</strong> on Tenemsa as <strong>" + roleLabel + "</strong>.</p>" +
+                "<p><a href=\"" + link + "\">Accept the invitation</a> and choose your password.</p>" +
+                "<p>This link expires in 7 days. If you weren't expecting it, you can ignore this email.</p>" +
                 "<p>— Tenemsa</p>");
     }
 

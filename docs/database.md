@@ -36,7 +36,7 @@ The unified table replacing the old separate `employees`/`admins` tables (Phase 
 | `company_id` | bigint, FK → companies, indexed | |
 | `emp_id` | integer, nullable | Business-facing employee number. Unique **per company**, not globally — `UNIQUE(company_id, emp_id)`. |
 | `name` | varchar(150) | |
-| `email` | varchar(255), unique globally | Not yet scoped per-company — see architecture doc's known-debt note on why. |
+| `email` | varchar(255) | Unique **per company**, `UNIQUE(company_id, email)` (Phase 4c). The same address can belong to several workspaces. |
 | `password` | varchar | BCrypt hash. Never serialized in API responses (`@JsonProperty(WRITE_ONLY)`). |
 | `role` | varchar(20) | Enum stored as string: `SUPER_ADMIN`, `OWNER`, `HR`, `MANAGER`, `EMPLOYEE`, `INTERN`. |
 | `department` | varchar(100), nullable | |
@@ -47,12 +47,21 @@ The unified table replacing the old separate `employees`/`admins` tables (Phase 
 | `created_at`, `updated_at` | timestamp | Auto-populated (`@CreationTimestamp`/`@UpdateTimestamp`). |
 | `created_by`, `updated_by` | bigint, nullable | Columns exist; not yet populated anywhere (needs a "who's calling" context threaded through every write path — Phase 3). |
 
+### `audit_logs`
+
+Append-only trail of who did what in a company (Phase 4c). Columns: `id`, `company_id` (indexed with `created_at` and with `action`), `actor_id` (not a foreign key, so history survives deleting the user), `actor_name`, `action` (plain text, see `AuditAction`), `entity_type`, `entity_id`, `details` (≤500), `ip_address`, `created_at`. The application only inserts; it never updates or deletes rows.
+
+### `invitations`
+
+Email invitations to join a company (Phase 4c). Columns: `id`, `company_id`, `email`, `name`, `role` (text), `department`, `token_hash` (unique SHA-256; the raw token only exists in the email), `status` (`PENDING`/`ACCEPTED`/`REVOKED`), `invited_by_id`, `expires_at` (7 days), `accepted_at`, `created_at`.
+
 ### `attendance`
 | Column | Type | Notes |
 |---|---|---|
 | `id` | bigint, PK | |
+| `company_id` | bigint, FK → companies, NOT NULL | Tenant. Added in Phase 4. |
 | `emp_id` | integer | Business key, see note above. |
-| `date` | date | |
+| `date` | date | Unique together with `company_id` + `emp_id`. |
 | `check_in`, `check_out` | time, nullable | |
 | `status` | varchar | `PRESENT`, `LATE`, `ABSENT`, `HALF_DAY`, `ON_LEAVE`. |
 | `work_hours` | double, nullable | Computed at checkout. |
@@ -105,9 +114,33 @@ Not scoped to a company or user yet — every notification is currently visible 
 
 ## Migration strategy
 
-There's no Flyway/Liquibase yet — schema changes go through `ddl-auto=update` plus a hand-written, manually-run SQL script for anything that isn't a safe additive change. `backend/migration-phase1.sql` is the template for how this project handles that: back up first, deploy code so Hibernate creates new empty tables, run the migration script to move/transform data, verify row counts, smoke-test, *then* optionally drop old tables (as a separate, deliberately-not-automatic step).
+**Flyway (Phase 4e).** The schema is now defined by versioned SQL files, one folder per database:
 
-This works for a small team moving through phases sequentially, but it doesn't scale to multiple contributors or CI/CD without becoming risky. **Introducing Flyway (or Liquibase) is a recommended near-term addition**, likely alongside whichever phase adds automated testing/CI — versioned, repeatable migrations are worth the setup cost before this gets much further from a solo project.
+```
+backend/src/main/resources/db/migration/postgresql/V1__baseline_schema.sql
+backend/src/main/resources/db/migration/postgresql/V2__drop_global_email_unique.sql
+backend/src/main/resources/db/migration/mysql/V1__baseline_schema.sql
+backend/src/main/resources/db/migration/mysql/V2__drop_global_email_unique.sql
+```
+
+Flyway runs at startup, before Hibernate, and records what it applied in the `flyway_schema_history` table.
+
+- **Fresh database:** V1 creates every table, then V2 runs (a no-op).
+- **Existing database** (created earlier by `ddl-auto=update`): Flyway sees tables but no history, so it *baselines* at version 1 (V1 is not run, nothing is re-created) and runs V2, which drops the old global `uk_users_email` constraint if it is still there. This replaces the manual `migration-phase4c.sql` step.
+- **From now on** every schema change is a NEW file (`V3__...sql`, `V4__...sql`) for both databases. Never edit a file that has already been applied; Flyway checks a checksum and refuses to start if it changed.
+- **Switch Hibernate to validate-only** once every environment has started with Flyway: set `DDL_AUTO=validate`. Hibernate then only checks that the entities match the schema and never alters it. It defaults to `update` so the first rollout cannot fail on a small type difference; if `validate` reports a mismatch, fix it with a new migration.
+- **Back up first** on any real database before the first Flyway start.
+- The `migration-phase1/4/4c.sql` scripts are kept as history and are not needed for new setups.
+
+The tests use an in-memory H2 database built from the entities, so Flyway is switched off in the `test` profile.
+
+## Phase 4: tenant isolation
+
+`attendance`, `leaves`, `teams`, `notifications` and `chat_messages` each gained `company_id BIGINT NOT NULL` (FK to `companies`, indexed). `attendance`'s unique key changed from `(emp_id, date)` to `(company_id, emp_id, date)`. **Run `backend/migration-phase4.sql` before starting the Phase 4 backend against an existing database** — Hibernate's `ddl-auto=update` cannot add a NOT NULL column to a populated table. The script backfills existing rows into the single pre-existing company, refuses to run if more than one company exists, and runs in one transaction.
+
+## Phase 4c: per-company email
+
+`users.email` is now unique per company. `ddl-auto=update` adds `uk_users_company_email` but never drops the old global `uk_users_email`, so an **existing** database must run the one-line statement in `backend/migration-phase4c.sql` (MySQL and PostgreSQL variants included). A fresh database needs nothing. `audit_logs` and `invitations` are created automatically.
 
 ## Indexes
 
@@ -115,4 +148,4 @@ Deliberately added where query patterns actually need them, not everywhere:
 - `users.company_id` — every tenant-scoped query filters on this.
 - `users.email` — the login lookup path.
 
-No indexes yet on `attendance.emp_id`/`date`, `leaves.emp_id`, or `chat_messages.sender_id`/`receiver_id`, despite these being frequently queried — fine at current data volumes, worth revisiting if attendance/chat history queries start showing up slow in practice.
+Each tenant table also has an index on `company_id` (Phase 4). Still no composite indexes on `attendance.emp_id`/`date`, `leaves.emp_id`, or `chat_messages.sender_id`/`receiver_id`, despite these being frequently queried — fine at current data volumes, worth revisiting if attendance/chat history queries start showing up slow in practice.

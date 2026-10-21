@@ -19,6 +19,11 @@ public class EmployeeSecurity {
         this.userRepository = userRepository;
     }
 
+    private static Long currentCompanyId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getDetails() instanceof Long id ? id : null;
+    }
+
     public boolean isSelf(int empId) {
         // principal = email (from JwtFilter)
         String loggedInEmail =
@@ -38,7 +43,7 @@ public class EmployeeSecurity {
         // and comparing empId the other way around sidesteps the ambiguity
         // entirely: there's no company to disambiguate because we already
         // know exactly which row "the caller" is.
-        return userRepository.findByEmail(loggedInEmail)
+        return userRepository.findByEmailAndCompanyId(loggedInEmail, currentCompanyId())
                 .map(user -> user.getEmpId() != null && user.getEmpId() == empId)
                 .orElse(false);
     }

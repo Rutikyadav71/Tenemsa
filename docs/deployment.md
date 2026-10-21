@@ -14,6 +14,8 @@ This project is built with a student/portfolio cost constraint in mind — every
 | `JWT_EXPIRATION_MS` | No | Defaults to 3,600,000 (1 hour). |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated. Defaults to `http://localhost:5173,https://ry-ems.vercel.app` — update once you have your own deployed frontend URL. |
 | `MAIL_HOST`, `MAIL_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Only if `app.email.enabled=true` | Welcome emails on employee creation. |
+| `RATE_LIMIT_ENABLED` | No | Defaults to `true`. Per-IP limits on sign-in, registration, workspace lookup, password-reset mail and invitation links (see architecture doc). |
+| `RATE_LIMIT_TRUST_PROXY` | No | Defaults to `false`. Set `true` **only** behind a reverse proxy that appends the client address to `X-Forwarded-For`; otherwise every user shares the proxy's address and gets rate-limited together. Do not enable it when the backend is directly reachable, because clients can forge that header. |
 | `CLOUD_NAME`, `API_KEY`, `API_SECRET` | Yes | Cloudinary — free tier is generous enough for a portfolio project's file/image uploads; no reason to switch to S3/MinIO for this scale. |
 
 ### Frontend (`frontend/.env`, see `frontend/.env.example`)
@@ -55,7 +57,9 @@ Given the `leave_type` schema gap documented in `docs/database.md`, confirm the 
 
 ## Migrations in a deployed environment
 
-Follow the run order documented at the top of `backend/migration-phase1.sql` exactly — it's written as a staged, reviewable process (backup → deploy → migrate → verify → smoke-test → optional cleanup), not a single blind script execution. Running it out of order against a database with existing data risks data loss.
+**Phase 4e onwards:** Flyway runs automatically at startup (see `docs/database.md`). Take a database backup before the first start with Flyway; an existing database is baselined, not rebuilt. Then, once it has started cleanly, set `DDL_AUTO=validate`. New schema changes ship as new `V<n>__*.sql` files in both `db/migration/postgresql` and `db/migration/mysql`.
+
+The older instructions below apply only to databases still on a pre-Phase-4 schema. Follow the run order documented at the top of `backend/migration-phase1.sql` exactly — it's written as a staged, reviewable process (backup → deploy → migrate → verify → smoke-test → optional cleanup), not a single blind script execution. Running it out of order against a database with existing data risks data loss.
 
 ## What's not set up yet
 
@@ -65,3 +69,16 @@ Documented here so it's an explicit roadmap item, not a silent gap:
 - No monitoring/alerting (Prometheus/Grafana are on the original project roadmap but not started).
 
 These are Phase 10 (DevOps) on the roadmap.
+
+## Choosing the database (PostgreSQL or MySQL)
+
+The backend supports both through Spring profiles. Set one variable:
+
+| `SPRING_PROFILES_ACTIVE` | Config file | Default port |
+|---|---|---|
+| `postgres` (default) | `application-postgres.properties` | 5432 |
+| `mysql` | `application-mysql.properties` | 3306 |
+
+`DB_HOST`, `DB_PORT`, `DB_NAME`, `DATABASE_USERNAME` and `DATABASE_PASSWORD` are read by both. Shared settings stay in `application.properties`; only the datasource URL/driver differ. Hibernate picks the dialect from the driver, so don't set one manually.
+
+PowerShell example: `$env:SPRING_PROFILES_ACTIVE="mysql"; ./mvnw spring-boot:run` (or `./mvnw spring-boot:run -Dspring-boot.run.profiles=mysql`). Schema is created by `ddl-auto=update`. The hand-written `migration-phase1.sql` / `migration-phase4.sql` scripts are PostgreSQL syntax and only matter for an existing database that already holds data; a new database needs neither. Pick one database per environment — profiles do not copy data between them.

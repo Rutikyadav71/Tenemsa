@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import axiosInstance from "../services/axiosInstance";
 import { API_BASE_URL } from "../services/apiConfig";
 import { storeAuthResponse } from "../services/authStorage";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { lookupWorkspace, rememberWorkspace } from "../services/companyService";
 import type { AuthResponse } from "../types/models";
 
 const EyeIcon = ({ open }: { open: boolean }) => open
@@ -10,46 +11,36 @@ const EyeIcon = ({ open }: { open: boolean }) => open
   : <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" /></svg>;
 
 export default function AdminAuthPage() {
-  const [firstTime, setFirstTime] = useState(false); // no admins at all
-  const [adminFull, setAdminFull] = useState(false); // 4 admins
-  const [form, setForm] = useState({ name: "", email: "admin1@gmail.com", password: "Admin@1" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState("error");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const workspace = searchParams.get("workspace") || "";
+  const [workspaceName, setWorkspaceName] = useState("");
 
   useEffect(() => {
-    axiosInstance.get<{ firstTime: boolean; full: boolean; exists: boolean }>("/api/admin/exists").then(res => {
-      setFirstTime(res.data.firstTime);   // true = no admins exist yet
-      setAdminFull(res.data.full);
-    }).catch(() => { });
-  }, []);
+    if (workspace) lookupWorkspace(workspace).then(w => setWorkspaceName(w?.name || "")).catch(() => { });
+  }, [workspace]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault(); setMessage("");
-    if (form.password.length < 6) {
-      setMessage("Password must be at least 6 characters."); setMsgType("error"); return;
-    }
     setLoading(true);
     try {
-      // Only the very first admin uses public /register. Everyone else logs in.
-      if (firstTime) {
-        await axiosInstance.post("/api/admin/register", form);
-        setMessage("Main admin registered! Check your email to verify your address, then log in."); setMsgType("success");
-        setFirstTime(false);
-      } else {
-        const res = await axiosInstance.post<AuthResponse>("/api/admin/login", { ...form, rememberMe });
-        storeAuthResponse(res.data, "ADMIN");
-        // Kept for AdminProfile/AdminNavbar reads that predate the shared
-        // storeAuthResponse helper's canonical "name"/"email" keys.
-        localStorage.setItem("adminEmail", res.data.email || "");
-        localStorage.setItem("adminName", res.data.name || "");
-        navigate("/admin/dashboard");
-      }
+      const res = await axiosInstance.post<AuthResponse>("/api/admin/login", { ...form, rememberMe, workspace: workspace || undefined });
+      storeAuthResponse(res.data, "ADMIN");
+      // Kept for AdminProfile/AdminNavbar reads that predate the shared
+      // storeAuthResponse helper's canonical "name"/"email" keys.
+      localStorage.setItem("adminEmail", res.data.email || "");
+      localStorage.setItem("adminName", res.data.name || "");
+      if (res.data.companySlug) rememberWorkspace(res.data.companySlug);
+      navigate("/admin/dashboard");
     } catch (err: any) {
-      const msg = err.response?.data || "";
+      const raw = err.response?.data;
+      const msg = (raw && typeof raw === "object" ? raw.message : raw) || "";
       if (typeof msg === "string" && msg.includes("ACCOUNT_FROZEN")) {
         setMessage("Your account has been frozen by the main administrator.");
       } else {
@@ -77,8 +68,8 @@ export default function AdminAuthPage() {
             Tenemsa Admin
           </h1>
           <p style={{ fontSize: 15, color: "var(--text-3)", lineHeight: 1.7, marginBottom: 40 }}>
-            {firstTime
-              ? "Welcome! Set up the first administrator account to get started."
+            {workspaceName
+              ? `Manage ${workspaceName}: people, leaves, attendance and teams.`
               : "Sign in to manage your team, leaves, attendance, and more."}
           </p>
           {[
@@ -86,7 +77,7 @@ export default function AdminAuthPage() {
             ["Leave Management", "Approve or reject with one click"],
             ["Attendance", "Track daily check-ins & work hours"],
             ["Team Management", "Create and manage project teams"],
-            ["Admin Control", "Add up to 4 admins, freeze accounts"],
+            ["Role-based access", "Owner, Admin, HR and Manager roles"],
           ].map(([t, s], i) => (
             <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12, textAlign: "left" }}>
               <div style={{
@@ -121,17 +112,13 @@ export default function AdminAuthPage() {
         </div>
 
         <div className="auth-form-title">
-          {firstTime ? "Create Main Admin Account" : "Welcome back"}
+          Welcome back
         </div>
-        <div className="auth-form-sub">
-          {firstTime
-            ? "This is the primary administrator account. Sub-admins are added from Admin Control after login."
-            : "Sign in to your admin dashboard"}
-        </div>
+        <div className="auth-form-sub">{workspaceName ? `Sign in to ${workspaceName}` : "Sign in to your admin dashboard"}</div>
 
         {message && <div className={`alert-ems alert-${msgType}`}>{message}</div>}
 
-        {!firstTime && (
+        {(
           <>
             <a href={`${API_BASE_URL}/oauth2/authorization/google`}
               className="btn-ems btn-secondary-ems"
@@ -147,15 +134,6 @@ export default function AdminAuthPage() {
         )}
 
         <form onSubmit={handleSubmit}>
-          {firstTime && (
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input type="text" className="form-control-ems" value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="Your full name" required />
-            </div>
-          )}
-
           <div className="form-group">
             <label className="form-label">Email Address</label>
             <input type="email" className="form-control-ems" value={form.email}
@@ -168,7 +146,7 @@ export default function AdminAuthPage() {
             <div className="input-wrap">
               <input type={showPassword ? "text" : "password"} className="form-control-ems"
                 value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-                placeholder="Min. 6 characters" style={{ paddingRight: 40 }}
+                placeholder="Enter your password" style={{ paddingRight: 40 }}
                 required autoComplete="current-password" />
               <span className="input-icon-right" onClick={() => setShowPassword(v => !v)}>
                 <EyeIcon open={showPassword} />
@@ -176,7 +154,7 @@ export default function AdminAuthPage() {
             </div>
           </div>
 
-          {!firstTime && (
+          {(
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 8px" }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}>
                 <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
@@ -189,32 +167,13 @@ export default function AdminAuthPage() {
           <button type="submit" className="btn-ems btn-primary-ems"
             disabled={loading}
             style={{ width: "100%", justifyContent: "center", marginTop: 8 }}>
-            {loading
-              ? (firstTime ? "Creating account..." : "Signing in...")
-              : (firstTime ? "Create Main Admin Account" : "Sign In")}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        {/* Info box - registration is closed if admins already exist */}
-        {!firstTime && (
-          <div style={{
-            marginTop: 20, padding: "12px 14px", background: "var(--bg-elevated)",
-            borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)"
-          }}>
-            <div style={{ fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>
-              New admin?
-            </div>
-            Sub-admin accounts are created by the Main Administrator from the Admin Control panel after logging in.
-          </div>
-        )}
-
-        <div style={{
-          marginTop: 16, padding: "12px 14px", background: "var(--bg-elevated)",
-          borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)"
-        }}>
-          <div style={{ fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Demo Credentials</div>
-          <div>Email: admin1@gmail.com</div>
-          <div>Password: Admin@1</div>
+        <div style={{ marginTop: 20, fontSize: 13, color: "var(--text-3)", textAlign: "center" }}>
+          New to Tenemsa? <Link to="/register" style={{ color: "var(--accent-light)" }}>Create a workspace</Link>
+          <div style={{ marginTop: 8 }}><Link to="/workspace" style={{ color: "var(--text-3)" }}>Use a different workspace</Link></div>
         </div>
       </div>
     </div>

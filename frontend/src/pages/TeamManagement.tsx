@@ -293,7 +293,7 @@ export default function TeamManagement({ isAdmin, empId: propEmpId }: TeamManage
         setTeams(p => p.map(t => t.id === modal.id ? res.data : t));
       }
       setModal(null);
-    } catch (e: any) { alert(e.response?.data || "Failed to save team"); }
+    } catch (e: any) { alert(e.response?.data?.message || "Failed to save team"); }
   };
 
   const handleDelete = async () => {

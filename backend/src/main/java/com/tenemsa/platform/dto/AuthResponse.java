@@ -28,6 +28,7 @@ public class AuthResponse {
     // only available as an opaque companyId with no way to resolve it to a
     // display name without a separate lookup.
     private String companyName;
+    private String companySlug;
     private String department;
     private BigDecimal salary;
     private Boolean primaryOwner;
@@ -73,6 +74,9 @@ public class AuthResponse {
 
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
+
+    public String getCompanySlug() { return companySlug; }
+    public void setCompanySlug(String companySlug) { this.companySlug = companySlug; }
 
     public String getDepartment() { return department; }
     public void setDepartment(String department) { this.department = department; }

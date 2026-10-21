@@ -37,9 +37,43 @@ This isn't microservices-ready yet, but the layering means it *could* be split a
 
 Every company is a row in `companies`. Every `User` belongs to exactly one company via `company_id`, and role-based access is checked at the method level (`@PreAuthorize`) rather than the URL level, so the same endpoint serves every tenant.
 
-**What's tenant-scoped today:** `User` — the core entity everything else keys off. JWTs carry `companyId` as a claim (set at login, read by `JwtFilter` into `AuthContext`), so per-request tenant context costs zero extra DB queries.
+**Tenant-scoped (Phase 4):** `User`, `Attendance`, `Leave`, `Team`, `Notification` and `ChatMessage` all carry a `company_id` column. JWTs carry `companyId` as a claim (set at login, read by `JwtFilter` into `AuthContext`), so per-request tenant context costs zero extra DB queries.
 
-**What's not tenant-scoped yet:** `Attendance`, `Leave`, `Team`, `Notification`, and `ChatMessage` don't carry `company_id` yet. This is safe *today* only because the application still bootstraps a single default company (see `CompanyRepository.findFirstByOrderByIdAsc` / `findBySlug("default")` — both explicitly marked as temporary in code comments). Adding real multi-company registration (Phase 4 on the roadmap) requires adding `company_id` to these tables first, with full query-level enforcement via the Specification pattern. Until then, treat this as effectively single-tenant in production.
+**How isolation is enforced.** `empId` is only unique *within* a company (company A's employee 101 and company B's employee 101 are different people), so:
+
+1. Every repository finder for these entities takes `companyId` as its first argument (`findByCompanyIdAndEmpId`, `findByIdAndCompanyId`, …). There is deliberately no unscoped `findAll()` / `findById()` left on a tenant entity's call path.
+2. Controllers and services read the tenant from `AuthContext.currentCompanyId()` (the JWT), **never from the request body or URL**. On create, the server stamps `companyId` itself, overwriting anything the client sent.
+3. By-id lookups (`/api/leaves/{id}`, `/api/teams/{id}`, admin freeze/delete, profile upload) resolve with `…AndCompanyId`, so guessing another tenant's id yields "not found" instead of their data.
+4. Scope resolvers used in `@PreAuthorize` (`TeamSecurity`, `LeaveSecurity`) are themselves company-scoped, so a team lead in company A can never "manage" an employee id that happens to exist in company B.
+
+**Bugs this closed** (all were real cross-tenant exposures once a second company existed): `GET /api/notifications` returned every company's notifications; `PUT /api/notifications/mark-all-read` flipped every company's; leave/team/attendance/chat lookups by id or empId were global; `AdminController` freeze/unfreeze/delete and `UploadController.admin-profile` used raw `userRepository.findById`.
+
+**Why manual scoping and not Hibernate `@TenantId`:** `@TenantId` filters automatically, which is the stronger long-term guarantee (a forgotten `companyId` argument becomes impossible). It was not used here because it needs a `CurrentTenantIdentifierResolver` wired to the request thread and interacts with the WebSocket and scheduled-job paths, which have no HTTP request. Manual scoping is explicit, greppable and testable today; moving to `@TenantId` (or PostgreSQL row-level security as a second line of defence) is the planned hardening step.
+
+**Company lifecycle (Phase 4b).** The single default company is gone. `POST /api/companies/register` creates a company and its Owner in one transaction (`CompanyService.register`): the slug is generated from the name (NFD-normalised, lowercase, hyphenated, 3–40 chars, reserved words blocked, numeric suffix on collision) and is immutable so workspace URLs and bookmarks never break. New users get a per-company `empId` via `UserRepository.nextEmpId(companyId)`. The sign-in flow is workspace-first: `/workspace` looks the company up by slug (`GET /api/companies/lookup`, public, name and slug only), then `/auth/employee?workspace=slug` or `/auth/admin?workspace=slug` posts the credentials with `workspace`, and `AuthService.login` rejects a mismatch with the same generic error as a bad password. The last workspace is remembered in `localStorage` as a convenience only. Public registration and lookup have no rate limiting yet, so workspace names can be enumerated; this is an accepted risk until Phase 4c.
+
+**Per-company email (Phase 4c).** `users` is unique on `(company_id, email)`, so one person can hold accounts in several workspaces. Everything that identifies the caller from the JWT now uses `findByEmailAndCompanyId(email, companyId)`, because the token's email alone is no longer unique. The pre-authentication flows resolve the workspace themselves: login filters candidate accounts by the chosen workspace and by password; if the password matches accounts in more than one workspace and no workspace was given it asks the user to choose one (this is only said after the password is proven, so it cannot be used to probe); forgot-password and resend-verification take an optional `workspace` and otherwise act on every matching account; Google sign-in works only while the address maps to exactly one account.
+
+**Audit trail (Phase 4c).** `AuditService` writes one `audit_logs` row per sensitive action: sign-in (password and Google), failed sign-in for a known account, password reset, company registration and rename, user create/update/delete/freeze/unfreeze, leave approve/reject/delete, and invitation sent/accepted/revoked. Each write runs in its own transaction and swallows its own failures, so auditing can never break the action it records. `GET /api/audit` needs `audit:view` (Owner and Admin) and is scoped to the caller's company.
+
+**Invitations (Phase 4c).** `POST /api/invitations` (needs `user:create`, and the target role must pass `RoleAssignmentRegistry` for the inviter, so an invitation can never grant more than a manual create) stores a hashed single-use token and emails `/accept-invite?token=`. The public `preview` and `accept` endpoints use the token as the credential. Accepting creates the user with a per-company `empId` and a verified email (the link proves mailbox ownership), consumes the token and signs the user in. Re-inviting an address revokes the earlier link. The older "add employee with a temporary password" form still works.
+
+**Tests.** `CrossTenantIsolationTest` (`@SpringBootTest` + MockMvc + in-memory H2, `@ActiveProfiles("test")`) drives the real HTTP stack: employee list and by-empId lookups, company endpoints, audit and invitation isolation, shared email across workspaces, wrong-workspace login, and the invitation lifecycle (preview, one-time accept, expiry). Run with `./mvnw test`.
+
+**Hardening (Phase 4d).**
+- *Ownership.* `POST /api/leaves` now requires `empId` to be the caller's own unless they hold `leave:approve:any`. Every `/api/chat` endpoint derives the caller's chat identity from the JWT (`("ADMIN", database id)` for admin-tier users, `("USER", empId)` for everyone else, see `ChatIdentity`) and requires them to be a participant: history, starred, unread, mark-read and conversation delete return `403` otherwise, and message-level actions return `404` (sender only for delete). Note this means Owners and Admins can no longer read employees' private conversations through the API.
+- *Validation.* `spring-boot-starter-validation` with `@Valid` on the public and credential-bearing request bodies; password length is capped at 128 so oversized input cannot be used to burn BCrypt time.
+- *Rate limiting.* `RateLimitFilter` applies fixed-window per-IP limits to the unauthenticated endpoints (limits are in `docs/api.md`). It runs just after Spring Security's chain so CORS headers are already set on the `429`. State is in memory (per instance); a shared store such as Redis is the upgrade if the backend is scaled out. Behind a proxy set `RATE_LIMIT_TRUST_PROXY=true` (see `docs/deployment.md`).
+- *Tests.* `OwnershipAndValidationTest` covers leave ownership and leave isolation between companies, chat privacy (including the Owner and another company), and validation messages; `RateLimitTest` covers the limiter with its own database.
+
+**Phase 4e.**
+- *Request DTOs.* `POST/PUT /api/employees`, `POST/PUT /api/teams` and `POST /api/attendance/mark` now take dedicated request records (`EmployeeCreateRequest`, `EmployeeUpdateRequest`, `TeamRequest`, `AttendanceMarkRequest`) with Bean Validation, instead of JPA entities. This also closes a mass-assignment hole: a client could previously set `primaryOwner`, `frozen`, `emailVerified` or `companyId` in the employee body. Work hours are computed by the server, never taken from the client.
+- *Referential checks.* Team members and the team lead, and the employee an attendance record is marked for, must exist in the caller's own company (`400` otherwise). A requested `empId` that is already taken is a clear `400`; when none is given the next free number is assigned.
+- *Errors.* Malformed JSON or an unknown enum value now returns `400` instead of `500`.
+- *Flyway.* Versioned migrations per database, with automatic baselining of existing databases (see `docs/database.md`).
+- *Tests.* `TeamAttendanceEmployeeTest` covers team and attendance isolation (including the same `empId` and date in two companies), validation, server-computed hours, mass-assignment and `empId` handling.
+
+**Still open:** `Leave` and `Notification` are still bound as entities on a few endpoints; rate limiting is per instance; tenant scoping is manual (Hibernate `@TenantId` or PostgreSQL row-level security are the hardening options); the Flyway `DDL_AUTO` default is still `update` until `validate` has been proven in each environment.
 
 ## Role hierarchy
 
@@ -64,6 +98,14 @@ Only two tiers are actually enforced today: `OWNER`/`SUPER_ADMIN` (admin-equival
 ## Real-time layer
 
 WebSocket chat and notifications run over STOMP (`/ws` endpoint, SockJS fallback). One detail worth knowing if you're extending chat: message routing uses a **fixed two-value tag** (`ADMIN`/`USER`) to build queue destinations (`/user/{tag}_{id}/queue/messages`) — this is a routing-layer convention, *not* the six-tier `Role` enum. Conflating the two breaks message delivery silently (a real bug caught during development — see `ChatUserController`'s comments for the full explanation). If you ever extend chat to route by the full role hierarchy, that's a deliberate protocol change, not a one-line fix.
+
+**WebSocket authentication (Phase 4).** HTTP security never sees frames inside an open WebSocket, and `/ws/**` is `permitAll` for the handshake, so authentication happens at the STOMP layer in `StompAuthChannelInterceptor`:
+
+- `CONNECT` must carry `Authorization: Bearer <access token>` as a STOMP header (the frontend's `chatService.ts` sends it). Invalid, unknown or frozen users are rejected.
+- The verified identity (`companyId`, user id, `empId`, chat tag) is stored in the STOMP session. `ChatController` uses *that*, not the payload, to check the sender, and verifies the receiver exists in the same company with the claimed tag.
+- `SUBSCRIBE` is only allowed to the caller's own queue. Queue names include the company — `/user/c{companyId}_{ADMIN|USER}_{id}/queue/messages` — because `USER_101` exists in every company and would otherwise be one shared queue.
+
+Role-to-tag mapping lives in one place (`ChatIdentity.tagFor`): OWNER/ADMIN/SUPER_ADMIN → `ADMIN`, everyone else → `USER`. Known gap: `ChatRestController` delete/react/star are company-scoped but don't yet check that the caller is a participant in the message.
 
 ## ML service
 

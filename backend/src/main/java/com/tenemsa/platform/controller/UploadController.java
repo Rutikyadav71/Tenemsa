@@ -51,7 +51,7 @@ public class UploadController {
         if (file == null || file.isEmpty()) return ResponseEntity.badRequest().body("No file provided");
         try {
             String url = cloudinaryService.uploadProfileImage(file, "admin_" + adminId);
-            userRepository.findById(adminId).ifPresent(admin -> {
+            userRepository.findByIdAndCompanyId(adminId, authContext.currentCompanyId()).ifPresent(admin -> {
                 admin.setProfileImageUrl(url);
                 userRepository.save(admin);
             });

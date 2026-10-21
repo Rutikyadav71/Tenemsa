@@ -128,7 +128,7 @@ export default function AttendancePage({ isAdmin }: AttendancePageProps) {
       });
       setMarkModal(null);
       fetchRecords();
-    } catch (e: any) { alert(e.response?.data || "Failed to mark"); }
+    } catch (e: any) { alert(e.response?.data?.message || "Failed to mark"); }
   };
 
   // ── Build calendar ────────────────────────────────────────────────────────

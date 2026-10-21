@@ -2,6 +2,7 @@ package com.tenemsa.platform.controller;
 
 import com.tenemsa.platform.dto.*;
 import com.tenemsa.platform.mapper.UserMapper;
+import com.tenemsa.platform.model.AuditAction;
 import com.tenemsa.platform.model.Company;
 import com.tenemsa.platform.model.Role;
 import com.tenemsa.platform.model.User;
@@ -11,8 +12,10 @@ import com.tenemsa.platform.security.AuthContext;
 import com.tenemsa.platform.security.PasswordPolicy;
 import com.tenemsa.platform.security.SecurityRoles;
 import com.tenemsa.platform.security.rbac.RoleAssignmentRegistry;
+import com.tenemsa.platform.service.AuditService;
 import com.tenemsa.platform.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,6 +34,7 @@ public class AdminController {
     @Autowired AuthService authService;
     @Autowired AuthContext authContext;
     @Autowired UserMapper userMapper;
+    @Autowired AuditService auditService;
 
     // RBAC phase 3: ADMIN added as its own role — this list now covers
     // everyone who counts as "an admin panel account" for headcount/listing
@@ -45,32 +49,10 @@ public class AdminController {
     // respective tiers.
     private static final Set<Role> REGISTERABLE_BY_ADMIN_PANEL = Set.of(Role.ADMIN, Role.HR);
 
-    // TEMPORARY (Phase 1 only, see CompanyRepository.findFirstByOrderByIdAsc):
-    // the app is still single-tenant in practice, so registration bootstraps
-    // against one default company rather than letting the caller create one.
-    // Phase 4 replaces this with a real "create your company" flow.
-    private static final String DEFAULT_COMPANY_SLUG = "default";
-
-    // Public register: ONLY when zero admins exist (first admin/company owner)
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
-        String policyError = PasswordPolicy.validate(req.getPassword());
-        if (policyError != null) return ResponseEntity.badRequest().body(policyError);
-
-        Company company = getOrCreateDefaultCompany();
-        long existingAdmins = userRepository.countByCompanyIdAndRoleIn(company.getId(), ADMIN_ROLES);
-        if (existingAdmins >= 1) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("Registration closed. Ask your system administrator to add you via Admin Control.");
-        }
-        // Always OWNER regardless of any role sent in the request body —
-        // this is specifically the bootstrap-the-company endpoint.
-        User owner = buildUser(req, company, Role.OWNER);
-        owner.setPrimaryOwner(true);
-        userRepository.save(owner);
-        authService.sendVerificationEmail(owner);
-        return ResponseEntity.ok("Main admin registered successfully");
-    }
+    // Creating a company (and its first Owner) is no longer done here: it's
+    // the public POST /api/companies/register (CompanyController), so any
+    // number of companies can sign up. This controller now only manages the
+    // admin-tier accounts INSIDE the caller's own company.
 
     // Admin-panel register: Owner-only, creates an Admin or HR account.
     // (Previously open to anyone passing SecurityRoles.IS_ADMIN and always
@@ -98,8 +80,8 @@ public class AdminController {
         if (existingAdmins >= 4) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Maximum of 4 admin-tier accounts reached.");
         }
-        if (userRepository.findByEmail(req.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already registered.");
+        if (userRepository.existsByEmailAndCompanyId(req.getEmail(), companyId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already registered in this company.");
         }
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
@@ -107,14 +89,18 @@ public class AdminController {
         newUser.setPrimaryOwner(false);
         userRepository.save(newUser);
         authService.sendVerificationEmail(newUser);
+        auditService.recordCurrent(AuditAction.USER_CREATED, "USER", String.valueOf(newUser.getId()),
+                "Created " + targetRole + " account for " + newUser.getName());
         return ResponseEntity.ok(Map.of("message", targetRole + " added successfully"));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpRequest) {
         try {
             User admin = authService.adminLogin(req);
             AuthResponse resp = authService.issueAuthResponse(admin, req.isRememberMe(), deviceLabel(httpRequest));
+            auditService.record(admin.getCompany().getId(), admin.getId(), admin.getName(),
+                    AuditAction.LOGIN_SUCCESS, "USER", String.valueOf(admin.getId()), "Signed in to the admin panel");
             return ResponseEntity.ok(resp);
         } catch (RuntimeException e) {
             String msg = e.getMessage();
@@ -122,13 +108,6 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(msg);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(msg);
         }
-    }
-
-    @GetMapping("/exists")
-    public ResponseEntity<?> adminExists() {
-        Optional<Company> company = companyRepository.findBySlug(DEFAULT_COMPANY_SLUG);
-        long count = company.map(c -> userRepository.countByCompanyIdAndRoleIn(c.getId(), ADMIN_ROLES)).orElse(0L);
-        return ResponseEntity.ok(Map.of("exists", count > 0, "full", count >= 4, "firstTime", count == 0));
     }
 
     @GetMapping("/all")
@@ -149,10 +128,11 @@ public class AdminController {
     @PutMapping("/{id}/freeze")
     @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> freeze(@PathVariable Long id) {
-        return withMainAdminCheck(() -> userRepository.findById(id).map(a -> {
+        return withMainAdminCheck(() -> userRepository.findByIdAndCompanyId(id, authContext.currentCompanyId()).map(a -> {
             if (a.isPrimaryOwner()) return ResponseEntity.badRequest().body((Object) "Cannot freeze main admin");
             a.setFrozen(true);
             userRepository.save(a);
+            auditService.recordCurrent(AuditAction.USER_FROZEN, "USER", String.valueOf(a.getId()), "Froze " + a.getName());
             return ResponseEntity.ok(Map.of("message", "Admin frozen"));
         }).orElse(ResponseEntity.notFound().build()));
     }
@@ -160,9 +140,10 @@ public class AdminController {
     @PutMapping("/{id}/unfreeze")
     @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> unfreeze(@PathVariable Long id) {
-        return withMainAdminCheck(() -> userRepository.findById(id).map(a -> {
+        return withMainAdminCheck(() -> userRepository.findByIdAndCompanyId(id, authContext.currentCompanyId()).map(a -> {
             a.setFrozen(false);
             userRepository.save(a);
+            auditService.recordCurrent(AuditAction.USER_UNFROZEN, "USER", String.valueOf(a.getId()), "Unfroze " + a.getName());
             return ResponseEntity.ok(Map.of("message", "Admin unfrozen"));
         }).orElse(ResponseEntity.notFound().build()));
     }
@@ -171,10 +152,11 @@ public class AdminController {
     @PreAuthorize(SecurityRoles.IS_OWNER)
     public ResponseEntity<?> delete(@PathVariable Long id) {
         return withMainAdminCheck(() -> {
-            User a = userRepository.findById(id).orElse(null);
+            User a = userRepository.findByIdAndCompanyId(id, authContext.currentCompanyId()).orElse(null);
             if (a == null) return ResponseEntity.notFound().build();
             if (a.isPrimaryOwner()) return ResponseEntity.badRequest().body("Cannot delete main admin");
             userRepository.deleteById(id);
+            auditService.recordCurrent(AuditAction.USER_DELETED, "USER", String.valueOf(id), "Deleted " + a.getName());
             return ResponseEntity.ok(Map.of("message", "Admin deleted"));
         });
     }
@@ -184,7 +166,7 @@ public class AdminController {
     // request in JwtFilter, so this just reads that instead of parsing the
     // token a second time.
     private ResponseEntity<?> withMainAdminCheck(java.util.function.Supplier<ResponseEntity<?>> action) {
-        User caller = userRepository.findByEmail(authContext.currentEmail()).orElse(null);
+        User caller = userRepository.findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId()).orElse(null);
         if (caller == null || !caller.isPrimaryOwner())
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the main administrator can perform this action");
         return action.get();
@@ -198,12 +180,9 @@ public class AdminController {
         u.setPassword(passwordEncoder.encode(req.getPassword()));
         u.setRole(role);
         u.setFrozen(false);
+        // Every user gets a per-company empId (chat routing and attendance key off it).
+        u.setEmpId(userRepository.nextEmpId(company.getId()));
         return u;
-    }
-
-    private Company getOrCreateDefaultCompany() {
-        return companyRepository.findBySlug(DEFAULT_COMPANY_SLUG)
-                .orElseGet(() -> companyRepository.save(new Company("Default Company", DEFAULT_COMPANY_SLUG)));
     }
 
     private String deviceLabel(HttpServletRequest request) {

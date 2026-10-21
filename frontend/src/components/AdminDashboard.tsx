@@ -109,21 +109,21 @@ export default function AdminDashboard() {
 
   const exportPDF = () => {
     const doc = new jsPDF();
-    doc.setFontSize(16); doc.text("EMS Dashboard Report", 14, 18);
+    doc.setFontSize(16); doc.text("Tenemsa Dashboard Report", 14, 18);
     doc.setFontSize(11);
     doc.text(`Total Employees: ${employees.length}`, 14, 34);
     doc.text(`Pending Leaves: ${pending}`, 14, 44);
     doc.text(`Approved Leaves: ${approved}`, 14, 54);
     doc.text(`Rejected Leaves: ${rejected}`, 14, 64);
     doc.text(`Generated: ${formattedDate}`, 14, 80);
-    doc.save("EMS_Dashboard_Report.pdf");
+    doc.save("Tenemsa_Dashboard_Report.pdf");
   };
 
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(employees), "Employees");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(leaves), "Leaves");
-    saveAs(new Blob([XLSX.write(wb, {bookType:"xlsx",type:"array"})]), "EMS_Report.xlsx");
+    saveAs(new Blob([XLSX.write(wb, {bookType:"xlsx",type:"array"})]), "Tenemsa_Report.xlsx");
   };
 
   const stats = [
@@ -147,7 +147,7 @@ export default function AdminDashboard() {
         <div>
           <div style={{fontSize:12,color:"var(--text-3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:500}}>{formattedDate}</div>
           <h2 style={{fontSize:22,fontWeight:700,fontFamily:"'Outfit',sans-serif",color:"var(--text-1)",letterSpacing:"-0.3px"}}>{greeting}, {name}</h2>
-          <div style={{fontSize:13,color:"var(--text-3)",marginTop:2}}>Here's your EMS overview at a glance.</div>
+          <div style={{fontSize:13,color:"var(--text-3)",marginTop:2}}>Here's your Tenemsa overview at a glance.</div>
         </div>
         <div style={{display:"flex",gap:8}}>
           <button className="btn-ems btn-secondary-ems" onClick={exportPDF}>

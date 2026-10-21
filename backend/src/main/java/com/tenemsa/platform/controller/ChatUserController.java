@@ -40,12 +40,12 @@ public class ChatUserController {
         // still using the real Role enum to decide bucket membership.
         List<Map<String, Object>> employees = jdbcTemplate.queryForList(
             "SELECT emp_id AS id, name, email, department, profile_image_url AS profileImageUrl, " +
-            "'USER' AS role FROM users WHERE company_id = ? AND role NOT IN ('OWNER','SUPER_ADMIN') ORDER BY name ASC",
+            "'USER' AS role FROM users WHERE company_id = ? AND role NOT IN ('OWNER','ADMIN','SUPER_ADMIN') ORDER BY name ASC",
             companyId);
 
         List<Map<String, Object>> admins = jdbcTemplate.queryForList(
             "SELECT id, name, email, NULL AS department, profile_image_url AS profileImageUrl, " +
-            "'ADMIN' AS role FROM users WHERE company_id = ? AND role IN ('OWNER','SUPER_ADMIN') " +
+            "'ADMIN' AS role FROM users WHERE company_id = ? AND role IN ('OWNER','ADMIN','SUPER_ADMIN') " +
             "AND (frozen = false OR frozen IS NULL) ORDER BY name ASC",
             companyId);
 

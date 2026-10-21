@@ -3,9 +3,11 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "chat_messages")
+@Table(name = "chat_messages", indexes = @Index(name = "idx_chat_company", columnList = "company_id"))
 public class ChatMessage {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Column(name = "company_id", nullable = false)
+    private Long companyId;
     @Column(name = "sender_id",    nullable = false) private Integer senderId;
     @Column(name = "sender_role",  length = 10)      private String senderRole;
     @Column(name = "receiver_id",  nullable = false) private Integer receiverId;
@@ -22,6 +24,7 @@ public class ChatMessage {
         timestamp=LocalDateTime.now(); status="SENT";
     }
     public Long    getId()             {return id;} public void setId(Long id)                  {this.id=id;}
+    public Long getCompanyId(){return companyId;} public void setCompanyId(Long c){companyId=c;}
     public Integer getSenderId()       {return senderId;} public void setSenderId(Integer s)    {senderId=s;}
     public String  getSenderRole()     {return senderRole;} public void setSenderRole(String s) {senderRole=s;}
     public Integer getReceiverId()     {return receiverId;} public void setReceiverId(Integer r){receiverId=r;}

@@ -12,6 +12,9 @@ const ic = {
   chat:       <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   notif:      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
   admins:     <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  invite:     <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  audit:      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  company:    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1M10 21v-4h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   profile:    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/></svg>,
   logout:     <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
 };
@@ -27,6 +30,9 @@ const navItems = [
   { to:"/admin/chat",          label:"Chat Room",      icon:ic.chat },
   { to:"/admin/notifications", label:"Notifications",  icon:ic.notif },
   { to:"/admin/manage-admins", label:"Admin Control",  icon:ic.admins },
+  { to:"/admin/invitations",   label:"Invitations",    icon:ic.invite },
+  { to:"/admin/audit",         label:"Audit Log",      icon:ic.audit },
+  { to:"/admin/company",       label:"Company",        icon:ic.company },
 ];
 
 interface AdminSidebarProps {
@@ -70,7 +76,7 @@ export default function AdminSidebar({ collapsed, toggleSidebar }: AdminSidebarP
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          {!collapsed && <div><div className="sidebar-logo-text">EMS</div><div className="sidebar-logo-sub">Admin Panel</div></div>}
+          {!collapsed && <div><div className="sidebar-logo-text">Tenemsa</div><div className="sidebar-logo-sub">{localStorage.getItem("companyName") || "Admin Panel"}</div></div>}
         </div>
 
         {!collapsed && <div className="sidebar-section-label">Main Menu</div>}

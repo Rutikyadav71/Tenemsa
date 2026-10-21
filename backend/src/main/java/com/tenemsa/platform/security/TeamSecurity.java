@@ -4,7 +4,6 @@ import com.tenemsa.platform.model.Team;
 import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.repository.TeamRepository;
 import com.tenemsa.platform.repository.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -25,59 +24,54 @@ public class TeamSecurity {
 
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
+    private final AuthContext authContext;
 
-    public TeamSecurity(TeamRepository teamRepository, UserRepository userRepository) {
+    public TeamSecurity(TeamRepository teamRepository, UserRepository userRepository, AuthContext authContext) {
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
+        this.authContext = authContext;
     }
 
-    /** Is the caller the lead of the given team? */
+    /** Caller identity within their tenant: empId is only meaningful together with companyId. */
+    private record CallerContext(Integer empId, Long companyId) {}
+
+    /** Is the caller the lead of the given team (in their own company)? */
     public boolean isTeamLead(Long teamId) {
-        Integer callerEmpId = callerEmpId();
-        if (callerEmpId == null) return false;
-        return teamRepository.findById(teamId)
-                .map(t -> callerEmpId.equals(t.getTeamLeadId()))
+        CallerContext ctx = caller();
+        if (ctx == null) return false;
+        return teamRepository.findByIdAndCompanyId(teamId, ctx.companyId())
+                .map(t -> ctx.empId().equals(t.getTeamLeadId()))
                 .orElse(false);
     }
 
     /** Is the target employee a member of any team the caller leads? Used for
      *  Manager-scoped leave approval / attendance visibility on a specific employee.
-     *
-     *  NOTE: Team has no company_id yet (documented gap since Phase 1 — see
-     *  docs/architecture.md — safe today only because the app is still
-     *  functionally single-tenant). findAll() here inherits that same
-     *  limitation rather than introducing a new one; TeamController's own
-     *  list endpoint has the identical unscoped findAll() already. Phase 4's
-     *  tenant-isolation work fixes this at the repository level for every
-     *  caller at once, this method included. */
+     *  Scoped by company_id (Phase 4), so a lead in company A can never "manage"
+     *  an employee id that happens to exist in company B. */
     public boolean managesEmployee(int targetEmpId) {
-        Integer callerEmpId = callerEmpId();
-        if (callerEmpId == null) return false;
-        List<Team> ledTeams = teamRepository.findAll().stream()
-                .filter(t -> callerEmpId.equals(t.getTeamLeadId()))
-                .toList();
+        CallerContext ctx = caller();
+        if (ctx == null) return false;
+        List<Team> ledTeams = teamRepository.findByCompanyIdAndTeamLeadId(ctx.companyId(), ctx.empId());
         return ledTeams.stream().anyMatch(t -> t.getMemberIds().contains(targetEmpId));
     }
 
     /** Every empId across every team the caller leads, deduplicated. Used by
-     *  EmployeeController.getAll() to actually scope the employee list for a
-     *  Manager (holds user:view:team, not user:view:any) — without this, a
-     *  Manager granted "view my team" would otherwise see the whole
-     *  company's roster, since the underlying query has no other way to
-     *  know which subset "their team" means. */
+     *  EmployeeController.getAll() to scope the employee list for a Manager
+     *  (holds user:view:team, not user:view:any). */
     public Set<Integer> teamMemberEmpIds() {
-        Integer callerEmpId = callerEmpId();
-        if (callerEmpId == null) return Set.of();
-        return teamRepository.findAll().stream()
-                .filter(t -> callerEmpId.equals(t.getTeamLeadId()))
+        CallerContext ctx = caller();
+        if (ctx == null) return Set.of();
+        return teamRepository.findByCompanyIdAndTeamLeadId(ctx.companyId(), ctx.empId()).stream()
                 .flatMap(t -> t.getMemberIds().stream())
                 .collect(Collectors.toSet());
     }
 
-    private Integer callerEmpId() {
-        String email = SecurityContextHolder.getContext().getAuthentication() != null
-                ? SecurityContextHolder.getContext().getAuthentication().getName() : null;
-        if (email == null) return null;
-        return userRepository.findByEmail(email).map(User::getEmpId).orElse(null);
+    private CallerContext caller() {
+        String email = authContext.currentEmail();
+        Long companyId = authContext.currentCompanyId();
+        if (email == null || companyId == null) return null;
+        return userRepository.findByEmailAndCompanyId(email, companyId)
+                .map(u -> new CallerContext(u.getEmpId(), companyId))
+                .orElse(null);
     }
 }

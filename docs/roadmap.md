@@ -10,9 +10,14 @@ Tenemsa is being built in phases, each reviewed and approved before the next sta
 | 1 | Multi-tenant foundation (User/Company unification) | ✅ Complete |
 | — | Frontend TypeScript migration | ✅ Complete (moved up from Phase 9 — see note below) |
 | — | Repository cleanup & professional structure | ✅ Complete |
-| 2 | Enterprise authentication | 🔜 Next |
-| 3 | RBAC, exception handling, DTO/mapper pattern | Planned |
-| 4 | Company registration, tenant isolation, audit logging | Planned |
+| 2 | Enterprise authentication | ✅ Complete |
+| 3 | RBAC, exception handling, DTO/mapper pattern | ✅ Complete |
+| 4a | Tenant isolation (`company_id` everywhere, WebSocket auth) | ✅ Complete |
+| 4b | Company registration, workspace UI, Tenemsa branding | ✅ Complete |
+| 4c | Audit logging, per-company email uniqueness, invite flow, cross-tenant tests | ✅ Complete |
+| 4d | Request validation, rate limiting on public endpoints, ownership checks (chat, leave apply), leave/chat isolation tests | ✅ Complete |
+| 4e | Flyway migrations, validation on entity-bound endpoints (employee/team/attendance), team and attendance isolation tests | ✅ Complete |
+| 4f | Entity-id isolation hardening (`@TenantId`/RLS evaluation), shared rate-limit store, Leave/Notification DTOs | 🔜 Next |
 | 5 | Project management module (Jira-style) | Planned |
 | 6 | AI assistant layer | Planned |
 | 7 | RAG knowledge base | Planned |
@@ -36,7 +41,7 @@ Tenemsa is being built in phases, each reviewed and approved before the next sta
 - Found and fixed several authorization gaps uncovered while touching this code: `AttendanceController` and `TeamController` had no role checks on write operations at all; `UploadController` let any authenticated user overwrite anyone else's profile photo; `LeaveController` was missing checks on approve/reject/delete and on the ML-training-data export.
 - A subtle bug caught before shipping: making `empId` unique per-company instead of globally (correct for multi-tenancy) would have silently broken `EmployeeSecurity.isSelf()`, which resolved users by `empId` first — two different companies' employees sharing an `empId` would have collided. Fixed by resolving the caller by email first instead.
 
-**Known, deliberate limitation:** `Attendance`, `Leave`, `Team`, `Notification`, and `ChatMessage` don't carry `company_id` yet. Safe today only because the app still bootstraps a single default company — Phase 4 needs to add this before real multi-company registration goes live. See `docs/architecture.md`.
+**Resolved in 4a/4b:** (historical note) `Attendance`, `Leave`, `Team`, `Notification`, and `ChatMessage` don't carry `company_id` yet. Safe today only because the app still bootstraps a single default company — Phase 4 needs to add this before real multi-company registration goes live. See `docs/architecture.md`.
 
 ### Frontend: TypeScript migration (moved up from Phase 9)
 Originally planned as part of the Phase 9 visual rebuild, moved earlier once ongoing backend changes (role hierarchy expansion, DTO reshaping) started actively breaking the JS frontend in ways a type system would have caught immediately. Converting once, now, alongside the Phase 1 backend changes was less total work than converting twice.
