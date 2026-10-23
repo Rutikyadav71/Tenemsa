@@ -55,6 +55,13 @@ public enum Permission {
     REPORT_VIEW_COMPANY("report:view:company"),
     REPORT_VIEW_TEAM("report:view:team"),
 
+    // Phase 5a: project management. Everyone can see projects and raise issues; creating and
+    // editing projects, and editing or deleting ANY issue, is for Owner, Admin and Manager.
+    PROJECT_VIEW("project:view"),
+    PROJECT_MANAGE("project:manage"),
+    ISSUE_CREATE("issue:create"),
+    ISSUE_MANAGE_ANY("issue:manage:any"),
+
     DOCUMENT_UPLOAD("document:upload"),
     CHAT_USE("chat:use"),
     PROFILE_UPDATE_SELF("profile:update:self");

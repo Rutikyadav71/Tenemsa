@@ -1,6 +1,7 @@
 package com.tenemsa.platform.config;
 
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
+import com.tenemsa.platform.exception.ResourceNotFoundException;
 import org.hibernate.LazyInitializationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -53,6 +55,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleSerializationError(Exception e) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR,
                 "A response formatting error occurred. This has been logged.");
+    }
+
+    // e.g. ?status=NOPE on a filter: the client sent a value the parameter cannot take.
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> handleBadParameter(MethodArgumentTypeMismatchException e) {
+        return error(HttpStatus.BAD_REQUEST, "Invalid value for '" + e.getName() + "'.");
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<?> handleNotFound(ResourceNotFoundException e) {
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
