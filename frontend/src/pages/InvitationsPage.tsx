@@ -18,7 +18,7 @@ export default function InvitationsPage() {
   const roles = ASSIGNABLE[callerRole] || [];
   const [form, setForm] = useState({ name: "", email: "", department: "", role: (roles[0]?.value || "EMPLOYEE") as Role });
   const [pending, setPending] = useState<InvitationItem[]>([]);
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "warning" } | null>(null);
   const [sending, setSending] = useState(false);
 
   const load = () => listInvitations().then(setPending).catch(() => setMessage({ text: "Could not load invitations.", type: "error" }));
@@ -27,8 +27,17 @@ export default function InvitationsPage() {
   const handleSend = async (e: FormEvent) => {
     e.preventDefault(); setMessage(null); setSending(true);
     try {
-      await sendInvitation({ ...form, department: form.department || undefined });
-      setMessage({ text: `Invitation sent to ${form.email}.`, type: "success" });
+      const sent = await sendInvitation({ ...form, department: form.department || undefined });
+      if (sent.emailSent === false) {
+        // Saved, but the mail server refused to send it (usually wrong SMTP login in backend/.env).
+        setMessage({
+          text: `Invitation created for ${form.email}, but the email could not be sent. ` +
+                "Check the mail settings (SMTP_USERNAME / SMTP_PASSWORD) in the backend, then send it again.",
+          type: "warning",
+        });
+      } else {
+        setMessage({ text: `Invitation sent to ${form.email}.`, type: "success" });
+      }
       setForm({ ...form, name: "", email: "", department: "" });
       load();
     } catch (err: any) {
@@ -50,7 +59,8 @@ export default function InvitationsPage() {
         </div>
       </div>
 
-      {message && <div className={`alert-ems alert-${message.type}`}>{message.text}</div>}
+      {message && <div className={`alert-ems alert-${message.type === "warning" ? "error" : message.type}`}
+        style={message.type === "warning" ? { borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.08)" } : undefined}>{message.text}</div>}
 
       {roles.length === 0 ? (
         <div className="alert-ems alert-error">Your role cannot invite people.</div>

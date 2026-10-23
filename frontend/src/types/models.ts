@@ -202,6 +202,8 @@ export interface InvitationItem {
   status: "PENDING" | "ACCEPTED" | "REVOKED";
   expiresAt: string;
   createdAt: string;
+  /** Only present on the response to "send": false when the mail server could not deliver the link. */
+  emailSent?: boolean | null;
 }
 
 export interface InvitationPreview {
@@ -211,3 +213,4 @@ export interface InvitationPreview {
   name: string;
   role: Role;
 }
+
