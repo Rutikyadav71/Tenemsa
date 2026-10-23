@@ -73,6 +73,10 @@ Every company is a row in `companies`. Every `User` belongs to exactly one compa
 - *Flyway.* Versioned migrations per database, with automatic baselining of existing databases (see `docs/database.md`).
 - *Tests.* `TeamAttendanceEmployeeTest` covers team and attendance isolation (including the same `empId` and date in two companies), validation, server-computed hours, mass-assignment and `empId` handling.
 
+**Phase 5a: project management.** `projects`, `issues` and `issue_comments` (all carry `company_id`; created by Flyway `V3`). Issues are numbered per project (`ACME-1`, `ACME-2`): the project row is locked while the next number is taken, and `(project_id, issue_number)` is unique as a backstop. Requests and responses are DTOs. Permissions: everyone can view projects and raise issues (`project:view`, `issue:create`); Owner, Admin and Manager can create/edit/archive projects (`project:manage`) and change any issue (`issue:manage:any`); anyone else can change only issues they reported or are assigned to (checked per record in `IssueService`). Archived projects are read-only and only archived projects can be deleted. A record from another company is always a `404`. Every company member sees every project for now; per-project membership is deferred.
+
+**Also in this change:** an email delivery failure (for example a wrong SMTP password) no longer fails the request. `EmailService` catches Spring's unchecked `MailException`, and the invitation response carries `emailSent` so the UI can warn that the link was not delivered. `PATCH` is allowed by CORS.
+
 **Still open:** `Leave` and `Notification` are still bound as entities on a few endpoints; rate limiting is per instance; tenant scoping is manual (Hibernate `@TenantId` or PostgreSQL row-level security are the hardening options); the Flyway `DDL_AUTO` default is still `update` until `validate` has been proven in each environment.
 
 ## Role hierarchy

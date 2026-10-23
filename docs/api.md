@@ -91,6 +91,27 @@ No OpenAPI/Swagger spec exists yet (roadmap item). This is a hand-maintained ref
 | POST | `/api/attendance/mark` | Admin | Body `{ empId, date, status, checkIn?, checkOut?, notes? }`. The employee must exist in the caller's company; check-out must be after check-in; work hours are computed by the server. |
 | GET | `/api/attendance/summary/{empId}?month=&year=` | Admin, or self | Monthly aggregate stats (present/late/absent/hours/rate). |
 
+## Projects and issues — `/api/projects`, `/api/issues`
+
+Everything is scoped to the caller's company; an id from another company returns `404`. Validation errors return `400 { message }`.
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/projects` | `project:view` (everyone) | Projects with `totalIssues` / `doneIssues`. |
+| POST | `/api/projects` | `project:manage` (Owner, Admin, Manager) | `{ key (2-10 capitals/digits), name, description?, leadEmpId? }` → `201`. Key is unique per company and immutable. |
+| GET | `/api/projects/{id}` | `project:view` | |
+| PUT | `/api/projects/{id}` | `project:manage` | `{ name, description?, leadEmpId?, status? }`. `status: ARCHIVED` makes the project read-only. |
+| DELETE | `/api/projects/{id}` | `project:manage` | Only archived projects; removes their issues and comments. `204`. |
+| GET | `/api/projects/people` | `project:view` | `[{ empId, name, role }]` for assignee pickers (no emails). |
+| GET | `/api/projects/{id}/issues?status=&assignee=&q=` | `project:view` | Filters are optional. |
+| POST | `/api/projects/{id}/issues` | `issue:create` (everyone) | `{ title, description?, type?, priority?, assigneeEmpId?, dueDate? }` → `201` with `key` such as `ACME-3`. |
+| GET | `/api/issues/mine` | `project:view` | Open issues assigned to the caller. |
+| GET | `/api/issues/{id}` | `project:view` | |
+| PUT | `/api/issues/{id}` | manager, reporter or assignee | Same body as create. `403` otherwise. |
+| PATCH | `/api/issues/{id}/status` | manager, reporter or assignee | `{ status }`: moving a card on the board. |
+| DELETE | `/api/issues/{id}` | manager, reporter or assignee | Also deletes its comments. |
+| GET / POST | `/api/issues/{id}/comments` | `project:view` / `issue:create` | POST `{ body }` → `201`. Not allowed on archived projects. |
+
 ## Teams — `/api/teams`
 
 | Method | Path | Auth | Description |

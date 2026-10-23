@@ -17,8 +17,9 @@ Tenemsa is being built in phases, each reviewed and approved before the next sta
 | 4c | Audit logging, per-company email uniqueness, invite flow, cross-tenant tests | ✅ Complete |
 | 4d | Request validation, rate limiting on public endpoints, ownership checks (chat, leave apply), leave/chat isolation tests | ✅ Complete |
 | 4e | Flyway migrations, validation on entity-bound endpoints (employee/team/attendance), team and attendance isolation tests | ✅ Complete |
-| 4f | Entity-id isolation hardening (`@TenantId`/RLS evaluation), shared rate-limit store, Leave/Notification DTOs | 🔜 Next |
-| 5 | Project management module (Jira-style) | Planned |
+| 4f | Entity-id isolation hardening (`@TenantId`/RLS evaluation), shared rate-limit store, Leave/Notification DTOs | Planned |
+| 5a | Project management: projects, issues, kanban board, comments (Flyway V3) | ✅ Complete |
+| 5b | Sprints, backlog, story points, labels, sprint complete with carry-over (Flyway V4) | 🔜 Next |
 | 6 | AI assistant layer | Planned |
 | 7 | RAG knowledge base | Planned |
 | 8 | Document management, notifications, dashboards | Planned |
