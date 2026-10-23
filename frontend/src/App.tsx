@@ -14,6 +14,9 @@ import FindWorkspacePage from "./pages/FindWorkspacePage";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import AuditLogPage from "./pages/AuditLogPage";
 import InvitationsPage from "./pages/InvitationsPage";
+import ProjectsPage from "./pages/ProjectsPage";
+import ProjectBoardPage from "./pages/ProjectBoardPage";
+import ProjectBacklogPage from "./pages/ProjectBacklogPage";
 import ChatPage from "./pages/ChatPage";
 import AttendancePage from "./pages/Attendance";
 import TeamManagement from "./pages/TeamManagement";
@@ -95,6 +98,9 @@ const AdminLayout = () => {
             <Route path="company" element={<CompanySettings />} />
             <Route path="invitations" element={<InvitationsPage />} />
             <Route path="audit" element={<AuditLogPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectBoardPage />} />
+            <Route path="projects/:id/backlog" element={<ProjectBacklogPage />} />
           </Routes>
         </main>
       </div>
@@ -137,6 +143,9 @@ const UserLayout = () => {
             <Route path="leaves/employee/:empId" element={<UserLeaveDetails />} />
             <Route path="attendance" element={<AttendancePage isAdmin={false} />} />
             <Route path="teams" element={<TeamManagement isAdmin={false} empId={empId} />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectBoardPage />} />
+            <Route path="projects/:id/backlog" element={<ProjectBacklogPage />} />
             <Route path="notifications" element={<UserNotifications />} />
             <Route path="chat" element={<ChatPage />} />
           </Routes>

@@ -214,3 +214,66 @@ export interface InvitationPreview {
   role: Role;
 }
 
+// ---- Phase 5a: projects and issues ------------------------------------------
+
+export type ProjectStatus = "ACTIVE" | "ARCHIVED";
+export type IssueType = "TASK" | "BUG" | "STORY";
+export type IssueStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
+export type IssuePriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+
+export interface Project {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  leadEmpId: number | null;
+  leadName: string | null;
+  totalIssues: number;
+  doneIssues: number;
+  createdAt: string;
+}
+
+export interface Issue {
+  id: number;
+  key: string;
+  projectId: number;
+  projectKey: string;
+  issueNumber: number;
+  title: string;
+  description: string | null;
+  type: IssueType;
+  status: IssueStatus;
+  priority: IssuePriority;
+  assigneeEmpId: number | null;
+  assigneeName: string | null;
+  reporterEmpId: number | null;
+  reporterName: string | null;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueComment {
+  id: number;
+  authorEmpId: number | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface Person {
+  empId: number;
+  name: string;
+  role: Role;
+}
+
+export interface IssueInput {
+  title: string;
+  description?: string;
+  type: IssueType;
+  priority: IssuePriority;
+  assigneeEmpId?: number | null;
+  dueDate?: string | null;
+}
+

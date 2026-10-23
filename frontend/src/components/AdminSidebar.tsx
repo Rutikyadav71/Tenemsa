@@ -27,6 +27,7 @@ const navItems = [
   { to:"/admin/apply-leave",   label:"Apply Leave",    icon:ic.applyLeave },
   { to:"/admin/attendance",    label:"Attendance",     icon:ic.attendance },
   { to:"/admin/teams",         label:"Teams",          icon:ic.teams },
+  { to:"/admin/projects",      label:"Projects",       icon:ic.teams },
   { to:"/admin/chat",          label:"Chat Room",      icon:ic.chat },
   { to:"/admin/notifications", label:"Notifications",  icon:ic.notif },
   { to:"/admin/manage-admins", label:"Admin Control",  icon:ic.admins },
