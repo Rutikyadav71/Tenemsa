@@ -250,6 +250,10 @@ export interface Issue {
   reporterEmpId: number | null;
   reporterName: string | null;
   dueDate: string | null;
+  sprintId: number | null;
+  sprintName: string | null;
+  storyPoints: number | null;
+  labels: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -275,5 +279,34 @@ export interface IssueInput {
   priority: IssuePriority;
   assigneeEmpId?: number | null;
   dueDate?: string | null;
+  storyPoints?: number | null;
+  labels?: string[];
+}
+
+export type SprintStatus = "PLANNED" | "ACTIVE" | "COMPLETED";
+
+export interface Sprint {
+  id: number;
+  projectId: number;
+  name: string;
+  goal: string | null;
+  status: SprintStatus;
+  startDate: string | null;
+  endDate: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  totalIssues: number;
+  doneIssues: number;
+  totalPoints: number;
+  donePoints: number;
+  completedCount: number | null;
+  carriedOverCount: number | null;
+}
+
+export interface SprintInput {
+  name: string;
+  goal?: string;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 

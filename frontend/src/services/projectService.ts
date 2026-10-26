@@ -1,6 +1,6 @@
 import axiosInstance from "./axiosInstance";
 import type {
-  Issue, IssueComment, IssueInput, IssueStatus, Person, Project, ProjectStatus,
+  Issue, IssueComment, IssueInput, IssueStatus, Person, Project, ProjectStatus, Sprint, SprintInput,
 } from "../types/models";
 
 export async function listProjects(): Promise<Project[]> {
@@ -57,6 +57,34 @@ export async function listComments(issueId: number): Promise<IssueComment[]> {
 
 export async function addComment(issueId: number, body: string): Promise<IssueComment> {
   return (await axiosInstance.post<IssueComment>(`/api/issues/${issueId}/comments`, { body })).data;
+}
+
+export async function listSprints(projectId: number): Promise<Sprint[]> {
+  return (await axiosInstance.get<Sprint[]>(`/api/projects/${projectId}/sprints`)).data;
+}
+
+export async function createSprint(projectId: number, input: SprintInput): Promise<Sprint> {
+  return (await axiosInstance.post<Sprint>(`/api/projects/${projectId}/sprints`, input)).data;
+}
+
+export async function updateSprint(id: number, input: SprintInput): Promise<Sprint> {
+  return (await axiosInstance.put<Sprint>(`/api/sprints/${id}`, input)).data;
+}
+
+export async function startSprint(id: number): Promise<Sprint> {
+  return (await axiosInstance.post<Sprint>(`/api/sprints/${id}/start`)).data;
+}
+
+export async function completeSprint(id: number, moveUnfinishedTo: number | null): Promise<Sprint> {
+  return (await axiosInstance.post<Sprint>(`/api/sprints/${id}/complete`, { moveUnfinishedTo })).data;
+}
+
+export async function deleteSprint(id: number): Promise<void> {
+  await axiosInstance.delete(`/api/sprints/${id}`);
+}
+
+export async function assignToSprint(issueId: number, sprintId: number | null): Promise<Issue> {
+  return (await axiosInstance.patch<Issue>(`/api/issues/${issueId}/sprint`, { sprintId })).data;
 }
 
 /** Roles that may create/edit projects and change any issue (mirrors project:manage / issue:manage:any). */
