@@ -20,18 +20,51 @@ Tenemsa is a layered monolith today, deliberately structured so it can be pulled
 
 The frontend never talks to Postgres or the ML service directly — everything goes through the Spring Boot API, which is the single source of truth for authorization and tenant boundaries.
 
-## Backend layering
+## Backend structure: package by feature
+
+Code is grouped by what it does, not by technical layer. Each feature folder under `com.tenemsa.platform` holds everything for that feature, split into `controller/`, `service/`, `repository/`, `model/` (entities and enums) and `dto/` sub-folders, for example `leave/controller/LeaveController`, `leave/service/LeaveService`, `leave/repository/LeaveRepository`, `leave/model/Leave`. Very small features (`mail`, `common`) stay flat:
 
 ```
-Controller  →  Service  →  Repository  →  PostgreSQL
+com.tenemsa.platform
+├── TenemsaApplication
+├── auth/          login, tokens, password reset, email verification
+├── company/       company registration and workspace lookup
+├── employee/      User entity, roles, employee CRUD, admin accounts
+├── invitation/    invite-by-email flow
+├── audit/         audit trail
+├── attendance/  leave/  team/  notification/  chat/
+├── project/       projects        (project/issue = issues and comments, project/sprint = sprints)
+├── upload/        file uploads (Cloudinary)
+├── mail/          EmailService
+├── common/        GlobalExceptionHandler, ResourceNotFoundException, HealthController
+├── security/      JWT, filters, AuthContext, rate limiting; security/rbac = permissions and role registries
+└── config/        framework wiring (Jackson, OpenAPI, OAuth2 client, security beans)
 ```
 
-- **Controller** (`controller/`) — HTTP/WebSocket entry points. Handles request/response shape and `@PreAuthorize` role checks. Should not contain business logic.
-- **Service** (`service/`) — business logic. Where authorization *decisions* that depend on data (not just role) get made — e.g. "is this the primary owner."
-- **Repository** (`repository/`) — Spring Data JPA interfaces. Query methods are scoped by `company_id` wherever tenant isolation matters (see [Multi-tenancy](#multi-tenancy) below).
-- **Security** (`security/`) — JWT generation/validation (`JwtUtil`, `JwtFilter`), the CORS/auth filter chain (`SecurityConfig`), and small helpers (`AuthContext` for reading the current request's tenant context without a DB round-trip; `EmployeeSecurity` for "is this the caller's own record" checks used in `@PreAuthorize`).
+Rules for new code:
+- A new feature gets its own folder (for example `workflow/`, `ai/`) with the same five sub-folders, not a new class in a layer folder.
+- Inside a feature the roles are still separate: the controller handles HTTP and `@PreAuthorize`, the service holds business rules, the repository is a Spring Data interface scoped by `company_id`, DTOs are records. Controllers never touch repositories of another feature directly; they call that feature's service.
+- Shared cross-cutting code lives in `security`, `common` or `config`. Do not put feature logic there.
+- One feature may depend on another's service or entity, but avoid circular dependencies between feature folders. `project`, `project.issue` and `project.sprint` depend on each other on purpose because they form one domain.
+- Flyway migrations, tests and the frontend are unchanged by this layout.
 
-This isn't microservices-ready yet, but the layering means it *could* be split along controller boundaries later — each controller's dependencies are already scoped to its own service/repository, not shared mutable state.
+### Frontend structure
+
+```
+frontend/src
+├── main.tsx
+├── app/            App.tsx (routes and layouts)
+├── styles/         global CSS
+├── layouts/        admin/ and user/ navbar + sidebar
+├── shared/         api/ (axios instance), lib/ (auth storage, logout), types/models.ts, components/
+└── features/<feature>/
+        pages/        route-level screens
+        components/   pieces used only by this feature
+        services/     API calls for this feature
+```
+Features: `home`, `auth`, `company`, `employees`, `dashboard`, `leave`, `attendance`, `team`, `projects`, `invitations`, `audit`, `chat`, `notifications`. A new feature (for example `workflow`, `ai`) gets its own `features/<name>/` folder with the same three sub-folders. A feature may import from `shared/` and `layouts/`; avoid importing one feature's pages from another (shared pieces move to `shared/components`).
+
+This isn't microservices-ready yet, but feature folders are the natural seams if it is ever split: each feature's dependencies are already scoped to its own service and repository.
 
 ## Multi-tenancy
 
@@ -115,7 +148,7 @@ Role-to-tag mapping lives in one place (`ChatIdentity.tagFor`): OWNER/ADMIN/SUPE
 
 ## ML service
 
-`ml-service/` is a separate Flask process, not a Spring dependency. The backend calls it over plain HTTP (`LeaveService` → `http://localhost:5000/predict-leave`) and treats a failed/unreachable ML service as a soft failure — leave management still works without it, predictions just aren't available. This is why it's documented as optional in the quick-start.
+`ml-service/` is a separate Flask process, not a Spring dependency. The backend calls it over plain HTTP (`leave.LeaveService` → `http://localhost:5000/predict-leave`) and treats a failed/unreachable ML service as a soft failure — leave management still works without it, predictions just aren't available. This is why it's documented as optional in the quick-start.
 
 ## Known architectural debt
 
