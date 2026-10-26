@@ -13,6 +13,7 @@ import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.repository.IssueCommentRepository;
 import com.tenemsa.platform.repository.IssueRepository;
 import com.tenemsa.platform.repository.ProjectRepository;
+import com.tenemsa.platform.repository.SprintRepository;
 import com.tenemsa.platform.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ public class ProjectService {
     @Autowired private ProjectRepository projectRepository;
     @Autowired private IssueRepository issueRepository;
     @Autowired private IssueCommentRepository commentRepository;
+    @Autowired private SprintRepository sprintRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private EmployeeNameLookup names;
     @Autowired private AuthContext authContext;
@@ -136,6 +138,7 @@ public class ProjectService {
         }
         commentRepository.deleteAllInProject(cid(), p.getId());
         issueRepository.deleteAllInProject(cid(), p.getId());
+        sprintRepository.deleteAllInProject(cid(), p.getId()); // after the issues that point at them
         projectRepository.delete(p);
         auditService.recordCurrent(AuditAction.PROJECT_DELETED, "PROJECT", String.valueOf(id),
                 "Deleted project " + p.getProjectKey() + " (" + p.getName() + ") with all its issues");

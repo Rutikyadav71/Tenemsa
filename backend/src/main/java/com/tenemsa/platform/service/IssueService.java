@@ -17,6 +17,7 @@ import com.tenemsa.platform.model.User;
 import com.tenemsa.platform.repository.IssueCommentRepository;
 import com.tenemsa.platform.repository.IssueRepository;
 import com.tenemsa.platform.repository.ProjectRepository;
+import com.tenemsa.platform.repository.SprintRepository;
 import com.tenemsa.platform.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,7 @@ public class IssueService {
     @Autowired private IssueRepository issueRepository;
     @Autowired private IssueCommentRepository commentRepository;
     @Autowired private ProjectRepository projectRepository;
+    @Autowired private SprintRepository sprintRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private ProjectService projectService;
     @Autowired private EmployeeNameLookup names;
@@ -196,6 +198,23 @@ public class IssueService {
         i.setPriority(req.priority() != null ? req.priority() : IssuePriority.MEDIUM);
         i.setAssigneeEmpId(req.assigneeEmpId());
         i.setDueDate(req.dueDate());
+        i.setStoryPoints(req.storyPoints());
+        i.setLabels(normaliseLabels(req.labels()));
+    }
+
+    /** Lower-case, trimmed, de-duplicated, letters/digits/space/dash/underscore only; null when empty. */
+    private static String normaliseLabels(List<String> labels) {
+        if (labels == null) return null;
+        LinkedHashSet<String> clean = new LinkedHashSet<>();
+        for (String raw : labels) {
+            if (raw == null || raw.isBlank()) continue;
+            String l = raw.trim().toLowerCase(Locale.ROOT);
+            if (!l.matches("^[a-z0-9][a-z0-9 _-]{0,29}$")) {
+                throw new IllegalArgumentException("Labels may contain letters, digits, spaces, dashes and underscores: '" + raw.trim() + "'.");
+            }
+            clean.add(l);
+        }
+        return clean.isEmpty() ? null : String.join(",", clean);
     }
 
     private List<IssueResponse> toResponses(List<Issue> issues, Map<Long, Project> projects) {
@@ -205,10 +224,16 @@ public class IssueService {
             empIds.add(i.getReporterEmpId());
         }
         Map<Integer, String> nameMap = names.namesFor(cid(), empIds);
+        List<Long> sprintIds = issues.stream().map(Issue::getSprintId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> sprintNames = new HashMap<>();
+        if (!sprintIds.isEmpty()) {
+            sprintRepository.findByCompanyIdAndIdIn(cid(), sprintIds).forEach(s -> sprintNames.put(s.getId(), s.getName()));
+        }
         return issues.stream().map(i -> {
             Project p = projects.get(i.getProjectId());
             return IssueResponse.from(i, p != null ? p.getProjectKey() : "?",
-                    nameMap.get(i.getAssigneeEmpId()), nameMap.get(i.getReporterEmpId()));
+                    nameMap.get(i.getAssigneeEmpId()), nameMap.get(i.getReporterEmpId()),
+                    i.getSprintId() == null ? null : sprintNames.get(i.getSprintId()));
         }).toList();
     }
 }
