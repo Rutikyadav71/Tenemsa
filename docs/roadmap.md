@@ -19,12 +19,9 @@ Tenemsa is being built in phases, each reviewed and approved before the next sta
 | 4e | Flyway migrations, validation on entity-bound endpoints (employee/team/attendance), team and attendance isolation tests | ✅ Complete |
 | 4f | Entity-id isolation hardening (`@TenantId`/RLS evaluation), shared rate-limit store, Leave/Notification DTOs | Planned |
 | 5a | Project management: projects, issues, kanban board, comments (Flyway V3) | ✅ Complete |
-| 5b | Sprints, backlog, story points, labels, sprint complete with carry-over (Flyway V4) | 🔜 Next |
-| 6 | AI assistant layer | Planned |
-| 7 | RAG knowledge base | Planned |
-| 8 | Document management, notifications, dashboards | Planned |
-| 9 | Frontend visual rebuild (Tailwind/shadcn, dark mode) | Planned |
-| 10 | DevOps (Docker Compose, CI/CD, monitoring) | Planned |
+| 5b | Sprints, backlog, story points, labels, sprint complete with carry-over (Flyway V4) | ✅ Complete |
+| 5c | Project membership / private projects, issue links | Deferred, to be discussed |
+| 6 to 10 | See "Revised roadmap: Phase 6 onward" below | Proposed |
 
 ## Completed
 
@@ -75,15 +72,30 @@ Originally planned as part of the Phase 9 visual rebuild, moved earlier once ong
 
 **Phase 5 — Project management:** Jira-style projects/tasks/sprints/kanban.
 
-**Phase 6 — AI assistant layer:** LLM abstraction interface (Gemini first, swappable), meeting summaries, task generation, email drafting — plus properly wiring the existing `ml-service` leave-predictor into the new architecture (and fixing the `leave_type` schema gap documented in `docs/database.md` first).
+## Revised roadmap: Phase 6 onward (proposal, awaiting approval)
 
-**Phase 7 — RAG knowledge base:** document upload, embeddings, vector search, company-scoped policy Q&A.
+Phases 0-5 are complete and stable and are not reopened. The old Phase 9 (frontend rebuild) is already done, and the old Phase 10 (DevOps) is deferred and not scheduled.
 
-**Phase 8 — Document management, notifications, dashboards:** Drive-style file management, real-time + email notifications (properly scoped per-user/company this time), richer analytics dashboards.
+| Phase | Scope | Mostly uses |
+|---|---|---|
+| 6 | AI foundation (Spring AI + Gemini behind our own interface, prompt templates, structured output, usage/audit records, limits) and first AI features: meeting intelligence, task generator, communication writer, project assistant, HR assistant; reconnect the ML leave predictor | Spring AI; plain Java for data lookups |
+| 7 | RAG knowledge base: upload, extract, chunk, embed, vector search, grounded answers with citations, tenant-scoped retrieval | Spring AI + vector store (decision needed) |
+| 8 | Document management, per-user notifications (in-app + email), role dashboards and analytics | Plain Java; AI only for summaries |
+| 9 | Workflow automation: triggers, conditions, registered actions, execution records, idempotency; deterministic rules first, controlled agents later | Plain Java first; Spring AI tool calling last |
+| 10 | Product polish toward Jira-level UX (drag-and-drop persistence, saved filters, AI assistant entry points, automation centre, accessibility) | Existing frontend |
 
-**Phase 9 — Frontend visual rebuild:** Tailwind + shadcn/ui, dark mode, from the current Bootstrap-based UI. (TypeScript itself is already done — see above — this phase is purely visual/component-library now.)
+Dependencies: 6 before everything AI; 7 needs 6 and document storage from 8, so 8's document upload comes first or is built minimally inside 7; 9 needs notifications from 8; agents in 9 need 6's tool framework and audit.
 
-**Phase 10 — DevOps:** Docker Compose for the full local stack, GitHub Actions CI/CD, monitoring (Prometheus/Grafana), and — given the schema now changes phase over phase — introducing Flyway or Liquibase for versioned migrations instead of the current hand-run SQL script approach.
+### Open decisions before Phase 6 code
+1. **Vector store vs. database support.** The app runs on PostgreSQL or MySQL by profile. pgvector is PostgreSQL only. Options: make RAG require PostgreSQL, or standardise on PostgreSQL. Decide before Phase 7; it does not block Phase 6.
+2. **Spring AI version.** Spring AI 1.1.x (1.1.8 as of June 2026) is built on Spring Boot 3.5, matching this project. 2.0 is not recommended yet. Confirm the Gemini starter artifact when adding the dependency.
+3. **Leave predictor.** `ml-service` is a Flask/scikit-learn service (logistic regression) that is called by `LeaveService` through a hardcoded URL. The backend sends a `leave_type`, but the `Leave` entity has no such column, so it is probably broken today. Options: add `leave_type` to leave requests, or retrain without it.
+4. **Scope of Phase 6.** Smallest useful milestone below, then one feature at a time.
+
+### Phase 6 first milestone (6a): AI foundation plus meeting summaries
+Acceptance: a Manager pastes meeting notes, gets a structured summary (decisions, action items with owner/deadline, open questions), edits it, and explicitly creates draft issues in a project. Failures (timeout, bad output, quota) show a clear message. Every call is audited with latency and token counts. Another company can never see the result.
+
+Likely files: `ai/AiClient` (our interface), `ai/GeminiAiClient`, `ai/PromptTemplates`, `model/AiRequestLog`, `AiService`, `MeetingSummaryService`, `AiController`, DTOs, Flyway V5, `pom.xml` Spring AI BOM, `application.properties` (key from env only), frontend `MeetingSummaryPage`. Tests with a mocked `AiClient`: structured-output parsing, invalid output handling, cross-company access, permission checks, rate limit, issue creation only after confirmation.
 
 ## Design decisions made along the way
 

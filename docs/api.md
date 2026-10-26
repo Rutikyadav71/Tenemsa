@@ -112,6 +112,20 @@ Everything is scoped to the caller's company; an id from another company returns
 | DELETE | `/api/issues/{id}` | manager, reporter or assignee | Also deletes its comments. |
 | GET / POST | `/api/issues/{id}/comments` | `project:view` / `issue:create` | POST `{ body }` → `201`. Not allowed on archived projects. |
 
+### Sprints and planning (Phase 5b)
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/projects/{id}/sprints` | `project:view` | Each sprint carries live `totalIssues`, `doneIssues`, `totalPoints`, `donePoints`. |
+| POST | `/api/projects/{id}/sprints` | `project:manage` | `{ name, goal?, startDate?, endDate? }` → `201`, status `PLANNED`. End date cannot be before start date. |
+| PUT | `/api/sprints/{id}` | `project:manage` | Not allowed once `COMPLETED`. |
+| POST | `/api/sprints/{id}/start` | `project:manage` | Only `PLANNED`; only one `ACTIVE` sprint per project (else `400`). Missing dates default to today and +14 days. |
+| POST | `/api/sprints/{id}/complete` | `project:manage` | Optional `{ moveUnfinishedTo }` (a `PLANNED` sprint of the same project); unfinished issues go there or back to the backlog. Stores `completedCount` / `carriedOverCount`. |
+| DELETE | `/api/sprints/{id}` | `project:manage` | Only `PLANNED`; its issues return to the backlog. `204`. |
+| PATCH | `/api/issues/{id}/sprint` | `issue:manage:any` | `{ sprintId }`, `null` = backlog. Same project only; completed sprints are frozen in both directions. |
+
+Issue create/update bodies also accept `storyPoints` (0-100) and `labels` (up to 10, each 1-30 chars of `a-z 0-9 space _ -`, lower-cased and de-duplicated). Issue responses add `sprintId`, `sprintName`, `storyPoints`, `labels`. New issues start in the backlog.
+
 ## Teams — `/api/teams`
 
 | Method | Path | Auth | Description |
