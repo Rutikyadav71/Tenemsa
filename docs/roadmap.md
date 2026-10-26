@@ -104,3 +104,6 @@ Documented here since "why" matters as much as "what" for a project meant to dem
 - **Stayed on PostgreSQL, not MySQL** (original planning docs mentioned MySQL) — the codebase was already on Postgres with a working driver setup, and Postgres's JSON/full-text search support is useful for the planned Search feature without needing Elasticsearch.
 - **Chat routing uses a fixed two-value tag, not the six-tier Role** — a deliberate protocol-layer decision, not an oversight. Extending chat to route by full role hierarchy is a real, separate piece of future work, not a one-line change.
 - **`createdBy`/`updatedBy` columns exist but aren't populated yet** — added during Phase 1's schema work since the table was already being touched, but actually wiring "who's calling" through every write path is Phase 3 scope, not bundled in early to avoid a half-finished audit trail.
+
+### Package-by-feature refactor
+After Phase 5b the backend moved from package-by-layer to package-by-feature (see "Backend structure" in `architecture.md`). Pure file moves plus package/import updates; no behaviour change. All later phases follow the feature layout.

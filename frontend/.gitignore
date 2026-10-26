@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 .env
-.env.example
-.env.*
 *.tsbuildinfo
 
 # Editor directories and files

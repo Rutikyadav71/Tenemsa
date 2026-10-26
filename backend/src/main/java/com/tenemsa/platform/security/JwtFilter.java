@@ -1,6 +1,6 @@
 package com.tenemsa.platform.security;
 
-import com.tenemsa.platform.model.Role;
+import com.tenemsa.platform.employee.model.Role;
 import com.tenemsa.platform.security.rbac.Permission;
 import com.tenemsa.platform.security.rbac.RolePermissionRegistry;
 import jakarta.servlet.FilterChain;

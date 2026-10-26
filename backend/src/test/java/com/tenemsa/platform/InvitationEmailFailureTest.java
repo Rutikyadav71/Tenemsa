@@ -1,8 +1,8 @@
 package com.tenemsa.platform;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.tenemsa.platform.mail.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tenemsa.platform.service.EmailService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
