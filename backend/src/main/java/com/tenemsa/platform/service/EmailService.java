@@ -3,6 +3,7 @@ package com.tenemsa.platform.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -61,10 +62,11 @@ public class EmailService {
                 "<p>— Tenemsa</p>");
     }
 
-    public void sendInviteEmail(String toEmail, String inviteeName, String companyName,
+    /** Returns false when the mail server refused or could not deliver the message. */
+    public boolean sendInviteEmail(String toEmail, String inviteeName, String companyName,
                                 String inviterName, String roleLabel, String rawToken) {
         String link = frontendUrl + "/accept-invite?token=" + rawToken;
-        send(toEmail, inviterName + " invited you to " + companyName + " on Tenemsa",
+        return send(toEmail, inviterName + " invited you to " + companyName + " on Tenemsa",
                 "<p>Hi <strong>" + inviteeName + "</strong>,</p>" +
                 "<p><strong>" + inviterName + "</strong> invited you to join <strong>" + companyName +
                 "</strong> on Tenemsa as <strong>" + roleLabel + "</strong>.</p>" +
@@ -73,10 +75,11 @@ public class EmailService {
                 "<p>— Tenemsa</p>");
     }
 
-    private void send(String toEmail, String subject, String htmlBody) {
+    /** true = handed to the mail server (or email is switched off); false = delivery failed. */
+    private boolean send(String toEmail, String subject, String htmlBody) {
         if (!emailEnabled) {
             System.out.println("Email disabled — would have sent \"" + subject + "\" to " + toEmail);
-            return;
+            return true;
         }
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -85,11 +88,16 @@ public class EmailService {
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             mailSender.send(message);
-        } catch (MessagingException e) {
+            return true;
+        } catch (MessagingException | MailException e) {
             // Email delivery failing shouldn't ever fail the calling request
             // (e.g. account creation succeeding but the welcome email
             // bouncing) — log and move on rather than propagate.
+            // MailException (unchecked) is what Spring throws for a rejected SMTP login
+            // ("Authentication failed"); catching only MessagingException let it escape and
+            // roll back the whole request, including a just-saved invitation.
             System.err.println("Failed to send email \"" + subject + "\" to " + toEmail + ": " + e.getMessage());
+            return false;
         }
     }
 }

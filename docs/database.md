@@ -79,6 +79,16 @@ Email invitations to join a company (Phase 4c). Columns: `id`, `company_id`, `em
 
 **Known gap:** there is no `leave_type` column, but `ml-service`'s `/predict-leave` endpoint requires a `leave_type` input feature. `/api/leaves/admin/{id}/prediction` is very likely non-functional as a result — this predates the current phase of work and hasn't been fixed yet. Worth confirming and either adding the column or adjusting the ML service before relying on that feature.
 
+### `projects`, `issues`, `issue_comments` (Phase 5a)
+
+| Table | Key columns |
+|---|---|
+| `projects` | `company_id`, `project_key` (unique per company, immutable), `name`, `description`, `status` (`ACTIVE`/`ARCHIVED`), `lead_emp_id`, `next_issue_number` |
+| `issues` | `company_id`, `project_id` (FK), `issue_number` (unique per project), `title`, `description`, `type` (`TASK`/`BUG`/`STORY`), `status` (`TODO`/`IN_PROGRESS`/`IN_REVIEW`/`DONE`), `priority` (`LOW`..`URGENT`), `assignee_emp_id`, `reporter_emp_id`, `due_date` |
+| `issue_comments` | `company_id`, `issue_id` (FK), `author_emp_id`, `author_name` (copied at write time), `body` |
+
+Created by `db/migration/*/V3__projects_and_issues.sql`.
+
 ### `teams` / `team_members`
 | Column | Type | Notes |
 |---|---|---|

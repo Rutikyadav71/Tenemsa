@@ -41,6 +41,7 @@ public final class RolePermissionRegistry {
                 COMPANY_MANAGE, // spec: "Manage company settings (except subscription)"
         AUDIT_VIEW,
                 REPORT_VIEW_COMPANY,
+                PROJECT_VIEW, PROJECT_MANAGE, ISSUE_CREATE, ISSUE_MANAGE_ANY,
                 CHAT_USE, PROFILE_UPDATE_SELF, ATTENDANCE_MARK_SELF, LEAVE_APPLY_SELF, PAYROLL_VIEW_SELF
                 // Deliberately NOT: user:delete, leave:approve:*, attendance:manage:any,
                 // payroll:manage, document:upload — spec: "Admin is NOT primarily
@@ -54,6 +55,7 @@ public final class RolePermissionRegistry {
                 PAYROLL_MANAGE, PAYROLL_VIEW_SELF,
                 DOCUMENT_UPLOAD,
                 REPORT_VIEW_COMPANY,
+                PROJECT_VIEW, ISSUE_CREATE,
                 CHAT_USE, PROFILE_UPDATE_SELF
                 // Deliberately NOT: subscription:manage, user:delete-of-Owner
                 // (enforced separately — see AdminController's primaryOwner
@@ -66,17 +68,20 @@ public final class RolePermissionRegistry {
                 ATTENDANCE_VIEW_TEAM, ATTENDANCE_MARK_SELF,
                 REPORT_VIEW_TEAM,
                 PAYROLL_VIEW_SELF,
+                PROJECT_VIEW, PROJECT_MANAGE, ISSUE_CREATE, ISSUE_MANAGE_ANY,
                 CHAT_USE, PROFILE_UPDATE_SELF
                 // Deliberately NOT: user:create — spec: "Managers cannot create users"
         ));
 
         MATRIX.put(Role.EMPLOYEE, EnumSet.of(
                 LEAVE_APPLY_SELF, ATTENDANCE_MARK_SELF, PAYROLL_VIEW_SELF,
+                PROJECT_VIEW, ISSUE_CREATE,
                 CHAT_USE, PROFILE_UPDATE_SELF
         ));
 
         MATRIX.put(Role.INTERN, EnumSet.of(
                 LEAVE_APPLY_SELF, ATTENDANCE_MARK_SELF,
+                PROJECT_VIEW, ISSUE_CREATE,
                 CHAT_USE, PROFILE_UPDATE_SELF
                 // Deliberately NOT PAYROLL_VIEW_SELF — spec: "No payroll" for Intern
         ));

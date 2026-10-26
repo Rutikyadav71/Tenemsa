@@ -36,8 +36,9 @@ public class InvitationController {
     @PostMapping
     public ResponseEntity<?> invite(@Valid @RequestBody InvitationRequest req) {
         try {
-            Invitation inv = invitationService.invite(authContext.currentCompanyId(), caller(), req);
-            return ResponseEntity.status(HttpStatus.CREATED).body(InvitationResponse.from(inv));
+            InvitationService.InviteResult result = invitationService.invite(authContext.currentCompanyId(), caller(), req);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(InvitationResponse.from(result.invitation(), result.emailSent()));
         } catch (InvitationService.InvitationException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

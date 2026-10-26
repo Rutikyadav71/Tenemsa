@@ -17,6 +17,7 @@ const navItems = [
   { to:"/user/apply-leave",   label:"Apply Leave",  icon:ic.leave },
   { to:"/user/attendance",    label:"Attendance",   icon:ic.attendance },
   { to:"/user/teams",         label:"My Teams",     icon:ic.teams },
+  { to:"/user/projects",      label:"Projects",     icon:ic.teams },
   { to:"/user/chat",          label:"Chat Room",    icon:ic.chat },
   { to:"/user/notifications", label:"Notifications",icon:ic.notif },
 ];

@@ -47,8 +47,11 @@ public class InvitationService {
     @Autowired private EmailService emailService;
     @Autowired private AuditService auditService;
 
+    /** The saved invitation, plus whether the email with the link could be delivered. */
+    public record InviteResult(Invitation invitation, boolean emailSent) {}
+
     @Transactional
-    public Invitation invite(Long companyId, User inviter, InvitationRequest req) {
+    public InviteResult invite(Long companyId, User inviter, InvitationRequest req) {
         String email = req.email() == null ? "" : req.email().trim();
         String name = req.name() == null ? "" : req.name().trim();
         if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) throw new InvitationException("Enter a valid email address.");
@@ -85,10 +88,11 @@ public class InvitationService {
 
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
-        emailService.sendInviteEmail(email, name, company.getName(), inviter.getName(), role.name(), raw);
+        boolean emailSent = emailService.sendInviteEmail(email, name, company.getName(), inviter.getName(), role.name(), raw);
         auditService.record(companyId, inviter.getId(), inviter.getName(), AuditAction.INVITE_SENT,
-                "INVITATION", String.valueOf(inv.getId()), "Invited " + email + " as " + role);
-        return inv;
+                "INVITATION", String.valueOf(inv.getId()), "Invited " + email + " as " + role
+                        + (emailSent ? "" : " (email could not be delivered)"));
+        return new InviteResult(inv, emailSent);
     }
 
     public List<Invitation> pending(Long companyId) {
