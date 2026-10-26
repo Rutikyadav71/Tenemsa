@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   addComment, createIssue, deleteIssue, deleteProject, getProject, listComments, listIssues,
-  listPeople, MANAGER_ROLES, moveIssue, updateIssue, updateProject,
+  listPeople, listSprints, MANAGER_ROLES, moveIssue, updateIssue, updateProject,
 } from "../services/projectService";
 import type {
-  Issue, IssueComment, IssueInput, IssuePriority, IssueStatus, IssueType, Person, Project,
+  Issue, IssueComment, IssueInput, IssuePriority, IssueStatus, IssueType, Person, Project, Sprint,
 } from "../types/models";
 
 const COLUMNS: { status: IssueStatus; label: string }[] = [
@@ -18,7 +18,7 @@ const PRIORITY_COLOR: Record<IssuePriority, string> = { LOW: "#64748b", MEDIUM: 
 const TYPES: IssueType[] = ["TASK", "BUG", "STORY"];
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
-const emptyInput = (): IssueInput => ({ title: "", description: "", type: "TASK", priority: "MEDIUM", assigneeEmpId: null, dueDate: null });
+const emptyInput = (): IssueInput => ({ title: "", description: "", type: "TASK", priority: "MEDIUM", assigneeEmpId: null, dueDate: null, storyPoints: null, labels: [] });
 const msg = (err: any, fallback: string) => err?.response?.data?.message || fallback;
 
 export default function ProjectBoardPage() {
@@ -36,6 +36,8 @@ export default function ProjectBoardPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [sprintFilter, setSprintFilter] = useState<string>("active"); // active | all | backlog | <sprintId>
   const [dragId, setDragId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<Issue | null>(null);
@@ -44,8 +46,8 @@ export default function ProjectBoardPage() {
 
   const reload = async () => {
     try {
-      const [p, i] = await Promise.all([getProject(projectId), listIssues(projectId)]);
-      setProject(p); setIssues(i);
+      const [p, i, s] = await Promise.all([getProject(projectId), listIssues(projectId), listSprints(projectId)]);
+      setProject(p); setIssues(i); setSprints(s);
     } catch (err: any) {
       setError(err.response?.status === 404 ? "Project not found." : msg(err, "Could not load the project."));
     }
@@ -53,13 +55,21 @@ export default function ProjectBoardPage() {
 
   useEffect(() => { reload(); listPeople().then(setPeople).catch(() => {}); }, [projectId]);
 
+  const activeSprint = sprints.find(s => s.status === "ACTIVE") || null;
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return issues.filter(i =>
-      (!onlyMine || i.assigneeEmpId === myEmpId) &&
-      (!q || i.title.toLowerCase().includes(q) || i.key.toLowerCase().includes(q))
-    );
-  }, [issues, search, onlyMine, myEmpId]);
+    return issues.filter(i => {
+      const inSprint =
+        sprintFilter === "all" ? true
+        : sprintFilter === "backlog" ? i.sprintId === null
+        : sprintFilter === "active" ? (activeSprint ? i.sprintId === activeSprint.id : true)
+        : i.sprintId === Number(sprintFilter);
+      return inSprint && (!onlyMine || i.assigneeEmpId === myEmpId) &&
+        (!q || i.title.toLowerCase().includes(q) || i.key.toLowerCase().includes(q) ||
+          i.labels.some(l => l.includes(q)));
+    });
+  }, [issues, search, onlyMine, myEmpId, sprintFilter, activeSprint]);
 
   const canChange = (i: Issue) => !archived && (canManage || i.reporterEmpId === myEmpId || i.assigneeEmpId === myEmpId);
 
@@ -68,9 +78,9 @@ export default function ProjectBoardPage() {
     const before = issues;
     setIssues(issues.map(i => (i.id === issue.id ? { ...i, status } : i))); // optimistic
     try {
-      const updated = await moveIssue(issue.id, status);
-      setIssues(cur => cur.map(i => (i.id === updated.id ? updated : i)));
-      if (open?.id === updated.id) setOpen(updated);
+      const saved = await moveIssue(issue.id, status);
+      setIssues(cur => cur.map(i => (i.id === saved.id ? saved : i)));
+      setOpen(o => (o && o.id === saved.id ? saved : o));
     } catch (err: any) {
       setIssues(before);
       setError(msg(err, "Could not move the issue."));
@@ -109,6 +119,7 @@ export default function ProjectBoardPage() {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn-ems btn-secondary-ems" onClick={() => navigate(`${base}/projects`)}>All projects</button>
+          <button className="btn-ems btn-secondary-ems" onClick={() => navigate(`${base}/projects/${project.id}/backlog`)}>Backlog &amp; sprints</button>
           {canManage && <button className="btn-ems btn-secondary-ems" onClick={toggleArchive}>{archived ? "Unarchive" : "Archive"}</button>}
           {canManage && archived && <button className="btn-ems btn-secondary-ems" onClick={removeProject}>Delete</button>}
           {!archived && <button className="btn-ems btn-primary-ems" onClick={() => setCreating(true)}>New issue</button>}
@@ -118,7 +129,13 @@ export default function ProjectBoardPage() {
       {error && <div className="alert-ems alert-error" onClick={() => setError("")}>{error}</div>}
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <input className="form-control-ems" style={{ maxWidth: 280 }} placeholder="Search title or key"
+        <select className="form-control-ems" style={{ maxWidth: 220 }} value={sprintFilter} onChange={e => setSprintFilter(e.target.value)}>
+          <option value="active">{activeSprint ? `Active: ${activeSprint.name}` : "All issues (no active sprint)"}</option>
+          <option value="all">All issues</option>
+          <option value="backlog">Backlog only</option>
+          {sprints.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status.toLowerCase()})</option>)}
+        </select>
+        <input className="form-control-ems" style={{ maxWidth: 280 }} placeholder="Search title, key or label"
                value={search} onChange={e => setSearch(e.target.value)} />
         <label style={{ fontSize: 13, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center" }}>
           <input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} /> Assigned to me
@@ -144,6 +161,12 @@ export default function ProjectBoardPage() {
                     <span>{i.key} · {i.type}</span><span>{i.priority}</span>
                   </div>
                   <div style={{ fontSize: 14, color: "var(--text-1)", margin: "4px 0" }}>{i.title}</div>
+                  {(i.labels.length > 0 || i.storyPoints !== null) && (
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "4px 0" }}>
+                      {i.labels.map(l => <span key={l} style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "var(--bg-surface)", color: "var(--text-2)" }}>{l}</span>)}
+                      {i.storyPoints !== null && <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "var(--accent-light)", color: "#fff" }}>{i.storyPoints} pt</span>}
+                    </div>
+                  )}
                   <div style={{ fontSize: 12, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
                     <span>{i.assigneeName || "Unassigned"}</span>
                     {i.dueDate && <span>Due {i.dueDate}</span>}
@@ -180,11 +203,13 @@ function IssueForm(props: {
   const [f, setF] = useState<IssueInput>(props.initial);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [labelText, setLabelText] = useState((props.initial.labels || []).join(", "));
 
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setErr(""); setBusy(true);
     try {
-      await props.onSubmit({ ...f, title: f.title.trim(), description: f.description?.trim() || undefined, dueDate: f.dueDate || null });
+      await props.onSubmit({ ...f, title: f.title.trim(), description: f.description?.trim() || undefined, dueDate: f.dueDate || null,
+        labels: labelText.split(",").map(l => l.trim()).filter(Boolean) });
     } catch (error: any) { setErr(msg(error, "Could not save the issue.")); setBusy(false); }
   };
 
@@ -205,13 +230,13 @@ function IssueForm(props: {
           <div className="form-group">
             <label className="form-label">Type</label>
             <select className="form-control-ems" value={f.type} onChange={e => setF({ ...f, type: e.target.value as IssueType })}>
-              {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Priority</label>
             <select className="form-control-ems" value={f.priority} onChange={e => setF({ ...f, priority: e.target.value as IssuePriority })}>
-              {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              {PRIORITIES.map(p => <option key={p}>{p}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -224,6 +249,15 @@ function IssueForm(props: {
           <div className="form-group">
             <label className="form-label">Due date</label>
             <input type="date" className="form-control-ems" value={f.dueDate || ""} onChange={e => setF({ ...f, dueDate: e.target.value || null })} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Story points</label>
+            <input type="number" min={0} max={100} className="form-control-ems" value={f.storyPoints ?? ""}
+                   onChange={e => setF({ ...f, storyPoints: e.target.value === "" ? null : Number(e.target.value) })} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Labels (comma separated)</label>
+            <input className="form-control-ems" value={labelText} onChange={e => setLabelText(e.target.value)} placeholder="backend, api" />
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -267,7 +301,8 @@ function IssueDetail(props: {
     return (
       <IssueForm title={`Edit ${issue.key}`} submitLabel="Save" people={props.people}
         initial={{ title: issue.title, description: issue.description || "", type: issue.type, priority: issue.priority,
-                   assigneeEmpId: issue.assigneeEmpId, dueDate: issue.dueDate }}
+                   assigneeEmpId: issue.assigneeEmpId, dueDate: issue.dueDate,
+                   storyPoints: issue.storyPoints, labels: issue.labels }}
         onClose={() => setEditing(false)}
         onSubmit={async input => { props.onSaved(await updateIssue(issue.id, input)); setEditing(false); }} />
     );
@@ -286,6 +321,9 @@ function IssueDetail(props: {
           <div>Assignee: <b style={{ color: "var(--text-1)" }}>{issue.assigneeName || "Unassigned"}</b></div>
           <div>Reporter: <b style={{ color: "var(--text-1)" }}>{issue.reporterName || "Unknown"}</b></div>
           <div>Due: <b style={{ color: "var(--text-1)" }}>{issue.dueDate || "None"}</b></div>
+          <div>Sprint: <b style={{ color: "var(--text-1)" }}>{issue.sprintName || "Backlog"}</b></div>
+          <div>Points: <b style={{ color: "var(--text-1)" }}>{issue.storyPoints ?? "-"}</b></div>
+          <div>Labels: <b style={{ color: "var(--text-1)" }}>{issue.labels.length ? issue.labels.join(", ") : "None"}</b></div>
           <div>
             Status:{" "}
             <select className="form-control-ems" style={{ display: "inline-block", width: "auto", padding: "2px 8px" }}
