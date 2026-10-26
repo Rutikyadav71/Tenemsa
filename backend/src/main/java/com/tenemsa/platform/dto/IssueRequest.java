@@ -21,5 +21,9 @@ public record IssueRequest(
         IssuePriority priority,
         @Positive(message = "Assignee must be a valid employee number.")
         Integer assigneeEmpId,
-        LocalDate dueDate
+        LocalDate dueDate,
+        @Min(value = 0, message = "Story points cannot be negative.") @Max(value = 100, message = "Story points cannot exceed 100.")
+        Integer storyPoints,
+        @Size(max = 10, message = "An issue can have at most 10 labels.")
+        List<@Size(max = 30, message = "A label can be at most 30 characters.") String> labels
 ) {}

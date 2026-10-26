@@ -14,13 +14,15 @@ import java.util.List;
 public record IssueResponse(Long id, String key, Long projectId, String projectKey, int issueNumber, String title,
                             String description, IssueType type, IssueStatus status, IssuePriority priority,
                             Integer assigneeEmpId, String assigneeName, Integer reporterEmpId, String reporterName,
-                            LocalDate dueDate,
+                            LocalDate dueDate, Long sprintId, String sprintName, Integer storyPoints, List<String> labels,
                             LocalDateTime createdAt, LocalDateTime updatedAt) {
-    public static IssueResponse from(Issue i, String projectKey, String assigneeName, String reporterName) {
+    public static IssueResponse from(Issue i, String projectKey, String assigneeName, String reporterName, String sprintName) {
+        List<String> labelList = i.getLabels() == null || i.getLabels().isBlank()
+                ? List.of() : Arrays.asList(i.getLabels().split(","));
         return new IssueResponse(i.getId(), projectKey + "-" + i.getIssueNumber(), i.getProjectId(), projectKey,
                 i.getIssueNumber(), i.getTitle(), i.getDescription(), i.getType(), i.getStatus(), i.getPriority(),
                 i.getAssigneeEmpId(), assigneeName, i.getReporterEmpId(), reporterName,
-                i.getDueDate(),
+                i.getDueDate(), i.getSprintId(), sprintName, i.getStoryPoints(), labelList,
                 i.getCreatedAt(), i.getUpdatedAt());
     }
 }
