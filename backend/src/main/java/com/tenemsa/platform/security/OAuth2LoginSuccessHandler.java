@@ -1,9 +1,9 @@
 package com.tenemsa.platform.security;
 
-import com.tenemsa.platform.dto.AuthResponse;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.UserRepository;
-import com.tenemsa.platform.service.AuthService;
+import com.tenemsa.platform.auth.dto.AuthResponse;
+import com.tenemsa.platform.auth.service.AuthService;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,13 +44,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final AuthService authService;
-    private final com.tenemsa.platform.service.AuditService auditService;
+    private final com.tenemsa.platform.audit.service.AuditService auditService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
     public OAuth2LoginSuccessHandler(UserRepository userRepository, AuthService authService,
-                                     com.tenemsa.platform.service.AuditService auditService) {
+                                     com.tenemsa.platform.audit.service.AuditService auditService) {
         this.userRepository = userRepository;
         this.authService = authService;
         this.auditService = auditService;
@@ -99,7 +99,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         // the password is.
         AuthResponse authResp = authService.issueAuthResponse(user, false, request.getHeader("User-Agent"));
         auditService.record(user.getCompany().getId(), user.getId(), user.getName(),
-                com.tenemsa.platform.model.AuditAction.LOGIN_SUCCESS, "USER", String.valueOf(user.getId()), "Signed in with Google");
+                com.tenemsa.platform.audit.model.AuditAction.LOGIN_SUCCESS, "USER", String.valueOf(user.getId()), "Signed in with Google");
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/oauth/callback")
                 .queryParam("token", authResp.getToken())

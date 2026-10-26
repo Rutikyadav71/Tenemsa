@@ -1,6 +1,6 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.chat.repository;
 
-import com.tenemsa.platform.model.ChatMessage;
+import com.tenemsa.platform.chat.model.ChatMessage;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;

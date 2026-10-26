@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.attendance.dto;
 
-import com.tenemsa.platform.model.AttendanceStatus;
+import com.tenemsa.platform.attendance.model.AttendanceStatus;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

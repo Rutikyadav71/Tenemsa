@@ -1,7 +1,7 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
-import type { Leave, LeaveStatus } from "../types/models";
+import type { Leave, LeaveStatus } from "../../../shared/types/models";
 
 export default function UserLeaveRequestForm() {
   const empId   = localStorage.getItem("empId");

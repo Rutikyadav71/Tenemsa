@@ -1,9 +1,9 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.notification.controller;
 
-import com.tenemsa.platform.model.Notification;
-import com.tenemsa.platform.repository.NotificationRepository;
-import jakarta.transaction.Transactional;
+import com.tenemsa.platform.notification.model.Notification;
+import com.tenemsa.platform.notification.repository.NotificationRepository;
 import com.tenemsa.platform.security.AuthContext;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;

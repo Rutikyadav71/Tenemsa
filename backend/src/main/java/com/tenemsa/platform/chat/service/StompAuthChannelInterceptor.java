@@ -1,7 +1,8 @@
-package com.tenemsa.platform.security;
+package com.tenemsa.platform.chat.service;
 
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.security.JwtUtil;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;

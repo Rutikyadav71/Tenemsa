@@ -1,7 +1,7 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.issue.dto;
 
-import com.tenemsa.platform.model.IssuePriority;
-import com.tenemsa.platform.model.IssueType;
+import com.tenemsa.platform.project.issue.model.IssuePriority;
+import com.tenemsa.platform.project.issue.model.IssueType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

@@ -1,6 +1,6 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.audit.repository;
 
-import com.tenemsa.platform.model.AuditLog;
+import com.tenemsa.platform.audit.model.AuditLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

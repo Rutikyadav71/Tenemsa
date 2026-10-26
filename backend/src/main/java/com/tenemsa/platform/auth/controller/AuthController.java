@@ -1,12 +1,18 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.auth.controller;
 
-import com.tenemsa.platform.dto.*;
-import com.tenemsa.platform.model.AuditAction;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.service.AuditService;
+import com.tenemsa.platform.auth.dto.AuthResponse;
+import com.tenemsa.platform.auth.dto.ForgotPasswordRequest;
+import com.tenemsa.platform.auth.dto.LoginRequest;
+import com.tenemsa.platform.auth.dto.RefreshRequest;
+import com.tenemsa.platform.auth.dto.ResendVerificationRequest;
+import com.tenemsa.platform.auth.dto.ResetPasswordRequest;
+import com.tenemsa.platform.auth.dto.VerifyEmailRequest;
+import com.tenemsa.platform.auth.service.AuthService;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.service.AuditService;
-import com.tenemsa.platform.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

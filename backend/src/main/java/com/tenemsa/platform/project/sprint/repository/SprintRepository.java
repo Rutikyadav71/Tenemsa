@@ -1,7 +1,7 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.project.sprint.repository;
 
-import com.tenemsa.platform.model.Sprint;
-import com.tenemsa.platform.model.SprintStatus;
+import com.tenemsa.platform.project.sprint.model.Sprint;
+import com.tenemsa.platform.project.sprint.model.SprintStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { Link, useSearchParams } from "react-router-dom";
 
 type Status = "verifying" | "success" | "error";

@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.audit.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;

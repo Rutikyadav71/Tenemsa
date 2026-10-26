@@ -1,9 +1,9 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.issue.dto;
 
-import com.tenemsa.platform.model.Issue;
-import com.tenemsa.platform.model.IssuePriority;
-import com.tenemsa.platform.model.IssueStatus;
-import com.tenemsa.platform.model.IssueType;
+import com.tenemsa.platform.project.issue.model.Issue;
+import com.tenemsa.platform.project.issue.model.IssuePriority;
+import com.tenemsa.platform.project.issue.model.IssueStatus;
+import com.tenemsa.platform.project.issue.model.IssueType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -1,6 +1,6 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.employee.service;
 
-import com.tenemsa.platform.model.User;
+import com.tenemsa.platform.employee.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

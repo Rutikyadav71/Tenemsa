@@ -1,11 +1,11 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.leave.service;
 
-import com.tenemsa.platform.model.Leave;
-import com.tenemsa.platform.model.LeaveStatus;
-import com.tenemsa.platform.model.Notification;
-import com.tenemsa.platform.repository.UserRepository;
-import com.tenemsa.platform.repository.LeaveRepository;
-import com.tenemsa.platform.repository.NotificationRepository;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.leave.model.Leave;
+import com.tenemsa.platform.leave.model.LeaveStatus;
+import com.tenemsa.platform.leave.repository.LeaveRepository;
+import com.tenemsa.platform.notification.model.Notification;
+import com.tenemsa.platform.notification.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;

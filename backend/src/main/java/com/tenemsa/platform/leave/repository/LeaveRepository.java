@@ -1,7 +1,7 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.leave.repository;
 
-import com.tenemsa.platform.model.Leave;
-import com.tenemsa.platform.model.LeaveStatus;
+import com.tenemsa.platform.leave.model.Leave;
+import com.tenemsa.platform.leave.model.LeaveStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

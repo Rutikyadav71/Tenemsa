@@ -1,11 +1,11 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.team.controller;
 
-import com.tenemsa.platform.dto.TeamRequest;
-import com.tenemsa.platform.model.Team;
-import com.tenemsa.platform.model.TeamStatus;
-import com.tenemsa.platform.repository.TeamRepository;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
+import com.tenemsa.platform.team.dto.TeamRequest;
+import com.tenemsa.platform.team.model.Team;
+import com.tenemsa.platform.team.model.TeamStatus;
+import com.tenemsa.platform.team.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

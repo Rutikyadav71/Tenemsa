@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
-import { API_BASE_URL } from "../services/apiConfig";
-import { storeAuthResponse } from "../services/authStorage";
-import type { AuthResponse } from "../types/models";
+import { API_BASE_URL } from "../../../shared/api/apiConfig";
+import { storeAuthResponse } from "../../../shared/lib/authStorage";
+import type { AuthResponse } from "../../../shared/types/models";
 
 /**
  * Lands here after Google redirects back through the backend

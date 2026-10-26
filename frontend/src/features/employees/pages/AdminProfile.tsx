@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../services/axiosInstance";
-import { performLogout, performLogoutAllDevices } from "../services/logout";
-import ProfileImageUpload from "./ProfileImageUpload";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import { performLogout, performLogoutAllDevices } from "../../../shared/lib/logout";
+import ProfileImageUpload from "../../../shared/components/ProfileImageUpload";
 
 const LogoutIcon = () => <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
-import ProfileImageUpload from "../components/ProfileImageUpload";
-import type { User } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import ProfileImageUpload from "../../../shared/components/ProfileImageUpload";
+import type { User } from "../../../shared/types/models";
 
 export default function UserProfile() {
   const empId     = Number(localStorage.getItem("empId"));

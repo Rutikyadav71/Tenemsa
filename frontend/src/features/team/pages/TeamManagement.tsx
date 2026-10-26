@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
-import { getEmployees } from "../services/EmployeeService";
-import type { Team, TeamStatus, User } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import { getEmployees } from "../../employees/services/EmployeeService";
+import type { Team, TeamStatus, User } from "../../../shared/types/models";
 
 interface TeamFormState {
   name: string; description: string; projectName: string; deadline: string;

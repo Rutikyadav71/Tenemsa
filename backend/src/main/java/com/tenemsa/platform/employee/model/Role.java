@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.employee.model;
 
 /**
  * Full role hierarchy:

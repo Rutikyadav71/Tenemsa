@@ -1,7 +1,6 @@
-package com.tenemsa.platform.config;
+package com.tenemsa.platform.common;
 
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
-import com.tenemsa.platform.exception.ResourceNotFoundException;
 import org.hibernate.LazyInitializationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

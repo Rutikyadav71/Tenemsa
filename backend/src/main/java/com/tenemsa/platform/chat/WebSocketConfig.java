@@ -1,6 +1,6 @@
-package com.tenemsa.platform.config;
+package com.tenemsa.platform.chat;
 
-import com.tenemsa.platform.security.StompAuthChannelInterceptor;
+import com.tenemsa.platform.chat.service.StompAuthChannelInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

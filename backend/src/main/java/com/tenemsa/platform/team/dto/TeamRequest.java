@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.team.dto;
 
-import com.tenemsa.platform.model.TeamStatus;
+import com.tenemsa.platform.team.model.TeamStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.issue.dto;
 
-import com.tenemsa.platform.model.IssueComment;
+import com.tenemsa.platform.project.issue.model.IssueComment;
 
 import java.time.LocalDateTime;
 

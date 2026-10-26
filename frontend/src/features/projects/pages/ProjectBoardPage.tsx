@@ -6,7 +6,7 @@ import {
 } from "../services/projectService";
 import type {
   Issue, IssueComment, IssueInput, IssuePriority, IssueStatus, IssueType, Person, Project, Sprint,
-} from "../types/models";
+} from "../../../shared/types/models";
 
 const COLUMNS: { status: IssueStatus; label: string }[] = [
   { status: "TODO", label: "To do" },

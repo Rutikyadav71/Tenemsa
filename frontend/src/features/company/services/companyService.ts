@@ -1,7 +1,7 @@
-import axiosInstance from "./axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import type {
   AuthResponse, CompanyInfo, CompanyRegisterInput, WorkspaceLookup,
-} from "../types/models";
+} from "../../../shared/types/models";
 
 const LAST_WORKSPACE_KEY = "lastWorkspace";
 

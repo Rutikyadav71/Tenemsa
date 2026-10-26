@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.team.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.*;

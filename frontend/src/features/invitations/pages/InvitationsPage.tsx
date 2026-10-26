@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { listInvitations, revokeInvitation, sendInvitation } from "../services/invitationService";
-import type { InvitationItem, Role } from "../types/models";
+import type { InvitationItem, Role } from "../../../shared/types/models";
 
 // Mirrors backend RoleAssignmentRegistry; the server is the real check.
 const ASSIGNABLE: Record<string, { value: Role; label: string }[]> = {

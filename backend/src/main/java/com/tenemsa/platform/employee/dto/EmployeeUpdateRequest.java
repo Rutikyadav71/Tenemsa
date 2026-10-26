@@ -1,4 +1,4 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.employee.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;

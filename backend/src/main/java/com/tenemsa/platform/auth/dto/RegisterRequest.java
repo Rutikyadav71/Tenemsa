@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.auth.dto;
 
-import com.tenemsa.platform.model.Role;
+import com.tenemsa.platform.employee.model.Role;
 
 public class RegisterRequest {
     private String name;

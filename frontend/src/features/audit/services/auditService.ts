@@ -1,5 +1,5 @@
-import axiosInstance from "./axiosInstance";
-import type { AuditPage } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import type { AuditPage } from "../../../shared/types/models";
 
 export async function fetchAuditLog(page: number, size: number, action?: string): Promise<AuditPage> {
   const res = await axiosInstance.get<AuditPage>("/api/audit", {

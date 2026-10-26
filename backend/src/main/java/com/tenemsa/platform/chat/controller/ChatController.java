@@ -1,10 +1,10 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.chat.controller;
 
-import com.tenemsa.platform.model.ChatMessage;
-import com.tenemsa.platform.repository.ChatMessageRepository;
-import com.tenemsa.platform.repository.UserRepository;
-import com.tenemsa.platform.security.ChatIdentity;
-import com.tenemsa.platform.security.StompAuthChannelInterceptor;
+import com.tenemsa.platform.chat.model.ChatMessage;
+import com.tenemsa.platform.chat.repository.ChatMessageRepository;
+import com.tenemsa.platform.chat.service.ChatIdentity;
+import com.tenemsa.platform.chat.service.StompAuthChannelInterceptor;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;

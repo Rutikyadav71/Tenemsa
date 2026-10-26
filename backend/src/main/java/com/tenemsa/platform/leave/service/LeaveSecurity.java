@@ -1,6 +1,8 @@
-package com.tenemsa.platform.security;
+package com.tenemsa.platform.leave.service;
 
-import com.tenemsa.platform.repository.LeaveRepository;
+import com.tenemsa.platform.leave.repository.LeaveRepository;
+import com.tenemsa.platform.security.AuthContext;
+import com.tenemsa.platform.team.service.TeamSecurity;
 import org.springframework.stereotype.Component;
 
 /**

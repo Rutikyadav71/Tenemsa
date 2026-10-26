@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerCompany, rememberWorkspace } from "../services/companyService";
-import { storeAuthResponse } from "../services/authStorage";
+import { storeAuthResponse } from "../../../shared/lib/authStorage";
 
 export default function RegisterCompanyPage() {
   const [form, setForm] = useState({ companyName: "", ownerName: "", email: "", password: "" });

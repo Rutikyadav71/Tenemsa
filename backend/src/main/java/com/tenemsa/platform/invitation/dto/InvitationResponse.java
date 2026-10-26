@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.invitation.dto;
 
-import com.tenemsa.platform.model.Invitation;
+import com.tenemsa.platform.invitation.model.Invitation;
 
 import java.time.LocalDateTime;
 

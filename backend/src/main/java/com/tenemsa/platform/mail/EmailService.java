@@ -1,4 +1,4 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.mail;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

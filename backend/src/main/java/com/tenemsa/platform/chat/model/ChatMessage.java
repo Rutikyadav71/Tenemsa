@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.chat.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 

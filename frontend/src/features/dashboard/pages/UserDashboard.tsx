@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { Link } from "react-router-dom";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import type { TooltipContentProps } from "recharts";
-import type { Leave, LeaveStatus, User } from "../types/models";
+import type { Leave, LeaveStatus, User } from "../../../shared/types/models";
 
 const avatarColors = ["#6366f1","#2dd4bf","#22c55e","#f59e0b","#a78bfa"];
 

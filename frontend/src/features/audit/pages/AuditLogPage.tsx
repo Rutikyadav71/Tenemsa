@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchAuditActions, fetchAuditLog } from "../services/auditService";
-import type { AuditPage } from "../types/models";
+import type { AuditPage } from "../../../shared/types/models";
 
 const PAGE_SIZE = 25;
 

@@ -1,10 +1,10 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.attendance.controller;
 
-import com.tenemsa.platform.dto.AttendanceMarkRequest;
-import com.tenemsa.platform.model.Attendance;
-import com.tenemsa.platform.model.AttendanceStatus;
-import com.tenemsa.platform.repository.AttendanceRepository;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.attendance.dto.AttendanceMarkRequest;
+import com.tenemsa.platform.attendance.model.Attendance;
+import com.tenemsa.platform.attendance.model.AttendanceStatus;
+import com.tenemsa.platform.attendance.repository.AttendanceRepository;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;

@@ -1,11 +1,11 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.project.sprint.controller;
 
-import com.tenemsa.platform.dto.IssueResponse;
-import com.tenemsa.platform.dto.IssueSprintRequest;
-import com.tenemsa.platform.dto.SprintCompleteRequest;
-import com.tenemsa.platform.dto.SprintRequest;
-import com.tenemsa.platform.dto.SprintResponse;
-import com.tenemsa.platform.service.SprintService;
+import com.tenemsa.platform.project.issue.dto.IssueResponse;
+import com.tenemsa.platform.project.issue.dto.IssueSprintRequest;
+import com.tenemsa.platform.project.sprint.dto.SprintCompleteRequest;
+import com.tenemsa.platform.project.sprint.dto.SprintRequest;
+import com.tenemsa.platform.project.sprint.dto.SprintResponse;
+import com.tenemsa.platform.project.sprint.service.SprintService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

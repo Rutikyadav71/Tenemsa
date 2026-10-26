@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.audit.dto;
 
-import com.tenemsa.platform.model.AuditLog;
+import com.tenemsa.platform.audit.model.AuditLog;
 
 import java.time.LocalDateTime;
 

@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios';
-import axiosInstance from './axiosInstance';
-import type { EmployeeFormInput, Leave, PageResponse, User } from '../types/models';
+import axiosInstance from '../../../shared/api/axiosInstance';
+import type { EmployeeFormInput, Leave, PageResponse, User } from '../../../shared/types/models';
 
 const EMP_API_URL = '/api/employees';
 

@@ -1,5 +1,5 @@
-import axiosInstance from "./axiosInstance";
-import type { AuthResponse, InvitationItem, InvitationPreview, Role } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import type { AuthResponse, InvitationItem, InvitationPreview, Role } from "../../../shared/types/models";
 
 export async function sendInvitation(input: { email: string; name: string; role: Role; department?: string }): Promise<InvitationItem> {
   const res = await axiosInstance.post<InvitationItem>("/api/invitations", input);

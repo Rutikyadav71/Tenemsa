@@ -1,13 +1,13 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.leave.controller;
 
-import com.tenemsa.platform.model.AuditAction;
-import com.tenemsa.platform.model.Leave;
-import com.tenemsa.platform.model.LeaveStatus;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.service.AuditService;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.leave.model.Leave;
+import com.tenemsa.platform.leave.model.LeaveStatus;
+import com.tenemsa.platform.leave.service.LeaveService;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.repository.UserRepository;
-import com.tenemsa.platform.service.AuditService;
 import org.springframework.security.access.AccessDeniedException;
-import com.tenemsa.platform.service.LeaveService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;

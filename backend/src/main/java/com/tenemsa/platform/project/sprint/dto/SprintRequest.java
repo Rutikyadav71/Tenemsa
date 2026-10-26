@@ -1,4 +1,4 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.sprint.dto;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;

@@ -1,6 +1,6 @@
 package com.tenemsa.platform.security;
 
-import com.tenemsa.platform.model.Role;
+import com.tenemsa.platform.employee.model.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;

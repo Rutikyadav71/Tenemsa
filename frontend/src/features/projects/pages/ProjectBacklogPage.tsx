@@ -4,7 +4,7 @@ import {
   assignToSprint, completeSprint, createSprint, deleteSprint, getProject, listIssues, listSprints,
   MANAGER_ROLES, startSprint, updateSprint,
 } from "../services/projectService";
-import type { Issue, Project, Sprint, SprintInput } from "../types/models";
+import type { Issue, Project, Sprint, SprintInput } from "../../../shared/types/models";
 
 const msg = (err: any, fallback: string) => err?.response?.data?.message || fallback;
 const STATUS_COLOR = { PLANNED: "#64748b", ACTIVE: "#22c55e", COMPLETED: "#3b82f6" } as const;

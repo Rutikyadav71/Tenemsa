@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import type { Leave, LeaveStatus } from "../types/models";
+import type { Leave, LeaveStatus } from "../../../shared/types/models";
 
 const BackIcon = () => <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 

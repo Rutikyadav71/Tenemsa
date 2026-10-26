@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
-import type { User } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import type { User } from "../../../shared/types/models";
 
 type ConfirmAction = { type: "freeze" | "unfreeze" | "delete"; admin: User };
 

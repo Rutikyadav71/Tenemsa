@@ -1,9 +1,10 @@
-package com.tenemsa.platform.security;
+package com.tenemsa.platform.team.service;
 
-import com.tenemsa.platform.model.Team;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.TeamRepository;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.security.AuthContext;
+import com.tenemsa.platform.team.model.Team;
+import com.tenemsa.platform.team.repository.TeamRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

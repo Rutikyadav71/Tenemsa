@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { Link } from "react-router-dom";
-import { getRememberedWorkspace } from "../services/companyService";
+import { getRememberedWorkspace } from "../../company/services/companyService";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

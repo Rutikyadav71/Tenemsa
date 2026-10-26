@@ -1,4 +1,4 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

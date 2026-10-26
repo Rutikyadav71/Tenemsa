@@ -35,5 +35,3 @@ build/
 ### Environment ###
 .env
 .env.local
-.env.example
-.env.*

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
-import axiosInstance from "../services/axiosInstance";
-import type { ChatMessage, ChatRoleTag, ChatUser } from "../types/models";
-import "./chat.css";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import type { ChatMessage, ChatRoleTag, ChatUser } from "../../../shared/types/models";
+import "../chat.css";
 
 const AV = ["#6366f1","#2dd4bf","#22c55e","#f59e0b","#ef4444","#a78bfa","#38bdf8","#fb923c"];
 const getColor    = (n?: string | null) => AV[(n?.charCodeAt(0)||0)%AV.length];

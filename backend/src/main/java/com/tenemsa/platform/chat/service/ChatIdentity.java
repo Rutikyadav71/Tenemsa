@@ -1,6 +1,6 @@
-package com.tenemsa.platform.security;
+package com.tenemsa.platform.chat.service;
 
-import com.tenemsa.platform.model.Role;
+import com.tenemsa.platform.employee.model.Role;
 
 import java.util.Set;
 

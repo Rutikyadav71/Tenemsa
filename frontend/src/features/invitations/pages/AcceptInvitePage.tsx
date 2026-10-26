@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { acceptInvitation, previewInvitation } from "../services/invitationService";
-import { rememberWorkspace } from "../services/companyService";
-import { storeAuthResponse } from "../services/authStorage";
-import type { InvitationPreview } from "../types/models";
+import { rememberWorkspace } from "../../company/services/companyService";
+import { storeAuthResponse } from "../../../shared/lib/authStorage";
+import type { InvitationPreview } from "../../../shared/types/models";
 
 export default function AcceptInvitePage() {
   const [params] = useSearchParams();

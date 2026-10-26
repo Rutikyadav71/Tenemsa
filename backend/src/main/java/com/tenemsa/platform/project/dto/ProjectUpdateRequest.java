@@ -1,6 +1,6 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.dto;
 
-import com.tenemsa.platform.model.ProjectStatus;
+import com.tenemsa.platform.project.model.ProjectStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;

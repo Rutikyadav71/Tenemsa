@@ -1,6 +1,6 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.project.repository;
 
-import com.tenemsa.platform.model.Project;
+import com.tenemsa.platform.project.model.Project;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

@@ -1,4 +1,4 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.upload.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;

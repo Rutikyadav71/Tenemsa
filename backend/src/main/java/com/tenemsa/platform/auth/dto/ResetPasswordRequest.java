@@ -1,4 +1,4 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.auth.dto;
 
 public class ResetPasswordRequest {
     private String token;

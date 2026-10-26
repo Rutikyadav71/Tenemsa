@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import axiosInstance from "../services/axiosInstance";
-import { performLogout } from "../services/logout";
-import type { Notification } from "../types/models";
+import axiosInstance from "../../shared/api/axiosInstance";
+import { performLogout } from "../../shared/lib/logout";
+import type { Notification } from "../../shared/types/models";
 
 const pageTitles: Record<string, string> = {
   "/user/dashboard":"Dashboard","/user/apply-leave":"Apply Leave","/user/attendance":"My Attendance",

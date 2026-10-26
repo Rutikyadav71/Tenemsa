@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { sendMessage } from "../services/chatService";
-import type { ChatMessage, ChatRoleTag, ChatUser } from "../types/models";
-import "./chat.css";
+import type { ChatMessage, ChatRoleTag, ChatUser } from "../../../shared/types/models";
+import "../chat.css";
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 const AV = ["#6366f1", "#2dd4bf", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#38bdf8", "#fb923c"];

@@ -1,10 +1,10 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.audit.service;
 
-import com.tenemsa.platform.model.AuditAction;
-import com.tenemsa.platform.model.AuditLog;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.AuditLogRepository;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.model.AuditLog;
+import com.tenemsa.platform.audit.repository.AuditLogRepository;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;

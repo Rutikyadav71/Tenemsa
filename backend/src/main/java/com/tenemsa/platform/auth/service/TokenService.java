@@ -1,10 +1,10 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.auth.service;
 
-import com.tenemsa.platform.model.RefreshToken;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.model.VerificationToken;
-import com.tenemsa.platform.repository.RefreshTokenRepository;
-import com.tenemsa.platform.repository.VerificationTokenRepository;
+import com.tenemsa.platform.auth.model.RefreshToken;
+import com.tenemsa.platform.auth.model.VerificationToken;
+import com.tenemsa.platform.auth.repository.RefreshTokenRepository;
+import com.tenemsa.platform.auth.repository.VerificationTokenRepository;
+import com.tenemsa.platform.employee.model.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 

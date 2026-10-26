@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 export default function ResetPasswordPage() {

@@ -1,7 +1,7 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.dto;
 
-import com.tenemsa.platform.model.Project;
-import com.tenemsa.platform.model.ProjectStatus;
+import com.tenemsa.platform.project.model.Project;
+import com.tenemsa.platform.project.model.ProjectStatus;
 
 import java.time.LocalDateTime;
 

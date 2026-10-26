@@ -1,7 +1,7 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.sprint.dto;
 
-import com.tenemsa.platform.model.Sprint;
-import com.tenemsa.platform.model.SprintStatus;
+import com.tenemsa.platform.project.sprint.model.Sprint;
+import com.tenemsa.platform.project.sprint.model.SprintStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -1,6 +1,6 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.auth.repository;
 
-import com.tenemsa.platform.model.RefreshToken;
+import com.tenemsa.platform.auth.model.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

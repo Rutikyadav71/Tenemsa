@@ -1,10 +1,10 @@
 package com.tenemsa.platform;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.tenemsa.platform.auth.service.TokenService;
+import com.tenemsa.platform.invitation.model.Invitation;
+import com.tenemsa.platform.invitation.repository.InvitationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tenemsa.platform.model.Invitation;
-import com.tenemsa.platform.repository.InvitationRepository;
-import com.tenemsa.platform.service.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

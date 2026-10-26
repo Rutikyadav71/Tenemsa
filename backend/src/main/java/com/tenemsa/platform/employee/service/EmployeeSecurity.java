@@ -1,6 +1,6 @@
-package com.tenemsa.platform.security;
+package com.tenemsa.platform.employee.service;
 
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,4 @@
-package com.tenemsa.platform.dto;
+package com.tenemsa.platform.project.sprint.dto;
 
 /**
  * Where unfinished issues go when a sprint is completed: a PLANNED sprint of the same

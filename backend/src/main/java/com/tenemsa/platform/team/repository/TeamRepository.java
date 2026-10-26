@@ -1,5 +1,5 @@
-package com.tenemsa.platform.repository;
-import com.tenemsa.platform.model.Team;
+package com.tenemsa.platform.team.repository;
+import com.tenemsa.platform.team.model.Team;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;

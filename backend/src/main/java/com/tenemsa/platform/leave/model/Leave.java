@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.leave.model;
 
 import jakarta.persistence.*;
 

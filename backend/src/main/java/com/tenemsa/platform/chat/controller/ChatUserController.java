@@ -1,4 +1,4 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.chat.controller;
 
 import com.tenemsa.platform.security.AuthContext;
 import org.springframework.beans.factory.annotation.Autowired;

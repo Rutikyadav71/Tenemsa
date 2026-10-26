@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
-import type { Notification } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import type { Notification } from "../../../shared/types/models";
 
 const BellIcon = () => <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
 

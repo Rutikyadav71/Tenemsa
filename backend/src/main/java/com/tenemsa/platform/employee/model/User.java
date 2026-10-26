@@ -1,6 +1,7 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.employee.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.tenemsa.platform.company.model.Company;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;

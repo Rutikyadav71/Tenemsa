@@ -1,11 +1,11 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.project.issue.controller;
 
-import com.tenemsa.platform.dto.CommentRequest;
-import com.tenemsa.platform.dto.CommentResponse;
-import com.tenemsa.platform.dto.IssueRequest;
-import com.tenemsa.platform.dto.IssueResponse;
-import com.tenemsa.platform.dto.IssueStatusRequest;
-import com.tenemsa.platform.service.IssueService;
+import com.tenemsa.platform.project.issue.dto.CommentRequest;
+import com.tenemsa.platform.project.issue.dto.CommentResponse;
+import com.tenemsa.platform.project.issue.dto.IssueRequest;
+import com.tenemsa.platform.project.issue.dto.IssueResponse;
+import com.tenemsa.platform.project.issue.dto.IssueStatusRequest;
+import com.tenemsa.platform.project.issue.service.IssueService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

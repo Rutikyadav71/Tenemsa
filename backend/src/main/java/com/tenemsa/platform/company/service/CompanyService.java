@@ -1,14 +1,16 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.company.service;
 
-import com.tenemsa.platform.dto.CompanyRegisterRequest;
-import com.tenemsa.platform.dto.CompanyResponse;
-import com.tenemsa.platform.dto.WorkspaceLookupResponse;
-import com.tenemsa.platform.model.AuditAction;
-import com.tenemsa.platform.model.Company;
-import com.tenemsa.platform.model.Role;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.CompanyRepository;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.service.AuditService;
+import com.tenemsa.platform.auth.service.AuthService;
+import com.tenemsa.platform.company.dto.CompanyRegisterRequest;
+import com.tenemsa.platform.company.dto.CompanyResponse;
+import com.tenemsa.platform.company.dto.WorkspaceLookupResponse;
+import com.tenemsa.platform.company.model.Company;
+import com.tenemsa.platform.company.repository.CompanyRepository;
+import com.tenemsa.platform.employee.model.Role;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.PasswordPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

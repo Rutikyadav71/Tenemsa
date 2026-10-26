@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
-import { getLeavePrediction } from "../services/EmployeeService";
-import type { Leave, LeaveStatus } from "../types/models";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import { getLeavePrediction } from "../../employees/services/EmployeeService";
+import type { Leave, LeaveStatus } from "../../../shared/types/models";
 
 const CalIcon   = () => <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
 const UserIcon  = () => <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/></svg>;

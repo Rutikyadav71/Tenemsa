@@ -1,6 +1,6 @@
 package com.tenemsa.platform.security.rbac;
 
-import com.tenemsa.platform.model.Role;
+import com.tenemsa.platform.employee.model.Role;
 
 import java.util.EnumMap;
 import java.util.EnumSet;

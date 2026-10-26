@@ -1,7 +1,7 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.employee.service;
 
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

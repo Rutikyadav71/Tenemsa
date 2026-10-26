@@ -1,9 +1,9 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.audit.controller;
 
-import com.tenemsa.platform.dto.AuditLogResponse;
-import com.tenemsa.platform.model.AuditAction;
+import com.tenemsa.platform.audit.dto.AuditLogResponse;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.service.AuditService;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.service.AuditService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

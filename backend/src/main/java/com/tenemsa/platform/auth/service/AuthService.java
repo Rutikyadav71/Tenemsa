@@ -1,12 +1,14 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.auth.service;
 
-import com.tenemsa.platform.dto.AuthResponse;
-import com.tenemsa.platform.dto.LoginRequest;
-import com.tenemsa.platform.model.AuditAction;
-import com.tenemsa.platform.model.Role;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.model.VerificationToken;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.service.AuditService;
+import com.tenemsa.platform.auth.dto.AuthResponse;
+import com.tenemsa.platform.auth.dto.LoginRequest;
+import com.tenemsa.platform.auth.model.VerificationToken;
+import com.tenemsa.platform.employee.model.Role;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.mail.EmailService;
 import com.tenemsa.platform.security.JwtUtil;
 import com.tenemsa.platform.security.PasswordPolicy;
 import org.springframework.beans.factory.annotation.Autowired;

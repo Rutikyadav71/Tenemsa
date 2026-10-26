@@ -1,9 +1,9 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.upload.controller;
 
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import com.tenemsa.platform.security.SecurityRoles;
-import com.tenemsa.platform.service.CloudinaryService;
+import com.tenemsa.platform.upload.service.CloudinaryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

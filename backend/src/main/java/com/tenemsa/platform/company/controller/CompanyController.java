@@ -1,14 +1,14 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.company.controller;
 
-import com.tenemsa.platform.dto.AuthResponse;
-import com.tenemsa.platform.dto.CompanyRegisterRequest;
-import com.tenemsa.platform.dto.CompanyResponse;
-import com.tenemsa.platform.model.AuditAction;
-import com.tenemsa.platform.model.User;
+import com.tenemsa.platform.audit.model.AuditAction;
+import com.tenemsa.platform.audit.service.AuditService;
+import com.tenemsa.platform.auth.dto.AuthResponse;
+import com.tenemsa.platform.auth.service.AuthService;
+import com.tenemsa.platform.company.dto.CompanyRegisterRequest;
+import com.tenemsa.platform.company.dto.CompanyResponse;
+import com.tenemsa.platform.company.service.CompanyService;
+import com.tenemsa.platform.employee.model.User;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.service.AuditService;
-import com.tenemsa.platform.service.AuthService;
-import com.tenemsa.platform.service.CompanyService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,12 +1,15 @@
-package com.tenemsa.platform.controller;
+package com.tenemsa.platform.invitation.controller;
 
-import com.tenemsa.platform.dto.*;
-import com.tenemsa.platform.model.Invitation;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.auth.dto.AuthResponse;
+import com.tenemsa.platform.auth.service.AuthService;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.invitation.dto.AcceptInvitationRequest;
+import com.tenemsa.platform.invitation.dto.InvitationRequest;
+import com.tenemsa.platform.invitation.dto.InvitationResponse;
+import com.tenemsa.platform.invitation.model.Invitation;
+import com.tenemsa.platform.invitation.service.InvitationService;
 import com.tenemsa.platform.security.AuthContext;
-import com.tenemsa.platform.service.AuthService;
-import com.tenemsa.platform.service.InvitationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

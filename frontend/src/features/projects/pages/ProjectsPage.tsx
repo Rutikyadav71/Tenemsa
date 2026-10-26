@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createProject, listPeople, listProjects, MANAGER_ROLES } from "../services/projectService";
-import type { Person, Project } from "../types/models";
+import type { Person, Project } from "../../../shared/types/models";
 
 /** Shared by the admin and employee layouts: the base path comes from the URL. */
 export default function ProjectsPage() {

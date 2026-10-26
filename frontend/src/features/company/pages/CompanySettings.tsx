@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getMyCompany, updateMyCompany } from "../services/companyService";
-import type { CompanyInfo } from "../types/models";
+import type { CompanyInfo } from "../../../shared/types/models";
 
 export default function CompanySettings() {
   const [company, setCompany] = useState<CompanyInfo | null>(null);

@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.notification.model;
 
 import jakarta.persistence.*;
 import lombok.Data;

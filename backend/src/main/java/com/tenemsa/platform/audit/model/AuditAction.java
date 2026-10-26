@@ -1,4 +1,4 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.audit.model;
 
 /**
  * Everything the audit trail records. Stored as plain text in audit_logs.action

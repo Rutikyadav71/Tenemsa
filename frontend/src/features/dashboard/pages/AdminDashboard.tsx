@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
-import { getEmployees } from "../services/EmployeeService";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import { getEmployees } from "../../employees/services/EmployeeService";
 import { Link } from "react-router-dom";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -9,7 +9,7 @@ import {
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import type { User, Leave, Notification } from "../types/models";
+import type { User, Leave, Notification } from "../../../shared/types/models";
 import type { TooltipContentProps } from "recharts";
 
 const COLORS = ["#6366f1","#2dd4bf","#22c55e","#f59e0b","#ef4444","#a78bfa","#fb7185"];

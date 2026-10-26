@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { lookupWorkspace, getRememberedWorkspace, rememberWorkspace } from "../services/companyService";
-import type { WorkspaceLookup } from "../types/models";
+import type { WorkspaceLookup } from "../../../shared/types/models";
 
 export default function FindWorkspacePage() {
   const [slug, setSlug] = useState("");

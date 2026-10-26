@@ -1,6 +1,6 @@
 import axios, { type InternalAxiosRequestConfig, type AxiosError, type AxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from './apiConfig';
-import { clearAuthStorage, getRefreshToken, updateTokens } from './authStorage';
+import { clearAuthStorage, getRefreshToken, updateTokens } from '../lib/authStorage';
 import type { AuthResponse } from '../types/models';
 
 const axiosInstance = axios.create({

@@ -1,4 +1,4 @@
-package com.tenemsa.platform.config;
+package com.tenemsa.platform.upload;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Value;

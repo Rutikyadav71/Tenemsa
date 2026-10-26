@@ -1,7 +1,7 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.project.issue.repository;
 
-import com.tenemsa.platform.model.Issue;
-import com.tenemsa.platform.model.IssueStatus;
+import com.tenemsa.platform.project.issue.model.Issue;
+import com.tenemsa.platform.project.issue.model.IssueStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

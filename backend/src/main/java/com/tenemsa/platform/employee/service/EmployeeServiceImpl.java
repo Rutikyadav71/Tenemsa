@@ -1,11 +1,12 @@
-package com.tenemsa.platform.service;
+package com.tenemsa.platform.employee.service;
 
-import com.tenemsa.platform.model.Company;
-import com.tenemsa.platform.model.Notification;
-import com.tenemsa.platform.model.User;
-import com.tenemsa.platform.repository.CompanyRepository;
-import com.tenemsa.platform.repository.NotificationRepository;
-import com.tenemsa.platform.repository.UserRepository;
+import com.tenemsa.platform.company.model.Company;
+import com.tenemsa.platform.company.repository.CompanyRepository;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.employee.repository.UserRepository;
+import com.tenemsa.platform.mail.EmailService;
+import com.tenemsa.platform.notification.model.Notification;
+import com.tenemsa.platform.notification.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

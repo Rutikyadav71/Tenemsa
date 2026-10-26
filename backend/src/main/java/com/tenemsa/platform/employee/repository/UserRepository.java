@@ -1,7 +1,7 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.employee.repository;
 
-import com.tenemsa.platform.model.Role;
-import com.tenemsa.platform.model.User;
+import com.tenemsa.platform.employee.model.Role;
+import com.tenemsa.platform.employee.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

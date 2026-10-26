@@ -1,6 +1,6 @@
-package com.tenemsa.platform.repository;
+package com.tenemsa.platform.notification.repository;
 
-import com.tenemsa.platform.model.Notification;
+import com.tenemsa.platform.notification.model.Notification;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

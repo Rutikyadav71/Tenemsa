@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
-import type { Notification } from "../types/models";
+import type { Notification } from "../../../shared/types/models";
 
 const BellIcon = () => <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
 

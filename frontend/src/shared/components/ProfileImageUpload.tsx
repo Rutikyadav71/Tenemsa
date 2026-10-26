@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect, type ChangeEvent, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent, type WheelEvent as ReactWheelEvent } from "react";
-import axiosInstance from "../services/axiosInstance";
+import axiosInstance from "../api/axiosInstance";
 
 interface ImageCropperModalProps {
   imageDataUrl: string;

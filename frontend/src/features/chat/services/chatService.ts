@@ -1,7 +1,7 @@
 import SockJS from "sockjs-client";
 import { Client, type IMessage } from "@stomp/stompjs";
-import { API_BASE_URL } from "./apiConfig";
-import type { ChatMessage, ChatRoleTag } from "../types/models";
+import { API_BASE_URL } from "../../../shared/api/apiConfig";
+import type { ChatMessage, ChatRoleTag } from "../../../shared/types/models";
 
 let stompClient: Client | null = null;
 let isConnected = false;

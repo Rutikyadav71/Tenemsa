@@ -1,7 +1,7 @@
-import axiosInstance from "./axiosInstance";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import type {
   Issue, IssueComment, IssueInput, IssueStatus, Person, Project, ProjectStatus, Sprint, SprintInput,
-} from "../types/models";
+} from "../../../shared/types/models";
 
 export async function listProjects(): Promise<Project[]> {
   return (await axiosInstance.get<Project[]>("/api/projects")).data;

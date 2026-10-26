@@ -309,4 +309,3 @@ export interface SprintInput {
   startDate?: string | null;
   endDate?: string | null;
 }
-

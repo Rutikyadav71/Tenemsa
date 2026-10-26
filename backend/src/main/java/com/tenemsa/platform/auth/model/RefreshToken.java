@@ -1,6 +1,7 @@
-package com.tenemsa.platform.model;
+package com.tenemsa.platform.auth.model;
 
 import jakarta.persistence.*;
+import com.tenemsa.platform.employee.model.User;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;

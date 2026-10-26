@@ -1,7 +1,7 @@
-package com.tenemsa.platform.mapper;
+package com.tenemsa.platform.employee.service;
 
-import com.tenemsa.platform.dto.UserResponseDTO;
-import com.tenemsa.platform.model.User;
+import com.tenemsa.platform.employee.dto.UserResponseDTO;
+import com.tenemsa.platform.employee.model.User;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

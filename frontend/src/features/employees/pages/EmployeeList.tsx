@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getEmployees, deleteEmployee, searchEmployees, deleteMultipleEmployees } from "../services/EmployeeService";
 import { useNavigate, useLocation } from "react-router-dom";
-import type { User } from "../types/models";
+import type { User } from "../../../shared/types/models";
 
 const avatarColors = ["#6366f1","#2dd4bf","#22c55e","#f59e0b","#ef4444","#a78bfa","#fb7185","#38bdf8"];
 const getColor = (name?: string | null) => avatarColors[(name?.charCodeAt(0) || 0) % avatarColors.length];
