@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
         uniqueConstraints = @UniqueConstraint(name = "uk_issues_project_number", columnNames = {"project_id", "issue_number"}),
         indexes = {
                 @Index(name = "idx_issues_company_project", columnList = "company_id, project_id"),
-                @Index(name = "idx_issues_company_assignee", columnList = "company_id, assignee_emp_id")
+                @Index(name = "idx_issues_company_assignee", columnList = "company_id, assignee_emp_id"),
+                @Index(name = "idx_issues_company_sprint", columnList = "company_id, sprint_id")
         }
 )
 public class Issue {
@@ -60,6 +61,17 @@ public class Issue {
     @Column(name = "due_date")
     private LocalDate dueDate;
 
+    // Null = in the backlog.
+    @Column(name = "sprint_id")
+    private Long sprintId;
+
+    @Column(name = "story_points")
+    private Integer storyPoints;
+
+    // Comma-separated, already normalised by IssueService (lower case, at most 10).
+    @Column(length = 500)
+    private String labels;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -94,6 +106,12 @@ public class Issue {
     public void setReporterEmpId(Integer reporterEmpId) { this.reporterEmpId = reporterEmpId; }
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+    public Long getSprintId() { return sprintId; }
+    public void setSprintId(Long sprintId) { this.sprintId = sprintId; }
+    public Integer getStoryPoints() { return storyPoints; }
+    public void setStoryPoints(Integer storyPoints) { this.storyPoints = storyPoints; }
+    public String getLabels() { return labels; }
+    public void setLabels(String labels) { this.labels = labels; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
