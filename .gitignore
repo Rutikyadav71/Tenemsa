@@ -103,3 +103,6 @@ desktop.ini
 *.bak
 *.tmp
 *.swp
+# Phase commit guide files (kept locally for reference only)
+PHASE-*.md
+
