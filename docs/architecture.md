@@ -167,3 +167,9 @@ One specific gap worth flagging on its own: `ChatRestController`'s message-level
 ## AI layer (Phase 6a)
 
 `ai/` holds the only AI plumbing. Business code depends on the `AiClient` interface; only `SpringAiClient` and `AiConfig` import Spring AI, so the provider can change without touching features. `AiGateway` is the single entry point: availability check, quotas, bounded executor with timeout and one retry, lenient JSON parse, Bean Validation with one repair re-ask, and a usage row in its own transaction. Prompts live in `resources/prompts/<name>.v<N>.txt` and the version is recorded with every result. The model call never runs inside a database transaction. `meeting/` is the first feature built on it.
+
+## Knowledge base / RAG (Phase 7)
+
+`knowledge/` is feature-based: `embedding/` (EmbeddingClient, Gemini over plain HTTP, EmbeddingGateway with daily cap and usage log `KB_EMBEDDING`), `vector/` (VectorStore: PgVectorStore with `<=>`, ScanVectorStore portable, VectorStoreRouter picks lazily), `service/` (TextExtractor, TextChunker, KnowledgeIngestionService, KnowledgeAnswerService), `controller/`.
+
+Flow: add document -> extract -> chunk (about 900 chars, 150 overlap) -> save PROCESSING -> background thread embeds in batches -> READY/FAILED. Ask: embed question -> top-k chunks the caller may read above `kb.min-score` -> none: answer "not found" with no model call -> else model gets numbered fenced SOURCES and must cite -> only valid citations are returned.

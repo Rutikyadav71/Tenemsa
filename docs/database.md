@@ -170,3 +170,10 @@ Each tenant table also has an index on `company_id` (Phase 4). Still no composit
 ## Company AI switch (Flyway V6)
 
 `companies.ai_enabled BOOLEAN NOT NULL DEFAULT TRUE`. Checked on every AI call by `AiGateway`.
+
+## Knowledge base (Flyway V7)
+
+- `kb_documents`: company, title, file name, `audience` (ALL_STAFF/MANAGEMENT), `status` (PROCESSING/READY/FAILED), error message, `content_hash` (sha256, duplicate check per company), char and chunk counts, `embedding_model`, uploader.
+- `kb_chunks`: company, document, `chunk_index`, `content`, `embedding_json` (portable vector as JSON text), `embedding_model`.
+- PostgreSQL only: if `CREATE EXTENSION vector` succeeds, V7 adds `kb_chunks.embedding vector(768)` and an HNSW cosine index. If it fails (not installed or no permission) the migration still succeeds and search uses the scan fallback.
+- Every query filters by `company_id` first; audience and READY status are part of the search SQL.

@@ -130,3 +130,7 @@ Ideas for later (6b+): email/announcement writer with confirmation, stand-up and
 - **Prompt contract test** guards the safety rules and JSON shape of every prompt file.
 - **Parked:** the leave predictor (`ml-service`, `leave_type`) until you ask for it.
 - **Ready for Phase 7:** the gateway, prompts, quotas, usage log and permission model are in place; RAG adds embeddings and retrieval on PostgreSQL/pgvector.
+
+## Phase 7: Knowledge base (built)
+
+Upload or paste documents (pdf, docx, txt, md, csv), index them in the background, ask questions with cited answers. Tenant-scoped, audience-filtered (all staff / management), pgvector on PostgreSQL with a portable fallback. Permissions `kb:ask`, `kb:manage`, `kb:read:management`. Not stored: the original files (Phase 8). Scanned PDFs are not supported (no OCR).

@@ -213,3 +213,18 @@ Login responses (`/api/auth/login`, `/api/admin/login`, refresh, `/api/auth/me`)
 | PUT | `/api/companies/me/ai` | `company:manage` | Body `{enabled}`. Switches AI off or on for the whole company. While off, every AI call answers `503`. |
 
 `GET /api/ai/status` also returns `companyEnabled`; `GET /api/ai/usage` returns `estimatedCostUsd` (null unless `AI_PRICE_*` are set).
+
+## Knowledge base (Phase 7)
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/kb/status` | `kb:ask` | `{available, companyEnabled, vectorStore, embeddingModel, readyDocuments}`; `readyDocuments` counts only what the caller may read. |
+| POST | `/api/kb/ask` | `kb:ask` | Body `{question}` (3 to 500 chars). Returns `{found, answer, sources[{n, documentId, title, snippet, score}]}`. `found=false` when nothing relevant is found or the answer cites nothing valid. |
+| GET | `/api/kb/documents` | `kb:manage` | Documents of the caller's company with status, chunk count and `stale`. |
+| GET | `/api/kb/documents/{id}` | `kb:manage` | `404` outside your company. |
+| POST | `/api/kb/documents` | `kb:manage` | Multipart `file` (pdf, docx, txt, md, csv, log, json), optional `title`, `audience` (`ALL_STAFF` or `MANAGEMENT`). `201`; indexing continues in the background (poll status). |
+| POST | `/api/kb/documents/text` | `kb:manage` | Body `{title, audience, text}`. `201`. |
+| POST | `/api/kb/documents/{id}/reindex` | `kb:manage` | Re-embeds with the current model; also retries a FAILED document. |
+| DELETE | `/api/kb/documents/{id}` | `kb:manage` | `204`; removes the document and its passages. |
+
+Errors: `400` duplicate/too short/too long/unsupported file, `403` missing permission, `404` other company, `429` embedding quota, `503` AI off (server or company), `502` provider failure.
