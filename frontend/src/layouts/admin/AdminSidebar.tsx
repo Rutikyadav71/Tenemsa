@@ -36,6 +36,8 @@ const navItems: NavItemData[] = [
   { to:"/admin/meetings",      label:"Meeting AI",     icon:ic.audit,      perms:["ai:use"] },
   { to:"/admin/writer",        label:"AI Writer",      icon:ic.invite,     perms:["ai:use"] },
   { to:"/admin/assistant",     label:"HR Assistant",   icon:ic.profile,    perms:["ai:assistant:self"] },
+  { to:"/admin/ask-docs",      label:"Ask Documents",  icon:ic.audit,      perms:["kb:ask"] },
+  { to:"/admin/knowledge",     label:"Knowledge Base", icon:ic.audit,      perms:["kb:manage"] },
   { to:"/admin/chat",          label:"Chat Room",      icon:ic.chat,       perms:["chat:use"] },
   { to:"/admin/notifications", label:"Notifications",  icon:ic.notif },
   { to:"/admin/manage-admins", label:"Admin Control",  icon:ic.admins,     roles:["OWNER","ADMIN","SUPER_ADMIN"] },

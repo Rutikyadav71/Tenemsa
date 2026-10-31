@@ -37,6 +37,8 @@ export default function UserSidebar({ isOpen, collapsed, toggleSidebar }) {
   const aiItems = [
     ...(can("ai:use") ? [{ to:"/user/meetings", label:"Meeting AI", icon:ic.notif }, { to:"/user/writer", label:"AI Writer", icon:ic.notif }] : []),
     ...(can("ai:assistant:self") ? [{ to:"/user/assistant", label:"HR Assistant", icon:ic.notif }] : []),
+    ...(can("kb:ask") ? [{ to:"/user/ask-docs", label:"Ask Documents", icon:ic.notif }] : []),
+    ...(can("kb:manage") ? [{ to:"/user/knowledge", label:"Knowledge Base", icon:ic.notif }] : []),
   ];
   const visibleItems = [...navItems.slice(0, 5), ...aiItems, ...navItems.slice(5)];
 
