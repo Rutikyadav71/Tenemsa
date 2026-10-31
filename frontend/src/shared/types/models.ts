@@ -433,3 +433,42 @@ export interface ProjectReport {
 }
 
 export interface HrAnswer { answer: string; factsUsed: string[]; model: string; promptVersion: string; }
+
+// ---- Knowledge base (Phase 7) ----
+export type KbAudience = "ALL_STAFF" | "MANAGEMENT";
+export type KbStatus = "PROCESSING" | "READY" | "FAILED";
+
+export interface KbDocument {
+  id: number;
+  title: string;
+  fileName: string | null;
+  audience: KbAudience;
+  status: KbStatus;
+  errorMessage: string | null;
+  charCount: number;
+  chunkCount: number;
+  embeddingModel: string | null;
+  /** Indexed with an older embedding model: re-index to make it searchable again. */
+  stale: boolean;
+  uploadedByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KbSource { n: number; documentId: number; title: string; snippet: string; score: number; }
+
+export interface KbAnswer {
+  found: boolean;
+  answer: string;
+  sources: KbSource[];
+  model: string | null;
+  promptVersion: string | null;
+}
+
+export interface KbServiceStatus {
+  available: boolean;
+  companyEnabled: boolean;
+  vectorStore: string;
+  embeddingModel: string;
+  readyDocuments: number;
+}
