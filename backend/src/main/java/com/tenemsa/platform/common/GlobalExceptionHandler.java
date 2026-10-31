@@ -62,6 +62,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Invalid value for '" + e.getName() + "'.");
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<?> handleTooLarge(org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, "That file is larger than 10 MB.");
+    }
+
     // ---- AI (Phase 6a): each failure has its own status so the UI can say something useful ----
     @ExceptionHandler(com.tenemsa.platform.ai.exception.AiUnavailableException.class)
     public ResponseEntity<?> handleAiUnavailable(com.tenemsa.platform.ai.exception.AiUnavailableException e) {

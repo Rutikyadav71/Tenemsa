@@ -59,13 +59,4 @@ public class UploadController {
         } catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
         catch (IOException e) { return ResponseEntity.internalServerError().body("Upload failed: " + e.getMessage()); }
     }
-
-    @PostMapping(value = "/chat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadChatFile(@RequestParam("file") MultipartFile file,
-            @RequestParam("sender") String sender) {
-        if (file == null || file.isEmpty()) return ResponseEntity.badRequest().body("No file provided");
-        try { return ResponseEntity.ok(cloudinaryService.uploadChatFile(file, sender)); }
-        catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
-        catch (IOException e) { return ResponseEntity.internalServerError().body("Upload failed: " + e.getMessage()); }
-    }
 }
