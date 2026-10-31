@@ -44,10 +44,8 @@ public class AiUsageService {
         Long companyId = authContext.currentCompanyId();
         Integer empId = users.findByEmailAndCompanyId(authContext.currentEmail(), companyId).map(User::getEmpId).orElse(null);
         String refused = AiRequestStatus.RATE_LIMITED.name();
-        long usedUser = empId == null ? 0 : logs.countByCompanyIdAndEmpIdAndCreatedAtAfterAndStatusNot(
-                companyId, empId, LocalDateTime.now().minusHours(1), refused);
-        long usedCompany = logs.countByCompanyIdAndCreatedAtAfterAndStatusNot(
-                companyId, LocalDateTime.now().minusHours(24), refused);
+        long usedUser = empId == null ? 0 : logs.countChatByUser(companyId, empId, LocalDateTime.now().minusHours(1));
+        long usedCompany = logs.countChatByCompany(companyId, LocalDateTime.now().minusHours(24));
         boolean companyEnabled = companies.findById(companyId).map(c -> c.isAiEnabled()).orElse(false);
         return new AiStatusResponse(client.isAvailable() && companyEnabled, client.providerName(), props.getModel(),
                 (int) Math.max(0, props.getPerUserPerHour() - usedUser),
