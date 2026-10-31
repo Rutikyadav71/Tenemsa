@@ -33,6 +33,10 @@ public class Company {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    /** Owners/admins can switch AI off for the whole company (Company settings). On by default. */
+    @Column(name = "ai_enabled", nullable = false)
+    private boolean aiEnabled = true;
+
     public Company() {}
 
     public Company(String name, String slug) {
@@ -48,6 +52,9 @@ public class Company {
 
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
+
+    public boolean isAiEnabled() { return aiEnabled; }
+    public void setAiEnabled(boolean aiEnabled) { this.aiEnabled = aiEnabled; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
