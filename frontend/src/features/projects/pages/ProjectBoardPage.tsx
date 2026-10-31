@@ -4,6 +4,9 @@ import {
   addComment, createIssue, deleteIssue, deleteProject, getProject, listComments, listIssues,
   listPeople, listSprints, MANAGER_ROLES, moveIssue, updateIssue, updateProject,
 } from "../services/projectService";
+import TaskGeneratorModal from "../../ai/components/TaskGeneratorModal";
+import ProjectReportModal from "../../ai/components/ProjectReportModal";
+import { can } from "../../../shared/lib/roles";
 import type {
   Issue, IssueComment, IssueInput, IssuePriority, IssueStatus, IssueType, Person, Project, Sprint,
 } from "../../../shared/types/models";
@@ -41,6 +44,9 @@ export default function ProjectBoardPage() {
   const [dragId, setDragId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<Issue | null>(null);
+  const [aiTasks, setAiTasks] = useState(false);
+  const [aiReport, setAiReport] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const archived = project?.status === "ARCHIVED";
 
@@ -122,11 +128,17 @@ export default function ProjectBoardPage() {
           <button className="btn-ems btn-secondary-ems" onClick={() => navigate(`${base}/projects/${project.id}/backlog`)}>Backlog &amp; sprints</button>
           {canManage && <button className="btn-ems btn-secondary-ems" onClick={toggleArchive}>{archived ? "Unarchive" : "Archive"}</button>}
           {canManage && archived && <button className="btn-ems btn-secondary-ems" onClick={removeProject}>Delete</button>}
+          {can("ai:use") && <button className="btn-ems btn-secondary-ems" onClick={() => setAiReport(true)}>AI report</button>}
+          {!archived && can("ai:use") && can("issue:create") && <button className="btn-ems btn-secondary-ems" onClick={() => setAiTasks(true)}>AI suggest tasks</button>}
           {!archived && <button className="btn-ems btn-primary-ems" onClick={() => setCreating(true)}>New issue</button>}
         </div>
       </div>
 
       {error && <div className="alert-ems alert-error" onClick={() => setError("")}>{error}</div>}
+      {notice && <div className="alert-ems" onClick={() => setNotice("")}>{notice}</div>}
+      {aiTasks && <TaskGeneratorModal projectId={project.id} onClose={() => setAiTasks(false)}
+        onCreated={n => { setNotice(`Created ${n} AI-suggested issue(s). They are labelled "ai-draft".`); reload(); }} />}
+      {aiReport && <ProjectReportModal projectId={project.id} sprints={sprints} onClose={() => setAiReport(false)} />}
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
         <select className="form-control-ems" style={{ maxWidth: 220 }} value={sprintFilter} onChange={e => setSprintFilter(e.target.value)}>
