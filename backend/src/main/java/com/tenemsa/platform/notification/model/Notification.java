@@ -29,6 +29,14 @@ public class Notification {
     @Column(name = "leave_id")
     private Long leaveId;
 
+    /** Who this is for. null = an older company-wide notification. */
+    @Column(name = "recipient_emp_id")
+    private Integer recipientEmpId;
+
+    /** LEAVE_REQUESTED, LEAVE_DECIDED, ... lets the screen choose where a click goes. */
+    @Column(length = 40)
+    private String type;
+
     public Notification() {}
 
     public Notification(String message) {
@@ -87,4 +95,12 @@ public class Notification {
     public void setLeaveId(Long leaveId) {
         this.leaveId = leaveId;
     }
+
+    public Integer getRecipientEmpId() { return recipientEmpId; }
+
+    public void setRecipientEmpId(Integer recipientEmpId) { this.recipientEmpId = recipientEmpId; }
+
+    public String getType() { return type; }
+
+    public void setType(String type) { this.type = type; }
 }
