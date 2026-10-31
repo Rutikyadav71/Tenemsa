@@ -74,6 +74,9 @@ public enum Permission {
     KB_READ_MANAGEMENT("kb:read:management"),
     KB_MANAGE("kb:manage"),
 
+    /** Open the Documents page and download what is visible to you. Every role. */
+    DOCUMENT_VIEW("document:view"),
+    /** Upload company documents and documents for individual employees; delete any document. */
     DOCUMENT_UPLOAD("document:upload"),
     CHAT_USE("chat:use"),
     PROFILE_UPDATE_SELF("profile:update:self");
