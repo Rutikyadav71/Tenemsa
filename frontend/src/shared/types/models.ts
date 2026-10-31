@@ -69,6 +69,7 @@ export interface AuthResponse {
   salary: number | null;
   primaryOwner: boolean | null;
   emailVerified: boolean | null;
+  permissions?: string[];
 }
 
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -157,6 +158,7 @@ export interface CompanyInfo {
   slug: string;
   createdAt: string;
   memberCount: number;
+  aiEnabled: boolean;
 }
 
 /** Public, minimal view returned by the "find your workspace" lookup. */
@@ -309,3 +311,125 @@ export interface SprintInput {
   startDate?: string | null;
   endDate?: string | null;
 }
+
+// ---- Phase 6a: AI ----------------------------------------------------------
+
+export interface AiStatus {
+  enabled: boolean;
+  provider: string;
+  model: string;
+  requestsLeftThisHour: number;
+  companyRequestsLeftToday: number;
+  /** false when an owner/admin switched AI off for the company. */
+  companyEnabled: boolean;
+}
+
+export interface AiUsage {
+  days: number;
+  totalRequests: number;
+  successful: number;
+  failed: number;
+  rateLimited: number;
+  inputTokens: number;
+  outputTokens: number;
+  averageLatencyMs: number;
+  byFeature: { feature: string; requests: number; inputTokens: number; outputTokens: number }[];
+  byDay: { date: string; requests: number; failed: number }[];
+  /** null when no price list is configured on the server. */
+  estimatedCostUsd: number | null;
+}
+
+export type MeetingStatus = "DRAFT" | "APPROVED";
+
+export interface MeetingListItem {
+  id: number;
+  title: string;
+  meetingDate: string | null;
+  status: MeetingStatus;
+  actionItemCount: number;
+  convertedCount: number;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+export interface MeetingActionItem {
+  id: number | null;            // null = a new item that is not saved yet
+  title: string;
+  description: string | null;
+  ownerName: string | null;
+  ownerEmpId: number | null;
+  dueDate: string | null;
+  priority: IssuePriority;
+  issueId: number | null;
+  issueKey: string | null;
+}
+
+export interface MeetingDetail {
+  id: number;
+  title: string;
+  meetingDate: string | null;
+  sourceRef: string | null;
+  sourceText: string | null;
+  summary: string;
+  decisions: string[];
+  openQuestions: string[];
+  actionItems: MeetingActionItem[];
+  status: MeetingStatus;
+  projectId: number | null;
+  model: string | null;
+  promptVersion: string | null;
+  createdByEmpId: number | null;
+  createdByName: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MeetingCreateInput {
+  title: string;
+  meetingDate?: string | null;
+  sourceRef?: string;
+  notes: string;
+}
+
+export interface MeetingUpdateInput {
+  title: string;
+  meetingDate: string | null;
+  summary: string;
+  decisions: string[];
+  openQuestions: string[];
+  actionItems: {
+    id: number | null; title: string; description?: string; ownerName?: string;
+    ownerEmpId: number | null; dueDate: string | null; priority: IssuePriority;
+  }[];
+}
+
+// ---- Phase 6c AI helpers ----------------------------------------------------
+
+export interface SuggestedTask {
+  title: string;
+  description: string | null;
+  type: IssueType;
+  priority: IssuePriority;
+  storyPoints: number | null;
+  labels: string[];
+  possibleDuplicate: boolean;
+}
+export interface TaskSuggestions { projectId: number; tasks: SuggestedTask[]; model: string; promptVersion: string; }
+export interface TaskDraft {
+  title: string; description?: string; type: IssueType; priority: IssuePriority; storyPoints: number | null; labels: string[];
+}
+
+export type CommunicationKind = "ANNOUNCEMENT" | "REMINDER" | "FEEDBACK" | "POLICY_UPDATE" | "WELCOME" | "THANK_YOU" | "OTHER";
+export type CommunicationTone = "FORMAL" | "FRIENDLY" | "CONCISE" | "ENCOURAGING";
+export interface CommunicationInput { kind: CommunicationKind; audience: string; tone: CommunicationTone; points: string; }
+export interface CommunicationDraft { subject: string; body: string; model: string; promptVersion: string; }
+
+export type ReportType = "STATUS_UPDATE" | "SPRINT_RETRO";
+export interface ProjectReport {
+  type: ReportType; projectKey: string; headline: string; summary: string;
+  highlights: string[]; risks: string[]; nextSteps: string[]; basedOn: string[];
+  model: string; promptVersion: string; generatedAt: string;
+}
+
+export interface HrAnswer { answer: string; factsUsed: string[]; model: string; promptVersion: string; }

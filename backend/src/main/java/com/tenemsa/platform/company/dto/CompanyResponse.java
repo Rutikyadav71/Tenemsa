@@ -8,5 +8,6 @@ public record CompanyResponse(
         String name,
         String slug,
         LocalDateTime createdAt,
-        long memberCount
+        long memberCount,
+        boolean aiEnabled
 ) {}

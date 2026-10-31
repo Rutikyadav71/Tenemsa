@@ -62,6 +62,18 @@ public class CompanyController {
         return companyService.get(authContext.currentCompanyId());
     }
 
+    /** Company-wide AI switch. Nothing is deleted when it is off; AI features simply refuse to run. */
+    @PreAuthorize("hasAuthority('company:manage')")
+    @PutMapping("/me/ai")
+    public ResponseEntity<?> setAi(@RequestBody Map<String, Boolean> body) {
+        Boolean enabled = body.get("enabled");
+        if (enabled == null) return ResponseEntity.badRequest().body("Field \"enabled\" is required.");
+        var updated = companyService.setAiEnabled(authContext.currentCompanyId(), enabled);
+        auditService.recordCurrent(AuditAction.COMPANY_AI_TOGGLED, "COMPANY", String.valueOf(updated.id()),
+                enabled ? "Turned AI features on" : "Turned AI features off");
+        return ResponseEntity.ok(updated);
+    }
+
     @PreAuthorize("hasAuthority('company:manage')")
     @PutMapping("/me")
     public ResponseEntity<?> rename(@RequestBody Map<String, String> body) {

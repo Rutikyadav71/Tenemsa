@@ -21,7 +21,10 @@ Tenemsa is being built in phases, each reviewed and approved before the next sta
 | 5a | Project management: projects, issues, kanban board, comments (Flyway V3) | ✅ Complete |
 | 5b | Sprints, backlog, story points, labels, sprint complete with carry-over (Flyway V4) | ✅ Complete |
 | 5c | Project membership / private projects, issue links | Deferred, to be discussed |
-| 6 to 10 | See "Revised roadmap: Phase 6 onward" below | Proposed |
+| 6a | AI foundation (provider abstraction, prompts, quotas, usage log) + meeting summaries to issues (Flyway V5) | ✅ Built, awaiting first real-model test |
+| 6b | Role-aware sign-in and menus: one login for everyone, HR admin sign-in, permissions in login response, workspace by role | ✅ Built |
+| 6c | Task generator, message writer, project status and sprint retro, HR assistant, per-company AI switch, cost estimate, prompt contract tests (Flyway V6). Completes Phase 6 apart from the parked leave predictor | ✅ Built, awaiting first real-model test |
+| 7 to 10 | See "Revised roadmap: Phase 6 onward" below | Proposed |
 
 ## Completed
 
@@ -86,7 +89,12 @@ Phases 0-5 are complete and stable and are not reopened. The old Phase 9 (fronte
 
 Dependencies: 6 before everything AI; 7 needs 6 and document storage from 8, so 8's document upload comes first or is built minimally inside 7; 9 needs notifications from 8; agents in 9 need 6's tool framework and audit.
 
-### Open decisions before Phase 6 code
+### Decisions taken (Phase 6 start)
+- **RAG runs on PostgreSQL with pgvector.** MySQL stays supported for local development only; production (e.g. Render) uses PostgreSQL. Features needing vectors (Phase 7) are PostgreSQL-only.
+- **Leave predictor is parked.** `ml-service` and `leave_type` are untouched until explicitly requested.
+- **Gemini via Spring AI** behind our own `AiClient` interface.
+
+### Open decisions before Phase 6 code (now resolved, kept for history)
 1. **Vector store vs. database support.** The app runs on PostgreSQL or MySQL by profile. pgvector is PostgreSQL only. Options: make RAG require PostgreSQL, or standardise on PostgreSQL. Decide before Phase 7; it does not block Phase 6.
 2. **Spring AI version.** Spring AI 1.1.x (1.1.8 as of June 2026) is built on Spring Boot 3.5, matching this project. 2.0 is not recommended yet. Confirm the Gemini starter artifact when adding the dependency.
 3. **Leave predictor.** `ml-service` is a Flask/scikit-learn service (logistic regression) that is called by `LeaveService` through a hardcoded URL. The backend sends a `leave_type`, but the `Leave` entity has no such column, so it is probably broken today. Options: add `leave_type` to leave requests, or retrain without it.
@@ -107,3 +115,18 @@ Documented here since "why" matters as much as "what" for a project meant to dem
 
 ### Package-by-feature refactor
 After Phase 5b the backend moved from package-by-layer to package-by-feature (see "Backend structure" in `architecture.md`). Pure file moves plus package/import updates; no behaviour change. All later phases follow the feature layout.
+
+### Phase 6a delivered
+Backend `ai` and `meeting` features, Flyway V5, frontend "Meeting AI" and "AI Usage" pages. Guardrails: AI off by default (`AI_PROVIDER=none`), key only on the server, quotas per user per hour and per company per day, hard timeout plus one retry, JSON validated with one repair attempt, usage logged without storing prompts or answers, notes treated as untrusted input, a human approves before anything is created, and issues are created with the caller's own permissions.
+
+Ideas for later (6b+): email/announcement writer with confirmation, stand-up and sprint-retrospective drafts, HR assistant over the user's own leave/attendance, prompt evaluation test set, per-company AI on/off switch, cost estimate on the usage page, RAG on pgvector (Phase 7).
+
+### Phase 6c delivered (Phase 6 complete)
+- **Task generator** (`/api/ai/tasks/generate`, `/create`): suggests tasks from a goal, cleans the output (type, priority, points, labels), flags likely duplicates; issues exist only after a person confirms, labelled `ai-draft`.
+- **Message writer** (`/api/ai/writer/draft`): announcement, reminder, feedback and similar drafts; nothing is stored or sent.
+- **Project reports** (`/api/ai/projects/{id}/report`): status update or sprint retrospective. The system computes every number; the model writes it up; the numbers are returned as `basedOn`.
+- **HR assistant** (`/api/ai/hr-assistant/ask`): answers questions about the caller's OWN leave and attendance. Held by every role (`ai:assistant:self`). No tools, no policy data, no other people's records.
+- **Company AI switch** (`PUT /api/companies/me/ai`, Flyway V6) and **cost estimate** on the usage page (`ai.price-*` settings).
+- **Prompt contract test** guards the safety rules and JSON shape of every prompt file.
+- **Parked:** the leave predictor (`ml-service`, `leave_type`) until you ask for it.
+- **Ready for Phase 7:** the gateway, prompts, quotas, usage log and permission model are in place; RAG adds embeddings and retrieval on PostgreSQL/pgvector.

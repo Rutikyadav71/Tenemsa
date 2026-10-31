@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getMyCompany, updateMyCompany } from "../services/companyService";
+import { setCompanyAi } from "../../ai/services/aiService";
 import type { CompanyInfo } from "../../../shared/types/models";
 
 export default function CompanySettings() {
@@ -28,6 +29,18 @@ export default function CompanySettings() {
       const d = err.response?.data;
       setMessage({ text: d?.message || (typeof d === "string" ? d : "Update failed."), type: "error" });
     } finally { setSaving(false); }
+  };
+
+  const toggleAi = async () => {
+    if (!company) return;
+    const next = !company.aiEnabled;
+    if (!next && !window.confirm("Switch AI features off for everyone in this company? Nothing is deleted; AI buttons will stop working until you switch it back on.")) return;
+    try {
+      setCompany(await setCompanyAi(next));
+      setMessage({ text: next ? "AI features are on." : "AI features are off.", type: "success" });
+    } catch (err: any) {
+      setMessage({ text: err.response?.data?.message || "Could not change the AI setting.", type: "error" });
+    }
   };
 
   if (!company) return <div className="page-container">{message ? message.text : "Loading..."}</div>;
@@ -68,6 +81,18 @@ export default function CompanySettings() {
             The workspace address stays the same when you rename the company.
           </div>
         </form>
+      )}
+
+      {canManage && (
+        <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 20, marginTop: 24 }}>
+          <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>AI features</div>
+          <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 12 }}>
+            Meeting summaries, task suggestions, project reports, the message writer and the HR assistant send the text you give them (and, for reports and the HR assistant, the related board or leave data) to the AI provider. Turn this off if your company does not allow that.
+          </div>
+          <button className="btn-ems btn-secondary-ems" onClick={toggleAi}>
+            {company.aiEnabled ? "AI is on. Turn off" : "AI is off. Turn on"}
+          </button>
+        </div>
       )}
     </div>
   );

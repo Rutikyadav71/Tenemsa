@@ -1,4 +1,5 @@
 import type { AuthResponse, ChatRoleTag } from "../types/models";
+import { chatTagFor } from "./roles";
 
 /**
  * Single place that writes auth data to localStorage. Previously each of
@@ -8,7 +9,9 @@ import type { AuthResponse, ChatRoleTag } from "../types/models";
  * ChatUserController's history). One function, one place to fix if a field
  * is ever added or renamed again.
  */
-export function storeAuthResponse(resp: AuthResponse, roleTag: ChatRoleTag): void {
+export function storeAuthResponse(resp: AuthResponse, roleTagOverride?: ChatRoleTag): void {
+  // The chat tag always follows the business role (same rule as the backend), whichever sign-in page was used.
+  const roleTag = chatTagFor(resp.role) || roleTagOverride;
   localStorage.clear();
   localStorage.setItem("token", resp.token);
   localStorage.setItem("refreshToken", resp.refreshToken || "");
@@ -25,6 +28,10 @@ export function storeAuthResponse(resp: AuthResponse, roleTag: ChatRoleTag): voi
   localStorage.setItem("id", String(resp.id ?? ""));
   localStorage.setItem("empId", resp.empId != null ? String(resp.empId) : "");
   localStorage.setItem("name", resp.name || "");
+  localStorage.setItem("permissions", JSON.stringify(resp.permissions || []));
+  // The admin workspace reads these keys; set them for every role so HR works there too.
+  localStorage.setItem("adminName", resp.name || "");
+  localStorage.setItem("adminEmail", resp.email || "");
   localStorage.setItem("email", resp.email || "");
   localStorage.setItem("companyId", String(resp.companyId ?? ""));
   localStorage.setItem("companyName", resp.companyName || "");

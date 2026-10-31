@@ -62,6 +62,28 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Invalid value for '" + e.getName() + "'.");
     }
 
+    // ---- AI (Phase 6a): each failure has its own status so the UI can say something useful ----
+    @ExceptionHandler(com.tenemsa.platform.ai.exception.AiUnavailableException.class)
+    public ResponseEntity<?> handleAiUnavailable(com.tenemsa.platform.ai.exception.AiUnavailableException e) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+    }
+
+    @ExceptionHandler(com.tenemsa.platform.ai.exception.AiLimitExceededException.class)
+    public ResponseEntity<?> handleAiLimit(com.tenemsa.platform.ai.exception.AiLimitExceededException e) {
+        return error(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
+    }
+
+    @ExceptionHandler(com.tenemsa.platform.ai.exception.AiTimeoutException.class)
+    public ResponseEntity<?> handleAiTimeout(com.tenemsa.platform.ai.exception.AiTimeoutException e) {
+        return error(HttpStatus.GATEWAY_TIMEOUT, e.getMessage());
+    }
+
+    @ExceptionHandler({com.tenemsa.platform.ai.exception.AiProviderException.class,
+                       com.tenemsa.platform.ai.exception.AiOutputException.class})
+    public ResponseEntity<?> handleAiFailure(RuntimeException e) {
+        return error(HttpStatus.BAD_GATEWAY, e.getMessage());
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<?> handleNotFound(ResourceNotFoundException e) {
         return error(HttpStatus.NOT_FOUND, e.getMessage());

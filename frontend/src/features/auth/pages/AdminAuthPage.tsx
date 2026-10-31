@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import axiosInstance from "../../../shared/api/axiosInstance";
 import { API_BASE_URL } from "../../../shared/api/apiConfig";
+import { homeFor } from "../../../shared/lib/roles";
 import { storeAuthResponse } from "../../../shared/lib/authStorage";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { lookupWorkspace, rememberWorkspace } from "../../company/services/companyService";
@@ -31,13 +32,13 @@ export default function AdminAuthPage() {
     setLoading(true);
     try {
       const res = await axiosInstance.post<AuthResponse>("/api/admin/login", { ...form, rememberMe, workspace: workspace || undefined });
-      storeAuthResponse(res.data, "ADMIN");
+      storeAuthResponse(res.data);
       // Kept for AdminProfile/AdminNavbar reads that predate the shared
       // storeAuthResponse helper's canonical "name"/"email" keys.
       localStorage.setItem("adminEmail", res.data.email || "");
       localStorage.setItem("adminName", res.data.name || "");
       if (res.data.companySlug) rememberWorkspace(res.data.companySlug);
-      navigate("/admin/dashboard");
+      navigate(homeFor(res.data.role));
     } catch (err: any) {
       const raw = err.response?.data;
       const msg = (raw && typeof raw === "object" ? raw.message : raw) || "";
@@ -77,7 +78,7 @@ export default function AdminAuthPage() {
             ["Leave Management", "Approve or reject with one click"],
             ["Attendance", "Track daily check-ins & work hours"],
             ["Team Management", "Create and manage project teams"],
-            ["Role-based access", "Owner, Admin, HR and Manager roles"],
+            ["Role-based access", "Owner, Admin and HR roles"],
           ].map(([t, s], i) => (
             <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12, textAlign: "left" }}>
               <div style={{

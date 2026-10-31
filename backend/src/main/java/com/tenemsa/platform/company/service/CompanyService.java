@@ -113,9 +113,17 @@ public class CompanyService {
         return toResponse(companyRepository.save(c));
     }
 
+    @Transactional
+    public CompanyResponse setAiEnabled(Long companyId, boolean enabled) {
+        Company c = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("Company not found"));
+        c.setAiEnabled(enabled);
+        return toResponse(companyRepository.save(c));
+    }
+
     private CompanyResponse toResponse(Company c) {
         return new CompanyResponse(c.getId(), c.getName(), c.getSlug(), c.getCreatedAt(),
-                userRepository.countByCompanyId(c.getId()));
+                userRepository.countByCompanyId(c.getId()), c.isAiEnabled());
     }
 
     private static String clean(String s) {

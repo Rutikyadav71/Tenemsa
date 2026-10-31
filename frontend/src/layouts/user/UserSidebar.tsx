@@ -1,3 +1,4 @@
+import { can } from "../../shared/lib/roles";
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -32,6 +33,12 @@ export default function UserSidebar({ isOpen, collapsed, toggleSidebar }) {
   const initials   = name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
   const color      = AV_COLORS[(name.charCodeAt(0)||0) % AV_COLORS.length];
   const [showSignout, setShowSignout] = useState(false);
+  // Managers (and anyone granted AI) also get Meeting AI; everyone else sees the plain employee menu.
+  const aiItems = [
+    ...(can("ai:use") ? [{ to:"/user/meetings", label:"Meeting AI", icon:ic.notif }, { to:"/user/writer", label:"AI Writer", icon:ic.notif }] : []),
+    ...(can("ai:assistant:self") ? [{ to:"/user/assistant", label:"HR Assistant", icon:ic.notif }] : []),
+  ];
+  const visibleItems = [...navItems.slice(0, 5), ...aiItems, ...navItems.slice(5)];
 
   const NavItem = ({ item }) => {
     const active = location.pathname === item.to;
@@ -62,7 +69,7 @@ export default function UserSidebar({ isOpen, collapsed, toggleSidebar }) {
 
         {!collapsed && <div className="sidebar-section-label">Main Menu</div>}
         <nav className="sidebar-nav">
-          {navItems.map(item => <NavItem key={item.to} item={item}/>)}
+          {visibleItems.map(item => <NavItem key={item.to} item={item}/>)}
         </nav>
 
         {!collapsed && <div className="sidebar-section-label">Account</div>}

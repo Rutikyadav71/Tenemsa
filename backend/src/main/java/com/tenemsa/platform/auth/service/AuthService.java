@@ -39,7 +39,7 @@ public class AuthService {
     // RBAC phase 3: ADMIN added as its own role (was previously conflated
     // with OWNER) — without it here, a newly created Admin account would be
     // rejected by adminLogin() despite genuinely being an admin-tier account.
-    private static final List<Role> ADMIN_EQUIVALENT_ROLES = List.of(Role.OWNER, Role.ADMIN, Role.SUPER_ADMIN);
+    private static final List<Role> ADMIN_EQUIVALENT_ROLES = List.of(Role.OWNER, Role.ADMIN, Role.SUPER_ADMIN, Role.HR);
 
     // Builds the full login/refresh response: short-lived JWT access token +
     // long-lived opaque refresh token + every profile field the frontend
@@ -47,6 +47,11 @@ public class AuthService {
     // both AuthController and AdminController; centralizing it here means a
     // field added once (like companyName below) reaches both login paths
     // automatically instead of needing two edits that can drift apart.
+    private static java.util.List<String> permissionKeys(User user) {
+        return com.tenemsa.platform.security.rbac.RolePermissionRegistry.permissionsFor(user.getRole())
+                .stream().map(com.tenemsa.platform.security.rbac.Permission::getKey).sorted().toList();
+    }
+
     public AuthResponse issueAuthResponse(User user, boolean rememberMe, String deviceLabel) {
         String accessToken = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getCompany().getId());
         String refreshToken = tokenService.issueRefreshToken(user, deviceLabel, rememberMe);
@@ -62,6 +67,7 @@ public class AuthService {
         resp.setSalary(user.getSalary());
         resp.setPrimaryOwner(user.isPrimaryOwner());
         resp.setEmailVerified(user.isEmailVerified());
+        resp.setPermissions(permissionKeys(user));
         return resp;
     }
 
@@ -144,6 +150,7 @@ public class AuthService {
         resp.setSalary(user.getSalary());
         resp.setPrimaryOwner(user.isPrimaryOwner());
         resp.setEmailVerified(user.isEmailVerified());
+        resp.setPermissions(permissionKeys(user));
         return resp;
     }
 
@@ -170,6 +177,7 @@ public class AuthService {
         resp.setSalary(user.getSalary());
         resp.setPrimaryOwner(user.isPrimaryOwner());
         resp.setEmailVerified(user.isEmailVerified());
+        resp.setPermissions(permissionKeys(user));
         return resp;
     }
 

@@ -33,6 +33,9 @@ public class AuthResponse {
     private BigDecimal salary;
     private Boolean primaryOwner;
     private Boolean emailVerified;
+    // Permission strings of the role (e.g. "leave:view:any"). The frontend uses them only to decide
+    // which menu items to show; the server still checks every request.
+    private java.util.List<String> permissions = new java.util.ArrayList<>();
 
     public AuthResponse() {}
 
@@ -92,4 +95,7 @@ public class AuthResponse {
 
     public Boolean getEmailVerified() { return emailVerified; }
     public void setEmailVerified(Boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public java.util.List<String> getPermissions() { return permissions; }
+    public void setPermissions(java.util.List<String> permissions) { this.permissions = permissions; }
 }

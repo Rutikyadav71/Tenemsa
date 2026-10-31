@@ -163,3 +163,7 @@ Documented here rather than hidden, since a portfolio project's value is partly 
 All of these are realistic Phase 3+ items, not oversights specific to any one phase.
 
 One specific gap worth flagging on its own: `ChatRestController`'s message-level endpoints (`delete`, `react`, `star`) check authentication but not *ownership* — any authenticated user can currently delete, react to, or star any message by ID, not just messages in their own conversations. Found while writing the API reference below rather than fixed here, since this pass is scoped to cleanup and documentation, not new security remediation — but it's the same class of gap fixed elsewhere in earlier phases (see `EmployeeSecurity.isSelf`), and should be closed the same way before this goes further.
+
+## AI layer (Phase 6a)
+
+`ai/` holds the only AI plumbing. Business code depends on the `AiClient` interface; only `SpringAiClient` and `AiConfig` import Spring AI, so the provider can change without touching features. `AiGateway` is the single entry point: availability check, quotas, bounded executor with timeout and one retry, lenient JSON parse, Bean Validation with one repair re-ask, and a usage row in its own transaction. Prompts live in `resources/prompts/<name>.v<N>.txt` and the version is recorded with every result. The model call never runs inside a database transaction. `meeting/` is the first feature built on it.

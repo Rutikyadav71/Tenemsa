@@ -17,6 +17,11 @@ import InvitationsPage from "../features/invitations/pages/InvitationsPage";
 import ProjectsPage from "../features/projects/pages/ProjectsPage";
 import ProjectBoardPage from "../features/projects/pages/ProjectBoardPage";
 import ProjectBacklogPage from "../features/projects/pages/ProjectBacklogPage";
+import MeetingsPage from "../features/meetings/pages/MeetingsPage";
+import MeetingDetailPage from "../features/meetings/pages/MeetingDetailPage";
+import AiUsagePage from "../features/ai/pages/AiUsagePage";
+import WriterPage from "../features/ai/pages/WriterPage";
+import AssistantPage from "../features/ai/pages/AssistantPage";
 import ChatPage from "../features/chat/pages/ChatPage";
 import AttendancePage from "../features/attendance/pages/Attendance";
 import TeamManagement from "../features/team/pages/TeamManagement";
@@ -42,15 +47,20 @@ import UserLeaveRequestForm from "../features/leave/pages/UserLeaveRequestForm";
 import UserNavbar from "../layouts/user/UserNavbar";
 import UserSidebar from "../layouts/user/UserSidebar";
 
-import type { ChatRoleTag } from "../shared/types/models";
+import { workspaceFor, type Workspace } from "../shared/lib/roles";
 
 interface ProtectedRouteProps {
-  allowedRole: ChatRoleTag;
+  workspace: Workspace;
 }
 
-const ProtectedRoute = ({ allowedRole }: ProtectedRouteProps) => {
-  const role = localStorage.getItem("role");
-  return role === allowedRole ? <Outlet /> : <Navigate to="/" />;
+// Which workspace a person may open depends on their business role (Owner/Admin/HR: admin,
+// Manager/Employee/Intern: user), not on which sign-in page they used. Someone in the wrong
+// workspace is sent to their own instead of being bounced to the home page.
+const ProtectedRoute = ({ workspace }: ProtectedRouteProps) => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("userRole");
+  if (!token || !role) return <Navigate to="/" />;
+  return workspaceFor(role) === workspace ? <Outlet /> : <Navigate to={`/${workspaceFor(role)}/dashboard`} />;
 };
 
 /* ── Admin layout ──────────────────────────────────────────────────────── */
@@ -101,6 +111,11 @@ const AdminLayout = () => {
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectBoardPage />} />
             <Route path="projects/:id/backlog" element={<ProjectBacklogPage />} />
+            <Route path="meetings" element={<MeetingsPage />} />
+            <Route path="meetings/:id" element={<MeetingDetailPage />} />
+            <Route path="ai-usage" element={<AiUsagePage />} />
+            <Route path="writer" element={<WriterPage />} />
+            <Route path="assistant" element={<AssistantPage />} />
           </Routes>
         </main>
       </div>
@@ -146,6 +161,10 @@ const UserLayout = () => {
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectBoardPage />} />
             <Route path="projects/:id/backlog" element={<ProjectBacklogPage />} />
+            <Route path="meetings" element={<MeetingsPage />} />
+            <Route path="meetings/:id" element={<MeetingDetailPage />} />
+            <Route path="writer" element={<WriterPage />} />
+            <Route path="assistant" element={<AssistantPage />} />
             <Route path="notifications" element={<UserNotifications />} />
             <Route path="chat" element={<ChatPage />} />
           </Routes>
@@ -169,10 +188,10 @@ export default function App() {
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
         <Route path="/auth/employee" element={<EmployeeLogin />} />
         <Route path="/auth/admin" element={<AdminAuthPage />} />
-        <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
+        <Route element={<ProtectedRoute workspace="admin" />}>
           <Route path="/admin/*" element={<AdminLayout />} />
         </Route>
-        <Route element={<ProtectedRoute allowedRole="USER" />}>
+        <Route element={<ProtectedRoute workspace="user" />}>
           <Route path="/user/*" element={<UserLayout />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />

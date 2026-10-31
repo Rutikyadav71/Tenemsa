@@ -1,5 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { can } from "../../shared/lib/roles";
+
+interface NavItemData { to: string; label: string; icon: ReactNode; perms?: string[]; roles?: string[]; }
 
 const ic = {
   dashboard:  <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/></svg>,
@@ -19,21 +22,27 @@ const ic = {
   logout:     <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
 };
 
-const navItems = [
+// perms: shown if the user holds ANY of them (the server still enforces every request).
+// roles: shown only to these business roles, for pages the backend gates by role instead of permission.
+const navItems: NavItemData[] = [
   { to:"/admin/dashboard",     label:"Dashboard",      icon:ic.dashboard },
-  { to:"/admin/employees",     label:"Employees",      icon:ic.employees },
-  { to:"/admin/add",           label:"Add Employee",   icon:ic.add },
-  { to:"/admin/leaves",        label:"Leave Requests", icon:ic.leaves },
-  { to:"/admin/apply-leave",   label:"Apply Leave",    icon:ic.applyLeave },
-  { to:"/admin/attendance",    label:"Attendance",     icon:ic.attendance },
-  { to:"/admin/teams",         label:"Teams",          icon:ic.teams },
-  { to:"/admin/projects",      label:"Projects",       icon:ic.teams },
-  { to:"/admin/chat",          label:"Chat Room",      icon:ic.chat },
+  { to:"/admin/employees",     label:"Employees",      icon:ic.employees,  perms:["user:view:any","user:view:team"] },
+  { to:"/admin/add",           label:"Add Employee",   icon:ic.add,        perms:["user:create"] },
+  { to:"/admin/leaves",        label:"Leave Requests", icon:ic.leaves,     perms:["leave:view:any"] },
+  { to:"/admin/apply-leave",   label:"Apply Leave",    icon:ic.applyLeave, perms:["leave:apply:self"] },
+  { to:"/admin/attendance",    label:"Attendance",     icon:ic.attendance, perms:["attendance:manage:any","attendance:view:team"] },
+  { to:"/admin/teams",         label:"Teams",          icon:ic.teams,      perms:["team:manage:any"] },
+  { to:"/admin/projects",      label:"Projects",       icon:ic.teams,      perms:["project:view"] },
+  { to:"/admin/meetings",      label:"Meeting AI",     icon:ic.audit,      perms:["ai:use"] },
+  { to:"/admin/writer",        label:"AI Writer",      icon:ic.invite,     perms:["ai:use"] },
+  { to:"/admin/assistant",     label:"HR Assistant",   icon:ic.profile,    perms:["ai:assistant:self"] },
+  { to:"/admin/chat",          label:"Chat Room",      icon:ic.chat,       perms:["chat:use"] },
   { to:"/admin/notifications", label:"Notifications",  icon:ic.notif },
-  { to:"/admin/manage-admins", label:"Admin Control",  icon:ic.admins },
-  { to:"/admin/invitations",   label:"Invitations",    icon:ic.invite },
-  { to:"/admin/audit",         label:"Audit Log",      icon:ic.audit },
-  { to:"/admin/company",       label:"Company",        icon:ic.company },
+  { to:"/admin/manage-admins", label:"Admin Control",  icon:ic.admins,     roles:["OWNER","ADMIN","SUPER_ADMIN"] },
+  { to:"/admin/invitations",   label:"Invitations",    icon:ic.invite,     perms:["user:create"] },
+  { to:"/admin/audit",         label:"Audit Log",      icon:ic.audit,      perms:["audit:view"] },
+  { to:"/admin/ai-usage",      label:"AI Usage",       icon:ic.dashboard,  perms:["ai:usage:view"] },
+  { to:"/admin/company",       label:"Company",        icon:ic.company,    perms:["company:manage"] },
 ];
 
 interface AdminSidebarProps {
@@ -42,7 +51,6 @@ interface AdminSidebarProps {
   toggleSidebar?: () => void;
 }
 
-interface NavItemData { to: string; label: string; icon: ReactNode; }
 
 export default function AdminSidebar({ collapsed, toggleSidebar }: AdminSidebarProps) {
   const location = useLocation();
@@ -51,6 +59,10 @@ export default function AdminSidebar({ collapsed, toggleSidebar }: AdminSidebarP
   const imgUrl   = localStorage.getItem("adminProfileImageUrl") || null;
   const initials = name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
   const [showSignout, setShowSignout] = useState(false);
+  const userRole = localStorage.getItem("userRole") || "";
+  const visibleItems = navItems.filter(i =>
+    (!i.perms || can(...i.perms)) && (!i.roles || i.roles.includes(userRole)));
+  const roleLabel = ({ OWNER:"Owner", ADMIN:"Administrator", HR:"HR", SUPER_ADMIN:"Super admin" } as Record<string,string>)[userRole] || "Administrator";
 
   const NavItem = ({ item }: { item: NavItemData }) => {
     const active = location.pathname === item.to;
@@ -82,7 +94,7 @@ export default function AdminSidebar({ collapsed, toggleSidebar }: AdminSidebarP
 
         {!collapsed && <div className="sidebar-section-label">Main Menu</div>}
         <nav className="sidebar-nav">
-          {navItems.map(item => <NavItem key={item.to} item={item}/>)}
+          {visibleItems.map(item => <NavItem key={item.to} item={item}/>)}
         </nav>
 
         {!collapsed && <div className="sidebar-section-label">Account</div>}
@@ -100,7 +112,7 @@ export default function AdminSidebar({ collapsed, toggleSidebar }: AdminSidebarP
                 <div className="sidebar-user-info">
                   <div className="sidebar-user-name">{name}</div>
                   <div className="sidebar-user-role" style={{ color:isMain?"var(--accent-light)":"var(--text-3)" }}>
-                    {isMain?"Main Admin":"Administrator"}
+                    {isMain?"Main Admin":roleLabel}
                   </div>
                 </div>
                 <button onClick={()=>setShowSignout(true)} title="Sign out"
