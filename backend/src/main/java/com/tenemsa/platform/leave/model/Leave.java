@@ -32,6 +32,16 @@ public class Leave {
     @Enumerated(EnumType.STRING)
     private LeaveStatus status;
 
+    /** Set when a manager, HR or admin approves or rejects the request. */
+    @Column(name = "decided_by_emp_id")
+    private Integer decidedByEmpId;
+
+    @Column(name = "decided_at")
+    private java.time.LocalDateTime decidedAt;
+
+    @Column(name = "decision_note", length = 300)
+    private String decisionNote;
+
     public Leave() {
     }
 
@@ -98,5 +108,17 @@ public class Leave {
     public void setStatus(LeaveStatus status) {
         this.status = status;
     }
+
+    public Integer getDecidedByEmpId() { return decidedByEmpId; }
+
+    public void setDecidedByEmpId(Integer decidedByEmpId) { this.decidedByEmpId = decidedByEmpId; }
+
+    public java.time.LocalDateTime getDecidedAt() { return decidedAt; }
+
+    public void setDecidedAt(java.time.LocalDateTime decidedAt) { this.decidedAt = decidedAt; }
+
+    public String getDecisionNote() { return decisionNote; }
+
+    public void setDecisionNote(String decisionNote) { this.decisionNote = decisionNote; }
 
 }

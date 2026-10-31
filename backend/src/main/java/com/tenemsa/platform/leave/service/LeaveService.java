@@ -4,16 +4,24 @@ import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.leave.model.Leave;
 import com.tenemsa.platform.leave.model.LeaveStatus;
 import com.tenemsa.platform.leave.repository.LeaveRepository;
-import com.tenemsa.platform.notification.model.Notification;
-import com.tenemsa.platform.notification.repository.NotificationRepository;
+import com.tenemsa.platform.employee.model.User;
+import com.tenemsa.platform.notification.service.NotificationService;
+import com.tenemsa.platform.security.rbac.Permission;
+import com.tenemsa.platform.security.rbac.RolePermissionRegistry;
+import com.tenemsa.platform.team.model.Team;
+import com.tenemsa.platform.team.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class LeaveService {
@@ -25,17 +33,46 @@ public class LeaveService {
     private UserRepository userRepository;
 
     @Autowired
-    private NotificationRepository notificationRepo;
+    private NotificationService notificationService;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("d MMM yyyy");
 
     private static final String ML_API_URL = "http://localhost:5000/predict-leave";
 
     // TENANT ISOLATION (Phase 4): every Leave row carries company_id and every
     // lookup below is scoped by it, so one company can never read, approve,
     // delete or train-on another company's leave requests even if it guesses ids.
-    private Notification notify(Long companyId, String message, int leaveId) {
-        Notification n = new Notification(message, Long.valueOf(leaveId));
-        n.setCompanyId(companyId);
-        return notificationRepo.save(n);
+    // Phase 8: notifications are personal (see NotificationService) instead of one company-wide feed.
+
+    private String nameOf(Long companyId, int empId) {
+        return userRepository.findAllByCompanyIdAndEmpIdIn(companyId, List.of(empId)).stream()
+                .map(User::getName).findFirst().orElse("Employee " + empId);
+    }
+
+    private static String describe(Leave l) {
+        int days = (int) (l.getEndDate().toEpochDay() - l.getStartDate().toEpochDay()) + 1;
+        return l.getStartDate().format(DAY) + (days > 1 ? " to " + l.getEndDate().format(DAY) : "")
+                + " (" + days + (days == 1 ? " day)" : " days)");
+    }
+
+    /** The leads of the applicant's teams plus everyone whose role may approve any leave, except the applicant. */
+    private Set<Integer> approversFor(Long companyId, int applicantEmpId) {
+        Set<Integer> out = new LinkedHashSet<>();
+        for (Team t : teamRepository.findByCompanyIdAndMemberIdsContaining(companyId, applicantEmpId)) {
+            if (t.getTeamLeadId() != null) out.add(t.getTeamLeadId());
+        }
+        for (com.tenemsa.platform.employee.model.Role role : com.tenemsa.platform.employee.model.Role.values()) {
+            if (RolePermissionRegistry.permissionsFor(role).contains(Permission.LEAVE_APPROVE_ANY)) {
+                for (User u : userRepository.findAllByCompanyIdAndRole(companyId, role)) {
+                    if (u.getEmpId() != null && !u.isFrozen()) out.add(u.getEmpId());
+                }
+            }
+        }
+        out.remove(applicantEmpId);
+        return out;
     }
 
     private Leave requireLeave(Long companyId, Long id) {
@@ -57,7 +94,8 @@ public class LeaveService {
         leave.setStatus(LeaveStatus.PENDING);
         Leave savedLeave = leaveRepository.save(leave);
 
-        notify(companyId, "New leave request submitted by Emp ID: " + savedLeave.getEmpId(), savedLeave.getId());
+        notificationService.send(companyId, approversFor(companyId, savedLeave.getEmpId()), "LEAVE_REQUESTED",
+                nameOf(companyId, savedLeave.getEmpId()) + " requested leave: " + describe(savedLeave), Long.valueOf(savedLeave.getId()));
 
         return savedLeave;
     }
@@ -76,10 +114,40 @@ public class LeaveService {
         leave.setStatus(status);
         Leave updatedLeave = leaveRepository.save(leave);
 
-        notify(companyId, "Leave " + status.name().toLowerCase() +
-                " for Emp ID: " + updatedLeave.getEmpId(), updatedLeave.getId());
+        notificationService.send(companyId, updatedLeave.getEmpId(), "LEAVE_DECIDED",
+                "Your leave " + describe(updatedLeave) + " is now " + status.name().toLowerCase() + ".", Long.valueOf(updatedLeave.getId()));
 
         return updatedLeave;
+    }
+
+    /**
+     * A manager's or approver's decision on a PENDING request. Differs from updateLeaveStatus (the Owner/HR "set any
+     * status" path): it only accepts requests still waiting, a rejection needs a reason, and it records who decided,
+     * when, and the note, which the employee receives in their notification.
+     */
+    public Leave decide(Long companyId, Long id, LeaveStatus decision, String note, Integer deciderEmpId) {
+        if (decision != LeaveStatus.APPROVED && decision != LeaveStatus.REJECTED) {
+            throw new IllegalArgumentException("A decision is either approve or reject.");
+        }
+        String cleanNote = note == null || note.isBlank() ? null : note.strip();
+        if (decision == LeaveStatus.REJECTED && (cleanNote == null || cleanNote.length() < 3)) {
+            throw new IllegalArgumentException("Please give a reason when rejecting leave, so the employee knows why.");
+        }
+        Leave leave = requireLeave(companyId, id);
+        if (leave.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalArgumentException("This request was already " + leave.getStatus().name().toLowerCase() + ".");
+        }
+        leave.setStatus(decision);
+        leave.setDecidedByEmpId(deciderEmpId);
+        leave.setDecidedAt(LocalDateTime.now());
+        leave.setDecisionNote(cleanNote);
+        Leave saved = leaveRepository.save(leave);
+
+        String by = deciderEmpId == null ? "your approver" : nameOf(companyId, deciderEmpId);
+        notificationService.send(companyId, saved.getEmpId(), "LEAVE_DECIDED",
+                "Your leave " + describe(saved) + " was " + decision.name().toLowerCase() + " by " + by
+                        + (cleanNote == null ? "." : ": " + cleanNote), Long.valueOf(saved.getId()));
+        return saved;
     }
 
     public void deleteLeave(Long companyId, Long id) {
@@ -87,7 +155,8 @@ public class LeaveService {
 
         if (leave != null) {
             leaveRepository.delete(leave);
-            notify(companyId, "Leave deleted for Emp ID: " + leave.getEmpId(), leave.getId());
+            notificationService.send(companyId, leave.getEmpId(), "LEAVE_DELETED",
+                    "Your leave request for " + describe(leave) + " was removed.", null);
         }
     }
 
