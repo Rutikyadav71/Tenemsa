@@ -177,3 +177,15 @@ Each tenant table also has an index on `company_id` (Phase 4). Still no composit
 - `kb_chunks`: company, document, `chunk_index`, `content`, `embedding_json` (portable vector as JSON text), `embedding_model`.
 - PostgreSQL only: if `CREATE EXTENSION vector` succeeds, V7 adds `kb_chunks.embedding vector(768)` and an HNSW cosine index. If it fails (not installed or no permission) the migration still succeeds and search uses the scan fallback.
 - Every query filters by `company_id` first; audience and READY status are part of the search SQL.
+
+## Leave decisions and personal notifications (Flyway V8)
+
+- `leaves`: `decided_by_emp_id`, `decided_at`, `decision_note` (set by approve/reject).
+- `notifications`: `recipient_emp_id` (NULL = older company-wide row), `type`; index `(company_id, recipient_emp_id, created_at)`.
+- `notification_preferences`: `(company_id, emp_id)` unique, `email_enabled` (default true).
+
+## Documents (Flyway V9)
+
+- `documents`: company, title, `category`, `visibility`, `owner_emp_id` (PRIVATE only), file name, content type, size, uploader, `kb_document_id` (knowledge-base copy), created time.
+- `document_files`: `document_id` primary key, `content` (BYTEA on PostgreSQL, LONGBLOB on MySQL). Kept apart from the metadata so lists never load file contents.
+- Files live in the database for now (up to 200 MB per company, `DOCUMENTS_MAX_COMPANY_BYTES`). Moving to object storage later only changes `DocumentService`.

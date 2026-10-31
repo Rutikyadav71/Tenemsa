@@ -173,3 +173,11 @@ One specific gap worth flagging on its own: `ChatRestController`'s message-level
 `knowledge/` is feature-based: `embedding/` (EmbeddingClient, Gemini over plain HTTP, EmbeddingGateway with daily cap and usage log `KB_EMBEDDING`), `vector/` (VectorStore: PgVectorStore with `<=>`, ScanVectorStore portable, VectorStoreRouter picks lazily), `service/` (TextExtractor, TextChunker, KnowledgeIngestionService, KnowledgeAnswerService), `controller/`.
 
 Flow: add document -> extract -> chunk (about 900 chars, 150 overlap) -> save PROCESSING -> background thread embeds in batches -> READY/FAILED. Ask: embed question -> top-k chunks the caller may read above `kb.min-score` -> none: answer "not found" with no model call -> else model gets numbered fenced SOURCES and must cite -> only valid citations are returned.
+
+## Leave approval and notifications (Phase 8a)
+
+`leave/service/TeamLeaveService` builds the approver's list (Manager: teams they lead via `TeamSecurity`; Owner/HR: company). `LeaveService.decide` is the single place a decision is made (pending only, reason on reject, who/when/note recorded, applicant notified). `LeaveSecurity.managesLeave` excludes the caller's own request. `notification/service/NotificationService.send` writes one row per recipient inside the given company and emails on a background thread unless the person opted out; it never throws into the calling request.
+
+## Documents and analytics (Phase 8b, 8c)
+
+`document/`: `DocumentService` decides every read from the caller's identity and company (unreadable = 404), validates extension plus magic bytes, enforces the per-company storage limit, and can hand the file to `KnowledgeIngestionService` when "use for AI answers" is chosen. `analytics/`: `AnalyticsService` computes company or team figures (a manager's scope comes from `TeamSecurity.teamMemberEmpIds`) and a personal summary for everyone; it reads existing tables only.

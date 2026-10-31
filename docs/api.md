@@ -228,3 +228,34 @@ Login responses (`/api/auth/login`, `/api/admin/login`, refresh, `/api/auth/me`)
 | DELETE | `/api/kb/documents/{id}` | `kb:manage` | `204`; removes the document and its passages. |
 
 Errors: `400` duplicate/too short/too long/unsupported file, `403` missing permission, `404` other company, `429` embedding quota, `503` AI off (server or company), `502` provider failure.
+
+## Team leave approval and notifications (Phase 8a)
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/leaves/team?status=PENDING\|APPROVED\|REJECTED\|ALL` | `leave:approve:team`, `leave:view:team` or `leave:approve:any` | Default `PENDING`. Manager: requests of people on teams they lead (never their own). Owner/Admin/HR (`leave:view:any`): whole company. Each row has `clashesWith` (others off on overlapping days), `decidedByName`, `decisionNote`, `canDecide`. |
+| PUT | `/api/leaves/{id}/approve` | `leave:approve:any`, or `leave:approve:team` for someone on a team you lead | Body optional `{note}` (300 chars). Only PENDING requests; `400` if already decided. Records who decided and when; notifies the employee. A manager gets `403` on their own request. |
+| PUT | `/api/leaves/{id}/reject` | same | Body `{note}` is required (3 to 300 chars): a rejection must say why. |
+| GET | `/api/notifications` | any signed-in user | Only the caller's notifications (100 newest). People with `leave:approve:any` also see older company-wide ones. Fields: `id, message, type, leaveId, read, createdAt`. |
+| GET | `/api/notifications/unread-count` | any | `{unread}`. |
+| PUT | `/api/notifications/mark-all-read`, `/api/notifications/{id}/read` | any | Affects only the caller's own; someone else's id gives `404`. |
+| GET / PUT | `/api/notifications/settings` | any | `{emailEnabled}`. In-app notifications are always on; email is on by default and can be switched off per person. |
+
+Who is notified: a new request goes to the leads of the applicant's teams and everyone whose role approves any leave (not the applicant). A decision (or removal) goes to the applicant.
+
+## Documents (Phase 8b)
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/documents?category=` | `document:view` (every role) | Only documents the caller may read: ALL_STAFF for everyone, MANAGEMENT for roles with `kb:read:management`, PRIVATE for the employee it is for and for holders of `document:upload`. |
+| GET | `/api/documents/{id}` | `document:view` | A document you may not read answers `404`, the same as one that does not exist. |
+| GET | `/api/documents/{id}/download` | `document:view` | Served as an attachment with `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`. The content type comes from the stored file type, never from the client. |
+| POST | `/api/documents` | `document:upload` (Owner, HR) | Multipart `file` (pdf, docx, xlsx, txt, md, csv, png, jpg; 10 MB), `title?`, `category` (POLICY, HANDBOOK, CONTRACT, FORM, PERSONAL, OTHER), `visibility`, `ownerEmpId` (required for PRIVATE), `indexForAi` (also add to the knowledge base; needs `kb:manage`; not for PRIVATE). The file's first bytes must match its extension. `400` over the company storage limit. If AI indexing fails the upload still succeeds and `indexNote` says why. A PRIVATE document notifies its employee. |
+| DELETE | `/api/documents/{id}` | `document:upload` | `204`; also removes the knowledge-base copy. |
+
+## Analytics (Phase 8c)
+
+| Method | Path | Permission | Notes |
+|---|---|---|---|
+| GET | `/api/analytics/overview` | `report:view:company` or `report:view:team` | Owner/Admin/HR: `scope=COMPANY` with headcount, by department and role, leave (pending, off today, approved days per month for 6 months, status counts), attendance for 30 days, task counts by status and overdue. Manager: `scope=TEAM`, only people on teams they lead; `byRole` is empty and `projects` is null. Employees get `403`. No salary or payroll data. |
+| GET | `/api/analytics/me` | any signed-in user | Your own leave days this year, pending requests, 30-day attendance rate, open and overdue tasks, unread notifications. |
