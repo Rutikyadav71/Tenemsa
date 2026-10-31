@@ -152,7 +152,6 @@ Issue create/update bodies also accept `storyPoints` (0-100) and `labels` (up to
 |---|---|---|---|
 | POST | `/api/upload/profile/{empId}` | Admin, or self | Upload an employee's profile photo (Cloudinary). |
 | POST | `/api/upload/admin-profile/{adminId}` | Admin | Upload an admin's profile photo. |
-| POST | `/api/upload/chat` | Any authenticated | Upload a file/image attachment for chat. |
 
 ## Chat — `/api/chat`, `/api/chat-users`, WebSocket `/ws`
 
@@ -167,7 +166,9 @@ Issue create/update bodies also accept `storyPoints` (0-100) and `labels` (up to
 | PUT | `/api/chat/message/{id}/star` | Participant | Toggle starred. `404` for non-participants. |
 | GET | `/api/chat/starred?...` | Participant | Starred messages between two participants. |
 | DELETE | `/api/chat/delete?...` | Participant | Delete an entire conversation. |
-| WS | `/ws` (STOMP/SockJS) | JWT via connect | Real-time message delivery. Client subscribes to `/user/{ROLE}_{id}/queue/messages`; publishes to `/app/chat.send`. |
+| POST | `/api/chat/attachments` | Any authenticated | Multipart `file` (pdf, doc/docx, xls/xlsx, ppt/pptx, txt, md, csv, zip, png, jpg, gif, webp, mp3, wav, mp4; 10 MB). Type comes from the extension and the first bytes must match it; HTML/SVG/scripts/executables are refused with a readable `message`. Returns `{id, fileName, contentType, sizeBytes, image}`. Send the message with `attachmentId` to deliver it. |
+| GET | `/api/chat/attachments/{id}` | The two people in the chat (the uploader until it is sent) | The exact stored file. Images are `inline`, everything else `attachment` under its original name; add `?download=true` to force a download. `nosniff`, `no-store`. `404` for anyone else, other companies, or after the message is deleted. |
+| WS | `/ws` (STOMP/SockJS) | JWT via connect | Real-time message delivery. A frame may carry `attachmentId`; name, type and size are copied from the stored file by the server, and an attachment can be sent once, by its uploader. Client subscribes to `/user/{ROLE}_{id}/queue/messages`; publishes to `/app/chat.send`. |
 
 ## Misc
 

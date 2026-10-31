@@ -140,4 +140,5 @@ Upload or paste documents (pdf, docx, txt, md, csv), index them in the backgroun
 - **8a:** Manager Team Leave screen (own teams only, never their own leave, shows who else is off, rejection needs a reason, decision recorded). Personal notifications with in-app plus optional email, switchable per person.
 - **8b:** Document storage of original files with category and visibility (all staff, management, one employee), safe downloads, per-company storage limit, optional link to the knowledge base (closes the Phase 7 gap).
 - **8c:** Insights page: personal summary for everyone; company or team dashboards with leave, attendance, headcount and task figures.
+- **8d:** Chat overhaul: files sent in chat are stored in the database (no Cloudinary), shown as WhatsApp-style cards (type tile, original name, size, exact download) or image thumbnails with a preview, pending-file tray, drag and drop, paste, readable errors, read ticks that refresh.
 - **Not in Phase 8:** payroll and salary figures, object storage, scheduled reports. Next is Phase 9 (workflow automation).

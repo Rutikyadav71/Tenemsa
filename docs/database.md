@@ -189,3 +189,9 @@ Each tenant table also has an index on `company_id` (Phase 4). Still no composit
 - `documents`: company, title, `category`, `visibility`, `owner_emp_id` (PRIVATE only), file name, content type, size, uploader, `kb_document_id` (knowledge-base copy), created time.
 - `document_files`: `document_id` primary key, `content` (BYTEA on PostgreSQL, LONGBLOB on MySQL). Kept apart from the metadata so lists never load file contents.
 - Files live in the database for now (up to 200 MB per company, `DOCUMENTS_MAX_COMPANY_BYTES`). Moving to object storage later only changes `DocumentService`.
+
+## Chat attachments (Flyway V10)
+
+- `chat_messages` gains `attachment_id`, `attachment_name`, `attachment_type`, `attachment_size` (copied from the stored file by the server).
+- `chat_attachments`: company, uploader (`uploader_tag` + `uploader_id`), file name, content type, size, `message_id` (set when sent; an attachment is sent once).
+- `chat_attachment_files`: `attachment_id` primary key, `content` (BYTEA / LONGBLOB). Deleting a message or a conversation deletes its files.
