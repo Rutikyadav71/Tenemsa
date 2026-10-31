@@ -159,3 +159,14 @@ Deliberately added where query patterns actually need them, not everywhere:
 - `users.email` — the login lookup path.
 
 Each tenant table also has an index on `company_id` (Phase 4). Still no composite indexes on `attendance.emp_id`/`date`, `leaves.emp_id`, or `chat_messages.sender_id`/`receiver_id`, despite these being frequently queried — fine at current data volumes, worth revisiting if attendance/chat history queries start showing up slow in practice.
+
+## AI and meetings (Flyway V5)
+
+- `ai_request_logs`: one row per model call (company, employee, feature, prompt version, provider, model, status, latency, token counts, error code). Never stores prompt text or answers. Indexed by (company_id, created_at) and (company_id, emp_id, created_at); used for quotas and usage reports.
+- `meeting_summaries`: title, date, source text, summary, status (DRAFT/APPROVED), model, prompt version, link to the log row, approver.
+- `meeting_points`: decisions and open questions (`content`, `sort_order`).
+- `meeting_action_items`: title, description, owner (name plus matched employee id), due date, priority, `issue_id`/`issue_key` once converted.
+
+## Company AI switch (Flyway V6)
+
+`companies.ai_enabled BOOLEAN NOT NULL DEFAULT TRUE`. Checked on every AI call by `AiGateway`.

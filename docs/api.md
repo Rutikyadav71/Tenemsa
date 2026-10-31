@@ -174,3 +174,42 @@ Issue create/update bodies also accept `storyPoints` (0-100) and `labels` (up to
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | `/api/health` | Public | Liveness check — returns `"OK"`. |
+
+## AI and meetings (Phase 6a)
+
+Requires `ai:use` (Owner, Admin, HR, Manager) unless noted. Everything is scoped to the caller's company.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/ai/status` | Whether AI is enabled, provider/model, caller's remaining quota. |
+| GET | `/api/ai/usage?days=30` | Requests, failures, tokens, latency by feature and day. Needs `ai:usage:view` (Owner, Admin). |
+| GET | `/api/meetings` | Summaries the caller may see (own, or all with `meeting:manage:any`). |
+| POST | `/api/meetings` | Body `{title, meetingDate?, sourceRef?, notes}` (notes 30 to 20000 chars). Calls the model, saves a DRAFT. `201`. |
+| GET | `/api/meetings/{id}` | One summary with decisions, action items, open questions, original notes. `404` if not visible. |
+| PUT | `/api/meetings/{id}` | Edit a DRAFT (`409`/`400` once approved). |
+| POST | `/api/meetings/{id}/approve` | DRAFT to APPROVED (locks it). |
+| POST | `/api/meetings/{id}/create-issues` | Body `{projectId, actionItemIds}`. Needs `issue:create`. All or nothing; each item converts once. |
+| DELETE | `/api/meetings/{id}` | Creator or `meeting:manage:any`. `204`. |
+
+AI error codes: `503` AI disabled or not configured, `429` quota reached, `504` model timeout, `502` provider failure or unusable output.
+
+## Sign-in and workspaces (Phase 6b)
+
+Login responses (`/api/auth/login`, `/api/admin/login`, refresh, `/api/auth/me`) now include `permissions`, the role's permission strings. The UI uses them only to build menus; the server still checks every request.
+
+- `/api/auth/login` accepts every role. `/api/admin/login` accepts Owner, Admin, Super admin and HR (`401` for Manager, Employee, Intern).
+- Workspace by role: Owner, Admin, HR use `/admin`; Manager, Employee, Intern use `/user`. Either sign-in page sends the person to their own workspace.
+- Chat keeps its own two-value tag (Owner/Admin: `ADMIN`, everyone else including HR: `USER`).
+
+## AI assistants (Phase 6c)
+
+| Method | Path | Needs | Description |
+|---|---|---|---|
+| POST | `/api/ai/tasks/generate` | `ai:use`, `issue:create` | Body `{projectId, goal (15-4000 chars), maxTasks (1-15)}`. Returns suggestions only; nothing is created. |
+| POST | `/api/ai/tasks/create` | `ai:use`, `issue:create` | Body `{projectId, tasks[]}`. Creates the reviewed tasks, all or nothing, labelled `ai-draft`. `201`. |
+| POST | `/api/ai/writer/draft` | `ai:use` | Body `{kind, audience, tone, points}`. Returns `{subject, body}`. Nothing is stored or sent. |
+| POST | `/api/ai/projects/{id}/report` | `ai:use`, `project:view` | Body `{type: STATUS_UPDATE or SPRINT_RETRO, days?, sprintId?}`. Returns the report plus `basedOn`. `404` outside your company. |
+| POST | `/api/ai/hr-assistant/ask` | `ai:assistant:self` | Body `{question}`. Answers from the caller's own leave and attendance only. |
+| PUT | `/api/companies/me/ai` | `company:manage` | Body `{enabled}`. Switches AI off or on for the whole company. While off, every AI call answers `503`. |
+
+`GET /api/ai/status` also returns `companyEnabled`; `GET /api/ai/usage` returns `estimatedCostUsd` (null unless `AI_PRICE_*` are set).

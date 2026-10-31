@@ -82,3 +82,16 @@ The backend supports both through Spring profiles. Set one variable:
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DATABASE_USERNAME` and `DATABASE_PASSWORD` are read by both. Shared settings stay in `application.properties`; only the datasource URL/driver differ. Hibernate picks the dialect from the driver, so don't set one manually.
 
 PowerShell example: `$env:SPRING_PROFILES_ACTIVE="mysql"; ./mvnw spring-boot:run` (or `./mvnw spring-boot:run -Dspring-boot.run.profiles=mysql`). Schema is created by `ddl-auto=update`. The hand-written `migration-phase1.sql` / `migration-phase4.sql` scripts are PostgreSQL syntax and only matter for an existing database that already holds data; a new database needs neither. Pick one database per environment — profiles do not copy data between them.
+
+## Enabling AI (Phase 6)
+
+AI is off by default and the app runs normally without it (AI endpoints return 503).
+
+1. Create a key in Google AI Studio.
+2. In `backend/.env` set `AI_PROVIDER=google-genai` and `GEMINI_API_KEY=<key>`. The key stays on the server only.
+3. Restart the backend. Optional: `AI_MODEL`, `AI_TIMEOUT_SECONDS`, `AI_PER_USER_PER_HOUR`, `AI_PER_COMPANY_PER_DAY`, `AI_MAX_INPUT_CHARS`.
+
+Database: MySQL is for local development; production and any vector/RAG work use PostgreSQL (`SPRING_PROFILES_ACTIVE=postgres`-style profile as already configured).
+
+### AI cost estimate and company switch
+Set `AI_PRICE_INPUT_PER_MILLION_USD` and `AI_PRICE_OUTPUT_PER_MILLION_USD` to your model's published prices to show an estimated cost on the AI Usage page (left at 0, the figure is hidden). Owners and admins can switch AI off for their company under Company settings.
