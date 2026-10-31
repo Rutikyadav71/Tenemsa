@@ -1,6 +1,7 @@
 import SockJS from "sockjs-client";
 import { Client, type IMessage } from "@stomp/stompjs";
 import { API_BASE_URL } from "../../../shared/api/apiConfig";
+import axiosInstance from "../../../shared/api/axiosInstance";
 import type { ChatMessage, ChatRoleTag } from "../../../shared/types/models";
 
 let stompClient: Client | null = null;
@@ -85,4 +86,57 @@ export function disconnect(): void {
     isConnected = false;
     pendingMessages = [];
   }
+}
+
+/* ── Attachments (Phase 8d) ─────────────────────────────────────────── */
+
+export interface UploadedAttachment {
+  id: number;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  image: boolean;
+}
+
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+/** A readable message from any failed request: never an object (that is what showed "[object Object]"). */
+export function errorText(e: unknown, fallback = "Something went wrong. Please try again."): string {
+  const err = e as { response?: { data?: unknown; status?: number }; message?: string };
+  const data = err?.response?.data;
+  if (typeof data === "string" && data.trim()) return data;
+  if (data && typeof data === "object") {
+    const m = (data as { message?: unknown }).message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  if (err?.response?.status === 413) return "That file is larger than 10 MB.";
+  if (err?.response?.status === 403) return "You don't have permission to do that.";
+  if (err && !err.response && err.message === "Network Error") return "Can't reach the server. Check your connection.";
+  return fallback;
+}
+
+export async function uploadAttachment(file: File): Promise<UploadedAttachment> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await axiosInstance.post<UploadedAttachment>("/api/chat/attachments", fd);
+  return res.data;
+}
+
+/** The authenticated file as a Blob (an <img> or <a> cannot send the login token itself). */
+export async function fetchAttachmentBlob(id: number): Promise<Blob> {
+  const res = await axiosInstance.get<Blob>(`/api/chat/attachments/${id}`, { params: { download: true }, responseType: "blob" });
+  return res.data;
+}
+
+/** Saves the exact stored file under the name it was sent with. */
+export async function saveAttachment(id: number, fileName: string): Promise<void> {
+  const blob = await fetchAttachmentBlob(id);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

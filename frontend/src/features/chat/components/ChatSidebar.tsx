@@ -67,7 +67,8 @@ export default function ChatSidebar({ currentUserId, currentUserRole, onSelectUs
           const last=msgs.filter(m=>m.status!=="DELETED"&&m.message!=="[deleted]").slice(-1)[0];
           if (last) {
             let p=last.message||"";
-            if (p.startsWith("[FILE:"))     p="📎 File attachment";
+            if (last.attachmentId)          p="📎 "+(last.attachmentName||"File");
+            else if (p.startsWith("[FILE:"))     p="📎 File attachment";
             else if (p.startsWith("[REPLY:")) p=p.replace(/^\[REPLY:.+?:.+?\]/s,"");
             lm[key]=p.slice(0,45)+(p.length>45?"…":"");
           }

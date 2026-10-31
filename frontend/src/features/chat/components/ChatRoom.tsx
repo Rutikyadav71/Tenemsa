@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import axiosInstance from "../../../shared/api/axiosInstance";
-import { sendMessage } from "../services/chatService";
+import { sendMessage, uploadAttachment, saveAttachment, fetchAttachmentBlob, errorText, MAX_ATTACHMENT_BYTES } from "../services/chatService";
 import type { ChatMessage, ChatRoleTag, ChatUser } from "../../../shared/types/models";
 import "../chat.css";
 
@@ -93,70 +93,92 @@ async function downloadFile(url: string, filename: string) {
   }
 }
 
-/* File card component — WhatsApp styled */
-function FileCard({ info, isMine }: { info: ParsedFile; isMine: boolean }) {
+/* One attachment, from either the new server-side fields or an old [FILE:...] message */
+interface AttInfo { id?: number; name: string; mime: string; size: number; url?: string; }
+
+function attOf(m: ChatMessage): AttInfo | null {
+  if (m.attachmentId) return { id: m.attachmentId, name: m.attachmentName || "file", mime: m.attachmentType || "", size: Number(m.attachmentSize) || 0 };
+  const f = parseFile(m.message);
+  return f ? { name: f.name, mime: f.mime, size: f.size, url: f.url } : null;
+}
+const isImageAtt = (a: AttInfo | null) => !!a && a.mime.startsWith("image/");
+/* The text of a message without its reply header */
+const plainText = (t?: string | null) => (t || "").replace(/^\[REPLY:.+?\]/s, "");
+
+function saveAtt(a: AttInfo) {
+  if (a.id) return saveAttachment(a.id, a.name);
+  if (a.url) return downloadFile(a.url, a.name);
+  return Promise.resolve();
+}
+
+/* Blob URLs of attachment images already loaded in this session (the file needs the login token to fetch) */
+const imageCache = new Map<number, string>();
+async function imageUrl(id: number): Promise<string> {
+  const hit = imageCache.get(id);
+  if (hit) return hit;
+  const url = URL.createObjectURL(await fetchAttachmentBlob(id));
+  imageCache.set(id, url);
+  return url;
+}
+
+function AuthImage({ id, name, onOpen }: { id: number; name: string; onOpen: (url: string) => void }) {
+  const [url, setUrl] = useState<string | null>(imageCache.get(id) ?? null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    if (!url) imageUrl(id).then(u => { if (live) setUrl(u); }).catch(() => { if (live) setFailed(true); });
+    return () => { live = false; };
+  }, [id]);
+  if (failed) return <div className="img-missing">Image unavailable</div>;
+  if (!url) return <div className="img-skeleton" />;
+  return <img src={url} alt={name} className="chat-img" onClick={() => onOpen(url)} />;
+}
+
+/* File card — WhatsApp styled: type tile, original file name, type + size, download */
+function FileCard({ info, isMine }: { info: AttInfo; isMine: boolean }) {
   const ft = getFileType(info.mime, info.name);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
+  const download = async () => {
+    setBusy(true); setErr(false);
+    try { await saveAtt(info); } catch { setErr(true); } finally { setBusy(false); }
+  };
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 12, minWidth: 210, maxWidth: 300,
-      padding: "2px 0"
-    }}>
-      <div style={{
-        width: 48, height: 48, borderRadius: 12, flexShrink: 0, display: "flex",
-        alignItems: "center", justifyContent: "center",
-        background: `${ft.color}1a`, border: `1px solid ${ft.color}33`,
-        color: ft.color, boxShadow: `0 4px 12px ${ft.color}11`
-      }}>
+    <div className="file-card" onClick={download} role="button" title={`Download ${info.name}`}>
+      <div className="file-tile" style={{ background: `${ft.color}22`, border: `1px solid ${ft.color}44`, color: ft.color }}>
         {ft.icon}
+        <span className="file-tile-lbl">{ft.lbl}</span>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 13.5, fontWeight: 600, color: isMine ? "white" : "var(--text-1)",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-        }}>
-          {info.name}
-        </div>
-        <div style={{
-          fontSize: 11, opacity: 0.7, marginTop: 2,
-          color: isMine ? "rgba(255,255,255,0.8)" : "var(--text-3)",
-          display: "flex", alignItems: "center", gap: 5
-        }}>
-          <span>{ft.lbl}</span>
-          <span style={{ opacity: 0.5 }}>•</span>
-          <span>{info.size ? fmtSz(info.size) : "File"}</span>
+      <div className="file-meta">
+        <div className="file-name" title={info.name}>{info.name}</div>
+        <div className="file-sub">
+          {err ? <span style={{ color: "#fca5a5" }}>Download failed, tap to retry</span>
+            : <><span>{ft.lbl}</span><span style={{ opacity: .5 }}>•</span><span>{info.size ? fmtSz(info.size) : "File"}</span></>}
         </div>
       </div>
-      <button onClick={() => downloadFile(info.url, info.name)}
-        style={{
-          width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          background: isMine ? "rgba(255,255,255,0.15)" : "var(--bg-hover)",
-          color: isMine ? "white" : "var(--text-2)", transition: "all .2s"
-        }}
-        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.background = isMine ? "rgba(255,255,255,0.25)" : "var(--border-bright)"; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = isMine ? "rgba(255,255,255,0.15)" : "var(--bg-hover)"; }}
-        title="Download">
-        {I.download}
+      <button className="file-dl" onClick={e => { e.stopPropagation(); download(); }} title="Download" disabled={busy}>
+        {busy ? <span className="mini-spin" /> : I.download}
       </button>
     </div>
   );
 }
 
 /* Message content — renders text / image / file correctly */
-function MsgContent({ msg, isMine, msgRefs }: { msg: ChatMessage; isMine: boolean; msgRefs: React.MutableRefObject<Map<number, HTMLElement>> }) {
+function MsgContent({ msg, isMine, msgRefs, onOpenImage }: { msg: ChatMessage; isMine: boolean; msgRefs: React.MutableRefObject<Map<number, HTMLElement>>; onOpenImage: (url: string, name: string) => void }) {
   const raw = msg.message || "";
-  if (!raw || raw === "[deleted]") return <span style={{ fontStyle: "italic", opacity: 0.4, fontSize: 12 }}>Message deleted</span>;
+  if (msg.status === "DELETED" || raw === "[deleted]" || (!raw && !msg.attachmentId)) return <span style={{ fontStyle: "italic", opacity: 0.4, fontSize: 12 }}>Message deleted</span>;
 
   // Strip reply prefix to get the actual text
   let text = raw, replyFrom = "", replyPreview = "", replyToId: number | null = null;
-  const rm = raw.match(/^\[REPLY:(.+?):(.+?):(\d+)?\](.+)/s);
-  const rm2 = rm ? rm : raw.match(/^\[REPLY:(.+?):(.+?)\](.+)/s);
+  const rm = raw.match(/^\[REPLY:(.+?):(.+?):(\d+)?\](.*)/s);
+  const rm2 = rm ? rm : raw.match(/^\[REPLY:(.+?):(.+?)\](.*)/s);
   if (rm) { replyFrom = rm[1]; replyPreview = rm[2]; replyToId = rm[3] ? Number(rm[3]) : null; text = rm[4]; }
   else if (rm2) { replyFrom = rm2[1]; replyPreview = rm2[2]; text = rm2[3]; }
 
   const isImg = text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i) ||
     (text.includes("res.cloudinary.com") && text.includes("/image/"));
-  const fInfo = !isImg ? parseFile(text) : null;
+  const att = isImg ? null : attOf({ ...msg, message: text });
+  const attImage = isImageAtt(att);
 
   return (
     <>
@@ -184,11 +206,14 @@ function MsgContent({ msg, isMine, msgRefs }: { msg: ChatMessage; isMine: boolea
         </div>
       )}
       {isImg ? (
-        <img src={text} alt="image"
-          style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 10, display: "block", cursor: "pointer" }}
-          onClick={() => window.open(text, "_blank")} />
-      ) : fInfo ? (
-        <FileCard info={fInfo} isMine={isMine} />
+        <img src={text} alt="image" className="chat-img" onClick={() => onOpenImage(text, "image")} />
+      ) : att ? (
+        <>
+          {attImage && att.id
+            ? <AuthImage id={att.id} name={att.name} onOpen={url => onOpenImage(url, att.name)} />
+            : <FileCard info={att} isMine={isMine} />}
+          {text.trim() && !(!att.id && parseFile(text)) && <div className="att-caption">{text}</div>}
+        </>
       ) : (
         <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</span>
       )}
@@ -274,6 +299,7 @@ function MsgInfoPopup({ msg, selectedUser, currentUserId, currentUserRole, onClo
   const rawText = msg.message || "";
   let preview = rawText;
   if (rawText === "[deleted]") preview = "[deleted]";
+  else if (msg.attachmentId) preview = `📎 ${msg.attachmentName || "File"}${msg.attachmentSize ? " (" + fmtSz(msg.attachmentSize) + ")" : ""}`;
   else if (rawText.startsWith("[FILE:")) { const f = parseFile(rawText); preview = f ? `📎 ${f.name}` : "[File]"; }
   else if (rawText.match(/^\[REPLY:/)) preview = rawText.replace(/^\[REPLY:.+?\]\n*/s, "").slice(0, 60);
 
@@ -397,7 +423,7 @@ function ContextMenu({ msg, isMine, pos, onClose, onReply, onCopy, onDelete, onD
   const ref = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState({ left: pos.x, top: pos.y, opacity: 0 });
   const text = msg.message || "";
-  const fInfo = parseFile(text);
+  const fInfo = attOf(msg);
   const isImg = !fInfo && (text.includes("res.cloudinary.com") || text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)/i));
   const deleted = msg.status === "DELETED" || text === "[deleted]";
 
@@ -433,7 +459,7 @@ function ContextMenu({ msg, isMine, pos, onClose, onReply, onCopy, onDelete, onD
         )}
 
         {!deleted && <div className="ctx-i" onClick={() => { onReply(); onClose(); }}>{I.reply} Reply</div>}
-        {!deleted && !fInfo && !isImg && <div className="ctx-i" onClick={() => { onCopy(); onClose(); }}>{I.copy} Copy text</div>}
+        {!deleted && plainText(text).trim() && !parseFile(text) && <div className="ctx-i" onClick={() => { onCopy(); onClose(); }}>{I.copy} Copy text</div>}
         {(fInfo || isImg) && !deleted && <div className="ctx-i" onClick={() => { onDownload(); onClose(); }}>{I.download} Download</div>}
         {!deleted && (
           <div className="ctx-i" onClick={() => { onStar(); onClose(); }}>
@@ -467,6 +493,11 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showStarred, setShowStarred] = useState(false);
+  const [pending, setPending] = useState<{ file: File; preview: string | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
+  const lastIdRef = useRef<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -490,7 +521,24 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
 
   useEffect(() => { if (!selectedUser) return; setMessages([]); setReplyTo(null); fetchHistory(); }, [selectedUser]);
   useEffect(() => { if (incomingMessage) fetchHistory(); }, [incomingMessage]);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => {
+    // Only jump to the bottom for a NEW message, not on every background refresh while reading older ones.
+    const last = messages.length ? (messages[messages.length - 1].id ?? messages.length) : null;
+    if (last !== lastIdRef.current) { lastIdRef.current = last; bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }
+  }, [messages]);
+  // Read ticks: the other person reading does not push anything to us, so look again every few seconds.
+  useEffect(() => {
+    if (!selectedUser) return;
+    const t = setInterval(() => { if (!document.hidden) fetchHistory(); }, 6000);
+    return () => clearInterval(t);
+  }, [fetchHistory, selectedUser]);
+  useEffect(() => { if (!error) return; const t = setTimeout(() => setError(null), 7000); return () => clearTimeout(t); }, [error]);
+  useEffect(() => () => { if (pending?.preview) URL.revokeObjectURL(pending.preview); }, [pending]);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false); };
@@ -498,39 +546,43 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* Send text message */
-  const doSend = async (text: string) => {
-    if (!text?.trim() || !selectedUser || sending) return;
-    setSending(true);
-    try {
-      let t = text;
-      if (replyTo) {
-        const rt = replyTo.message?.startsWith("[FILE:") ? "[File]" : (replyTo.message || "").slice(0, 60);
-        const rName = Number(replyTo.senderId) === Number(currentUserId) ? "You" : selectedUser.name;
-        // Include original message ID for scroll-to on click
-        t = `[REPLY:${rName}:${rt}:${replyTo.id || ""}]${text}`;
-        setReplyTo(null);
-      }
-      sendMessage({ senderId: currentUserId, senderRole: currentUserRole!, receiverId: Number(selectedUser.id), receiverRole: selectedUser.role, message: t });
-      setInput(""); setShowEmoji(false);
-      setTimeout(() => { fetchHistory(); onMessageSent?.(); }, 400);
-    } finally { setSending(false); inputRef.current?.focus(); }
+  /* Choose a file: it waits in a tray (like WhatsApp) until Send, so nothing is uploaded and then forgotten */
+  const pickFile = (file?: File | null) => {
+    if (!file) return;
+    if (file.size === 0) { setError("That file is empty."); return; }
+    if (file.size > MAX_ATTACHMENT_BYTES) { setError(`"${file.name}" is larger than 10 MB.`); return; }
+    setError(null);
+    setPending({ file, preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : null });
+    inputRef.current?.focus();
   };
 
-  /* Upload file via plain axios (no interceptor Content-Type conflict) */
-  const handleUpload = async (file: File) => {
-    if (!file || !selectedUser) return;
-    setUploading(true);
+  /* Send: the file (if any) is uploaded first, then the message that carries it */
+  const doSend = async (text: string) => {
+    if (!selectedUser || sending || uploading) return;
+    if (!pending && !text?.trim()) return;
+    setSending(true); setError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("sender", `${currentUserRole}_${currentUserId}`);
-      const res = await axiosInstance.post<{url:string; isImage:boolean; fileName:string; fileSize:number; mimeType:string}>("/api/upload/chat", fd);
-      const { url, isImage, fileName, fileSize, mimeType } = res.data;
-      const msgText = isImage ? url : `[FILE:${fileName}:${mimeType || "application/octet-stream"}:${fileSize || 0}:${url}]`;
-      await doSend(msgText);
-    } catch (e: any) { alert(e.response?.data || "Upload failed. Check Cloudinary config."); }
-    finally { setUploading(false); }
+      let attachmentId: number | undefined;
+      if (pending) {
+        setUploading(true);
+        try { attachmentId = (await uploadAttachment(pending.file)).id; }
+        finally { setUploading(false); }
+      }
+      let t = text.trim() ? text : "";
+      if (replyTo) {
+        const rt = replyTo.attachmentId ? `📎 ${replyTo.attachmentName || "File"}` : (replyTo.message?.startsWith("[FILE:") ? "📎 File" : plainText(replyTo.message).slice(0, 60));
+        const rName = Number(replyTo.senderId) === Number(currentUserId) ? "You" : selectedUser.name;
+        // Include original message ID for scroll-to on click
+        t = `[REPLY:${rName}:${rt}:${replyTo.id || ""}]${t}`;
+        setReplyTo(null);
+      }
+      sendMessage({ senderId: currentUserId, senderRole: currentUserRole!, receiverId: Number(selectedUser.id), receiverRole: selectedUser.role, message: t, attachmentId });
+      setInput(""); setShowEmoji(false); setPending(null);
+      if (inputRef.current) inputRef.current.style.height = "auto";
+      setTimeout(() => { fetchHistory(); onMessageSent?.(); }, 400);
+    } catch (e) {
+      setError(errorText(e, "Couldn't send. Please try again."));
+    } finally { setSending(false); inputRef.current?.focus(); }
   };
 
   /* Delete — calls backend soft-delete */
@@ -558,14 +610,14 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
   };
 
   const handleCopy = (text?: string) => {
-    const t = (text || "").replace(/^\[REPLY:.+?\]/s, "");
-    if (t && !t.startsWith("[")) navigator.clipboard?.writeText(t).catch(() => { });
+    const t = plainText(text);
+    if (t && !t.startsWith("[FILE:")) navigator.clipboard?.writeText(t).catch(() => { });
   };
 
   const handleDownload = (msg: ChatMessage) => {
     const text = msg.message || "";
-    const fi = parseFile(text);
-    if (fi) downloadFile(fi.url, fi.name);
+    const att = attOf(msg);
+    if (att) saveAtt(att).catch(() => setError("Download failed. Please try again."));
     else if (text.startsWith("http")) window.open(text, "_blank");
   };
 
@@ -632,7 +684,11 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
       </div>
 
       {/* Messages */}
-      <div className="chat-messages">
+      <div className={`chat-messages${dragOver ? " drag-over" : ""}`}
+        onDragOver={e => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragOver(true); } }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); pickFile(e.dataTransfer.files?.[0]); }}>
+        {dragOver && <div className="drop-hint">Drop the file to send it</div>}
         {messages.length === 0 && (
           <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 13, padding: "40px 0" }}>Start the conversation!</div>
         )}
@@ -645,8 +701,10 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
               const showAv = !isMine && (idx === 0 || msgs[idx - 1]?.senderId !== m.senderId || msgs[idx - 1]?.senderRole !== m.senderRole);
               const showTm = idx === msgs.length - 1 || msgs[idx + 1]?.senderId !== m.senderId || msgs[idx + 1]?.senderRole !== m.senderRole;
               const text = m.message || "";
-              const isImg = !deleted && (text.includes("res.cloudinary.com") || text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i));
-              const isFile = !deleted && text.startsWith("[FILE:");
+              const att = deleted ? null : attOf(m);
+              const bare = !plainText(text).trim();
+              const isImg = !deleted && ((isImageAtt(att) && bare && !text.startsWith("[REPLY:")) || text.includes("res.cloudinary.com") || !!text.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i));
+              const isFile = !deleted && !!att && !isImageAtt(att);
 
               return (
                 <div key={m.id || idx}
@@ -676,7 +734,7 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
                       {m.starred && !deleted && (
                         <span style={{ position: "absolute", top: -8, right: 8, fontSize: 11 }}>⭐</span>
                       )}
-                      <MsgContent msg={m} isMine={isMine} msgRefs={msgRefs} />
+                      <MsgContent msg={m} isMine={isMine} msgRefs={msgRefs} onOpenImage={(url, name) => setLightbox({ url, name })} />
                       {showTm && (
                         <div className="msg-meta">
                           <span className="msg-time">
@@ -684,7 +742,8 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
                           </span>
                           {isMine && !deleted && (
                             <span className="msg-ticks"
-                              style={{ color: m.status === "READ" ? "#53bdeb" : "rgba(255,255,255,0.42)" }}>
+                              title={m.status === "READ" ? "Read" : "Sent"}
+                              style={{ color: m.status === "READ" ? "#53bdeb" : "rgba(255,255,255,0.55)" }}>
                               {m.status === "READ" ? "✓✓" : "✓"}
                             </span>
                           )}
@@ -713,7 +772,30 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
       {uploading && (
         <div className="upload-bar">
           <div style={{ width: 13, height: 13, border: "2px solid rgba(99,102,241,0.3)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin .7s linear infinite" }} />
-          Uploading...
+          Sending file…
+        </div>
+      )}
+
+      {error && (
+        <div className="chat-error" role="alert">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label="Dismiss">{I.close}</button>
+        </div>
+      )}
+
+      {/* File waiting to be sent */}
+      {pending && (
+        <div className="pending-tray">
+          {pending.preview
+            ? <img src={pending.preview} alt="" className="pending-thumb" />
+            : (() => { const ft = getFileType(pending.file.type, pending.file.name); return (
+                <div className="file-tile" style={{ background: `${ft.color}22`, border: `1px solid ${ft.color}44`, color: ft.color }}>{ft.icon}<span className="file-tile-lbl">{ft.lbl}</span></div>
+              ); })()}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="file-name">{pending.file.name}</div>
+            <div className="file-sub">{fmtSz(pending.file.size)} · add a message below, or just press send</div>
+          </div>
+          <button className="cia-btn" onClick={() => setPending(null)} title="Remove file" disabled={uploading}>{I.close}</button>
         </div>
       )}
 
@@ -726,7 +808,7 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
               {Number(replyTo.senderId) === Number(currentUserId) ? "You" : selectedUser.name}
             </div>
             <div className="reply-bar-text">
-              {replyTo.message?.startsWith("[FILE:") ? "📎 File attachment" : (replyTo.message || "").replace(/^\[REPLY:.+?\]/s, "").slice(0, 80)}
+              {replyTo.attachmentId ? `📎 ${replyTo.attachmentName || "File"}` : replyTo.message?.startsWith("[FILE:") ? "📎 File attachment" : plainText(replyTo.message).slice(0, 80)}
             </div>
           </div>
           <button onClick={() => setReplyTo(null)}
@@ -738,8 +820,8 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
 
       {/* Input area */}
       <div className="chat-input-area">
-        <input ref={imgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }} />
-        <input ref={fileRef} type="file" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }} />
+        <input ref={imgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
+        <input ref={fileRef} type="file" style={{ display: "none" }} onChange={e => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
 
         {showEmoji && (
           <div ref={emojiRef} className="emoji-wrap">
@@ -751,17 +833,30 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
 
         <button className="cia-btn" style={{ color: showEmoji ? "var(--accent-light)" : undefined }}
           onClick={() => setShowEmoji(v => !v)} title="Emoji">{I.emoji}</button>
-        <button className="cia-btn" onClick={() => imgRef.current?.click()} title="Send image" disabled={uploading}>{I.imgIc}</button>
+        <button className="cia-btn" onClick={() => imgRef.current?.click()} title="Send photo" disabled={uploading}>{I.imgIc}</button>
         <button className="cia-btn" onClick={() => fileRef.current?.click()} title="Send file" disabled={uploading}>{I.fileIc}</button>
 
         <textarea ref={inputRef} className="chat-input" rows={1}
-          value={input} onChange={e => setInput(e.target.value)}
+          value={input}
+          onChange={e => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }}
+          onPaste={e => { const f = e.clipboardData?.files?.[0]; if (f) { e.preventDefault(); pickFile(f); } }}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(input); } }}
-          placeholder={`Message ${selectedUser.name}...`} disabled={uploading} />
+          placeholder={pending ? "Add a message (optional)" : `Message ${selectedUser.name}`} disabled={uploading} />
 
         <button className="chat-send-btn" onClick={() => doSend(input)}
-          disabled={!input.trim() || sending || uploading}>{I.send}</button>
+          disabled={(!input.trim() && !pending) || sending || uploading} title="Send">{I.send}</button>
       </div>
+
+      {lightbox && (
+        <div className="lightbox" onClick={() => setLightbox(null)}>
+          <div className="lightbox-bar" onClick={e => e.stopPropagation()}>
+            <span className="file-name" style={{ color: "#fff" }}>{lightbox.name}</span>
+            <a href={lightbox.url} download={lightbox.name} className="lightbox-btn" title="Download">{I.download}</a>
+            <button className="lightbox-btn" onClick={() => setLightbox(null)} title="Close">{I.close}</button>
+          </div>
+          <img src={lightbox.url} alt={lightbox.name} onClick={e => e.stopPropagation()} />
+        </div>
+      )}
 
       {/* Context menu */}
       {ctx && (

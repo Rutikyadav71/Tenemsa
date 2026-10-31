@@ -158,6 +158,11 @@ export interface ChatMessage {
   timestamp?: string;
   status?: "SENT" | "DELIVERED" | "READ" | "DELETED";
   fileUrl?: string;
+  /** Phase 8d: a file sent in this message (name/type/size are set by the server). */
+  attachmentId?: number | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
   reaction?: string | null;
   starred?: boolean;
 }

@@ -17,6 +17,7 @@ public class ChatRestController {
     @Autowired ChatMessageRepository chatRepo;
     @Autowired AuthContext authContext;
     @Autowired UserRepository userRepository;
+    @Autowired com.tenemsa.platform.chat.service.ChatAttachmentService attachmentService;
 
     private Long cid() { return authContext.currentCompanyId(); }
 
@@ -76,8 +77,11 @@ public class ChatRestController {
         Me me = me();
         // Only the sender may delete a message.
         return chatRepo.findByIdAndCompanyId(id, cid()).filter(m -> is(me, m.getSenderId(), m.getSenderRole())).map(m -> {
+            Long att = m.getAttachmentId();
             m.setMessage("[deleted]"); m.setStatus("DELETED");
+            m.setAttachmentId(null); m.setAttachmentName(null); m.setAttachmentType(null); m.setAttachmentSize(null);
             chatRepo.save(m);
+            attachmentService.purge(att);
             return ResponseEntity.ok(Map.of("id",id,"status","DELETED"));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -126,6 +130,7 @@ public class ChatRestController {
             @RequestParam Integer id1,@RequestParam String role1,
             @RequestParam Integer id2,@RequestParam String role2) {
         requireParticipant(me(), id1, role1, id2, role2);
+        for (ChatMessage m : chatRepo.getChatBetween(cid(),id1,role1,id2,role2)) attachmentService.purge(m.getAttachmentId());
         return ResponseEntity.ok(chatRepo.deleteChatBetween(cid(),id1,role1,id2,role2)+" deleted");
     }
 }
