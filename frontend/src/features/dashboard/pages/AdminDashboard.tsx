@@ -76,12 +76,16 @@ export default function AdminDashboard() {
 
   const fetchAll = async () => {
     try {
-      const [e, l, n] = await Promise.all([
+      // Each part loads on its own: a role without access to one of them (e.g. Admin cannot list
+      // leave requests) still sees the rest of the dashboard.
+      const [e, l, n] = await Promise.allSettled([
         getEmployees(),
         axiosInstance.get<Leave[]>("/api/leaves"),
         axiosInstance.get<Notification[]>("/api/notifications"),
       ]);
-      setEmployees(e.data); setLeaves(l.data); setNotifications(n.data);
+      if (e.status === "fulfilled") setEmployees(e.value.data);
+      if (l.status === "fulfilled") setLeaves(l.value.data);
+      if (n.status === "fulfilled") setNotifications(n.value.data);
     } catch(err) { console.error(err); }
     finally { setLoading(false); }
   };

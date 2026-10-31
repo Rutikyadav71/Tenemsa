@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent, useEffect } from "react";
 import axiosInstance from "../../../shared/api/axiosInstance";
 import { API_BASE_URL } from "../../../shared/api/apiConfig";
+import { homeFor } from "../../../shared/lib/roles";
 import { storeAuthResponse } from "../../../shared/lib/authStorage";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import type { AuthResponse } from "../../../shared/types/models";
@@ -51,9 +52,9 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const res = await axiosInstance.post<AuthResponse>("/api/auth/login", { ...form, rememberMe, workspace: workspace || undefined });
-      storeAuthResponse(res.data, "USER");
+      storeAuthResponse(res.data);
       if (res.data.companySlug) rememberWorkspace(res.data.companySlug);
-      navigate("/user/dashboard");
+      navigate(homeFor(res.data.role));
     } catch (err: any) {
       const msg = err.response?.data;
       if (typeof msg === "string" && msg.includes("ACCOUNT_FROZEN")) {
