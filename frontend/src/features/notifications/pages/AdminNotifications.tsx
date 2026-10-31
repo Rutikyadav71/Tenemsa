@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../shared/api/axiosInstance";
 import type { Notification } from "../../../shared/types/models";
+import { useNavigate } from "react-router-dom";
+import { can } from "../../../shared/lib/roles";
+import EmailToggle from "../components/EmailToggle";
 
 const BellIcon = () => <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
 
@@ -16,6 +19,7 @@ const RowSkeleton = () => (
 export default function AdminNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => { fetchNotifications(); }, []);
 
@@ -32,6 +36,16 @@ export default function AdminNotifications() {
     fetchNotifications();
   };
 
+  const open = async (n: Notification) => {
+    if (!n.read) {
+      await axiosInstance.put(`/api/notifications/${n.id}/read`).catch(() => {});
+      setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, read: true } : x)));
+    }
+    if (n.type === "LEAVE_REQUESTED") navigate(can("leave:view:any") ? "/admin/leaves" : "/admin/team-leaves");
+    else if (n.type === "LEAVE_DECIDED") navigate("/admin/apply-leave");
+    else if (n.type === "DOCUMENT_SHARED") navigate("/admin/documents");
+  };
+
   const unread = notifications.filter(n => !n.read).length;
 
   return (
@@ -40,6 +54,7 @@ export default function AdminNotifications() {
         <div>
           <div className="page-title">Notifications</div>
           <div className="page-sub">{unread > 0 ? `${unread} unread` : "All caught up"}</div>
+          <div style={{marginTop:8}}><EmailToggle/></div>
         </div>
         {unread > 0 && (
           <button className="btn-ems btn-secondary-ems" onClick={markAllRead} style={{fontSize:12}}>
@@ -57,7 +72,8 @@ export default function AdminNotifications() {
             </div>
           ) :
           notifications.map((n, i) => (
-            <div key={n.id || i} style={{
+            <div key={n.id || i} onClick={() => open(n)} style={{
+              cursor:"pointer",
               padding:"14px 20px",
               borderBottom: i < notifications.length - 1 ? "1px solid var(--border)" : "none",
               background: !n.read ? "rgba(99,102,241,0.03)" : "transparent",

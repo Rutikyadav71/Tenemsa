@@ -124,6 +124,28 @@ export interface Notification {
   message: string;
   createdAt?: string;
   read?: boolean;
+  /** LEAVE_REQUESTED, LEAVE_DECIDED, LEAVE_DELETED, or empty for older company-wide ones. */
+  type?: string | null;
+  leaveId?: number | null;
+}
+
+// ---- Team leave approval (Phase 8) ----
+export interface TeamLeave {
+  id: number;
+  empId: number;
+  employeeName: string;
+  department: string | null;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string | null;
+  status: LeaveStatus;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  /** Other people in the same group who are off on overlapping days. */
+  clashesWith: string[];
+  canDecide: boolean;
 }
 
 export interface ChatMessage {
@@ -471,4 +493,51 @@ export interface KbServiceStatus {
   vectorStore: string;
   embeddingModel: string;
   readyDocuments: number;
+}
+
+// ---- Documents (Phase 8b) ----
+export type DocCategory = "POLICY" | "HANDBOOK" | "CONTRACT" | "FORM" | "PERSONAL" | "OTHER";
+export type DocVisibility = "ALL_STAFF" | "MANAGEMENT" | "PRIVATE";
+
+export interface StoredDocument {
+  id: number;
+  title: string;
+  category: DocCategory;
+  visibility: DocVisibility;
+  ownerEmpId: number | null;
+  ownerName: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByName: string | null;
+  indexedForAi: boolean;
+  /** Why it is not searchable in the knowledge base, when that was asked for. */
+  indexNote: string | null;
+  canDelete: boolean;
+  createdAt: string;
+}
+
+// ---- Analytics (Phase 8c) ----
+export interface Count { label: string; value: number; }
+
+export interface AnalyticsOverview {
+  scope: "COMPANY" | "TEAM";
+  headcount: number;
+  byDepartment: Count[];
+  byRole: Count[];
+  leave: { pending: number; offToday: string[]; daysByMonth: Count[]; statusCounts: Count[] };
+  attendance: {
+    days: number; present: number; late: number; halfDay: number; absent: number; onLeave: number;
+    presentRate: number | null; averageWorkHours: number | null;
+  };
+  projects: { issuesByStatus: Count[]; overdueIssues: number } | null;
+}
+
+export interface MySummary {
+  leaveDaysApprovedThisYear: number;
+  pendingLeaveRequests: number;
+  presentRateLast30Days: number | null;
+  openIssues: number;
+  overdueIssues: number;
+  unreadNotifications: number;
 }

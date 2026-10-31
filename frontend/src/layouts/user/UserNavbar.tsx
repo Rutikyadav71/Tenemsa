@@ -59,9 +59,7 @@ export default function UserNavbar({ toggleSidebar, toggleCollapsed, sidebarColl
   const fetchNotifications = async () => {
     try {
       const res  = await axiosInstance.get<Notification[]>("/api/notifications");
-      const mine = (res.data||[]).filter(n =>
-        n.message?.toLowerCase().includes("leave") && n.message?.includes(`Emp ID: ${empId}`)
-      );
+      const mine = res.data || [];   // the server returns only this person's notifications
       setNotifications(mine);
       setUnreadCount(mine.filter(n=>!n.read).length);
     } catch {}
