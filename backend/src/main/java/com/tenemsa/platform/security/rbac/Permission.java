@@ -62,6 +62,14 @@ public enum Permission {
     ISSUE_CREATE("issue:create"),
     ISSUE_MANAGE_ANY("issue:manage:any"),
 
+    // Phase 6a: AI. ai:use lets someone call AI features (and spend the company's quota),
+    // meeting:manage:any lets someone see and delete other people's meeting summaries.
+    AI_USE("ai:use"),
+    AI_USAGE_VIEW("ai:usage:view"),
+    MEETING_MANAGE_ANY("meeting:manage:any"),
+    /** Ask the HR assistant about your OWN leave and attendance. Held by every role. */
+    AI_ASSISTANT_SELF("ai:assistant:self"),
+
     DOCUMENT_UPLOAD("document:upload"),
     CHAT_USE("chat:use"),
     PROFILE_UPDATE_SELF("profile:update:self");
