@@ -95,3 +95,14 @@ Database: MySQL is for local development; production and any vector/RAG work use
 
 ### AI cost estimate and company switch
 Set `AI_PRICE_INPUT_PER_MILLION_USD` and `AI_PRICE_OUTPUT_PER_MILLION_USD` to your model's published prices to show an estimated cost on the AI Usage page (left at 0, the figure is hidden). Owners and admins can switch AI off for their company under Company settings.
+
+## Knowledge base and pgvector
+
+- Embeddings follow `AI_PROVIDER=google-genai` and `GEMINI_API_KEY`. Without them documents cannot be added (503).
+- PostgreSQL (production): run `CREATE EXTENSION vector;` once as a privileged user if V7 cannot (Render Postgres supports it), then restart; with the extension present Flyway V7 creates the vector column and HNSW index. If you enable the extension after V7 ran, add manually: `ALTER TABLE kb_chunks ADD COLUMN embedding vector(768); CREATE INDEX idx_kb_chunks_embedding ON kb_chunks USING hnsw (embedding vector_cosine_ops);` then Re-index each document.
+- MySQL (local): works through the scan search, capped by `KB_SCAN_MAX_CHUNKS`.
+- Settings: `KB_VECTOR_STORE` (auto|pgvector|scan), `KB_MIN_SCORE`, `KB_EMBED_PER_COMPANY_PER_DAY`, `KB_TOP_K`.
+
+## Document storage
+
+Uploaded files are stored in the database (`document_files`). Limit per company: `DOCUMENTS_MAX_COMPANY_BYTES` (default 209715200 = 200 MB). Include the database in backups. Individual uploads are limited to 10 MB by `spring.servlet.multipart.*`.

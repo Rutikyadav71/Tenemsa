@@ -130,3 +130,14 @@ Ideas for later (6b+): email/announcement writer with confirmation, stand-up and
 - **Prompt contract test** guards the safety rules and JSON shape of every prompt file.
 - **Parked:** the leave predictor (`ml-service`, `leave_type`) until you ask for it.
 - **Ready for Phase 7:** the gateway, prompts, quotas, usage log and permission model are in place; RAG adds embeddings and retrieval on PostgreSQL/pgvector.
+
+## Phase 7: Knowledge base (built)
+
+Upload or paste documents (pdf, docx, txt, md, csv), index them in the background, ask questions with cited answers. Tenant-scoped, audience-filtered (all staff / management), pgvector on PostgreSQL with a portable fallback. Permissions `kb:ask`, `kb:manage`, `kb:read:management`. Not stored: the original files (Phase 8). Scanned PDFs are not supported (no OCR).
+
+## Phase 8: Team leave approval, notifications, documents, analytics (built)
+
+- **8a:** Manager Team Leave screen (own teams only, never their own leave, shows who else is off, rejection needs a reason, decision recorded). Personal notifications with in-app plus optional email, switchable per person.
+- **8b:** Document storage of original files with category and visibility (all staff, management, one employee), safe downloads, per-company storage limit, optional link to the knowledge base (closes the Phase 7 gap).
+- **8c:** Insights page: personal summary for everyone; company or team dashboards with leave, attendance, headcount and task figures.
+- **Not in Phase 8:** payroll and salary figures, object storage, scheduled reports. Next is Phase 9 (workflow automation).

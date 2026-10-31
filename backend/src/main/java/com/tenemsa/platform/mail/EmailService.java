@@ -75,6 +75,17 @@ public class EmailService {
                 "<p>— Tenemsa</p>");
     }
 
+    /** In-app notification copied to email. The message is plain text and is escaped here. */
+    public boolean sendNotificationEmail(String toEmail, String name, String message) {
+        String oneLine = message.replaceAll("[\\r\\n]+", " ");   // never let text reach a mail header with a line break
+        return send(toEmail, "Tenemsa: " + (oneLine.length() > 60 ? oneLine.substring(0, 57) + "..." : oneLine),
+                "<p>Hi <strong>" + org.springframework.web.util.HtmlUtils.htmlEscape(name == null ? "" : name) + "</strong>,</p>" +
+                "<p>" + org.springframework.web.util.HtmlUtils.htmlEscape(message) + "</p>" +
+                "<p><a href=\"" + frontendUrl + "\">Open Tenemsa</a></p>" +
+                "<p style=\"color:#888;font-size:12px\">You can turn email notifications off on your Notifications page.</p>" +
+                "<p>— Tenemsa</p>");
+    }
+
     /** true = handed to the mail server (or email is switched off); false = delivery failed. */
     private boolean send(String toEmail, String subject, String htmlBody) {
         if (!emailEnabled) {

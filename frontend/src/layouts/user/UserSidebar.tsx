@@ -34,11 +34,20 @@ export default function UserSidebar({ isOpen, collapsed, toggleSidebar }) {
   const color      = AV_COLORS[(name.charCodeAt(0)||0) % AV_COLORS.length];
   const [showSignout, setShowSignout] = useState(false);
   // Managers (and anyone granted AI) also get Meeting AI; everyone else sees the plain employee menu.
+  const approvalItems = [
+    ...(can("leave:approve:team") ? [{ to:"/user/team-leaves", label:"Team Leave", icon:ic.leave }] : []),
+  ];
+  const moreItems = [
+    ...(can("document:view") ? [{ to:"/user/documents", label:"Documents", icon:ic.leave }] : []),
+    { to:"/user/insights", label:"Insights", icon:ic.dashboard },
+  ];
   const aiItems = [
     ...(can("ai:use") ? [{ to:"/user/meetings", label:"Meeting AI", icon:ic.notif }, { to:"/user/writer", label:"AI Writer", icon:ic.notif }] : []),
     ...(can("ai:assistant:self") ? [{ to:"/user/assistant", label:"HR Assistant", icon:ic.notif }] : []),
+    ...(can("kb:ask") ? [{ to:"/user/ask-docs", label:"Ask Documents", icon:ic.notif }] : []),
+    ...(can("kb:manage") ? [{ to:"/user/knowledge", label:"Knowledge Base", icon:ic.notif }] : []),
   ];
-  const visibleItems = [...navItems.slice(0, 5), ...aiItems, ...navItems.slice(5)];
+  const visibleItems = [...navItems.slice(0, 2), ...approvalItems, ...navItems.slice(2, 5), ...aiItems, ...moreItems, ...navItems.slice(5)];
 
   const NavItem = ({ item }) => {
     const active = location.pathname === item.to;

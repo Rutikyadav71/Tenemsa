@@ -124,6 +124,28 @@ export interface Notification {
   message: string;
   createdAt?: string;
   read?: boolean;
+  /** LEAVE_REQUESTED, LEAVE_DECIDED, LEAVE_DELETED, or empty for older company-wide ones. */
+  type?: string | null;
+  leaveId?: number | null;
+}
+
+// ---- Team leave approval (Phase 8) ----
+export interface TeamLeave {
+  id: number;
+  empId: number;
+  employeeName: string;
+  department: string | null;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string | null;
+  status: LeaveStatus;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  /** Other people in the same group who are off on overlapping days. */
+  clashesWith: string[];
+  canDecide: boolean;
 }
 
 export interface ChatMessage {
@@ -433,3 +455,89 @@ export interface ProjectReport {
 }
 
 export interface HrAnswer { answer: string; factsUsed: string[]; model: string; promptVersion: string; }
+
+// ---- Knowledge base (Phase 7) ----
+export type KbAudience = "ALL_STAFF" | "MANAGEMENT";
+export type KbStatus = "PROCESSING" | "READY" | "FAILED";
+
+export interface KbDocument {
+  id: number;
+  title: string;
+  fileName: string | null;
+  audience: KbAudience;
+  status: KbStatus;
+  errorMessage: string | null;
+  charCount: number;
+  chunkCount: number;
+  embeddingModel: string | null;
+  /** Indexed with an older embedding model: re-index to make it searchable again. */
+  stale: boolean;
+  uploadedByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KbSource { n: number; documentId: number; title: string; snippet: string; score: number; }
+
+export interface KbAnswer {
+  found: boolean;
+  answer: string;
+  sources: KbSource[];
+  model: string | null;
+  promptVersion: string | null;
+}
+
+export interface KbServiceStatus {
+  available: boolean;
+  companyEnabled: boolean;
+  vectorStore: string;
+  embeddingModel: string;
+  readyDocuments: number;
+}
+
+// ---- Documents (Phase 8b) ----
+export type DocCategory = "POLICY" | "HANDBOOK" | "CONTRACT" | "FORM" | "PERSONAL" | "OTHER";
+export type DocVisibility = "ALL_STAFF" | "MANAGEMENT" | "PRIVATE";
+
+export interface StoredDocument {
+  id: number;
+  title: string;
+  category: DocCategory;
+  visibility: DocVisibility;
+  ownerEmpId: number | null;
+  ownerName: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByName: string | null;
+  indexedForAi: boolean;
+  /** Why it is not searchable in the knowledge base, when that was asked for. */
+  indexNote: string | null;
+  canDelete: boolean;
+  createdAt: string;
+}
+
+// ---- Analytics (Phase 8c) ----
+export interface Count { label: string; value: number; }
+
+export interface AnalyticsOverview {
+  scope: "COMPANY" | "TEAM";
+  headcount: number;
+  byDepartment: Count[];
+  byRole: Count[];
+  leave: { pending: number; offToday: string[]; daysByMonth: Count[]; statusCounts: Count[] };
+  attendance: {
+    days: number; present: number; late: number; halfDay: number; absent: number; onLeave: number;
+    presentRate: number | null; averageWorkHours: number | null;
+  };
+  projects: { issuesByStatus: Count[]; overdueIssues: number } | null;
+}
+
+export interface MySummary {
+  leaveDaysApprovedThisYear: number;
+  pendingLeaveRequests: number;
+  presentRateLast30Days: number | null;
+  openIssues: number;
+  overdueIssues: number;
+  unreadNotifications: number;
+}

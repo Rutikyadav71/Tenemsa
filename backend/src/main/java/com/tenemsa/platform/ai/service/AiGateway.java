@@ -146,10 +146,8 @@ public class AiGateway {
 
     private <T> void enforceQuota(AiCall<T> call, Long companyId, Integer empId) {
         String refused = AiRequestStatus.RATE_LIMITED.name();
-        long perUser = empId == null ? 0 : logs.countByCompanyIdAndEmpIdAndCreatedAtAfterAndStatusNot(
-                companyId, empId, LocalDateTime.now().minusHours(1), refused);
-        long perCompany = logs.countByCompanyIdAndCreatedAtAfterAndStatusNot(
-                companyId, LocalDateTime.now().minusHours(24), refused);
+        long perUser = empId == null ? 0 : logs.countChatByUser(companyId, empId, LocalDateTime.now().minusHours(1));
+        long perCompany = logs.countChatByCompany(companyId, LocalDateTime.now().minusHours(24));
         String message = null;
         if (perUser >= props.getPerUserPerHour()) {
             message = "You have reached the limit of " + props.getPerUserPerHour() + " AI requests per hour. Try again later.";

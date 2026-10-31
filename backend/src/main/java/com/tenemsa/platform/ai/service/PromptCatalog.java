@@ -24,6 +24,7 @@ public class PromptCatalog {
     public static final String COMMUNICATION_WRITER = "communication-writer";
     public static final String PROJECT_REPORT = "project-report";
     public static final String HR_ASSISTANT = "hr-assistant";
+    public static final String KB_ANSWER = "kb-answer";
     /** Current version of each of the four prompts above (all v1 so far). */
     public static final int V1 = 1;
 

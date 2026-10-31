@@ -5,7 +5,11 @@ import com.tenemsa.platform.audit.service.AuditService;
 import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.leave.model.Leave;
 import com.tenemsa.platform.leave.model.LeaveStatus;
+import com.tenemsa.platform.leave.dto.LeaveDecisionRequest;
+import com.tenemsa.platform.leave.dto.TeamLeaveResponse;
 import com.tenemsa.platform.leave.service.LeaveService;
+import com.tenemsa.platform.leave.service.TeamLeaveService;
+import jakarta.validation.Valid;
 import com.tenemsa.platform.security.AuthContext;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +28,12 @@ public class LeaveController {
     @Autowired private AuthContext authContext;
     @Autowired private AuditService auditService;
     @Autowired private UserRepository userRepository;
+    @Autowired private TeamLeaveService teamLeaveService;
+
+    private Integer callerEmpId() {
+        return userRepository.findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId())
+                .map(u -> u.getEmpId()).orElse(null);
+    }
 
     // Every role holds leave:apply:self (see RolePermissionRegistry) — this
     // is functionally the same gate as the old isAuthenticated(), just
@@ -48,6 +58,13 @@ public class LeaveController {
     @GetMapping
     public List<Leave> getAllLeaves() {
         return leaveService.getAllLeaves(authContext.currentCompanyId());
+    }
+
+    /** The screen a manager (or HR/admin) uses to decide leave: requests they are responsible for, with who else is off. */
+    @PreAuthorize("hasAuthority('leave:approve:any') or hasAuthority('leave:approve:team') or hasAuthority('leave:view:team')")
+    @GetMapping("/team")
+    public List<TeamLeaveResponse> teamLeaves(@RequestParam(value = "status", required = false) String status) {
+        return teamLeaveService.list(status);
     }
 
     @PreAuthorize("hasAuthority('leave:view:any') or " +
@@ -77,8 +94,9 @@ public class LeaveController {
     @PreAuthorize("hasAuthority('leave:approve:any') or " +
             "(hasAuthority('leave:approve:team') and @leaveSecurity.managesLeave(#id))")
     @PutMapping("/{id}/approve")
-    public Leave approveLeave(@PathVariable Long id) {
-        Leave leave = leaveService.updateLeaveStatus(authContext.currentCompanyId(), id, LeaveStatus.APPROVED);
+    public Leave approveLeave(@PathVariable Long id, @Valid @RequestBody(required = false) LeaveDecisionRequest req) {
+        String note = req == null ? null : req.note();
+        Leave leave = leaveService.decide(authContext.currentCompanyId(), id, LeaveStatus.APPROVED, note, callerEmpId());
         auditService.recordCurrent(AuditAction.LEAVE_APPROVED, "LEAVE", String.valueOf(id), "Approved leave of empId " + leave.getEmpId());
         return leave;
     }
@@ -86,8 +104,9 @@ public class LeaveController {
     @PreAuthorize("hasAuthority('leave:approve:any') or " +
             "(hasAuthority('leave:approve:team') and @leaveSecurity.managesLeave(#id))")
     @PutMapping("/{id}/reject")
-    public Leave rejectLeave(@PathVariable Long id) {
-        Leave leave = leaveService.updateLeaveStatus(authContext.currentCompanyId(), id, LeaveStatus.REJECTED);
+    public Leave rejectLeave(@PathVariable Long id, @Valid @RequestBody(required = false) LeaveDecisionRequest req) {
+        String note = req == null ? null : req.note();
+        Leave leave = leaveService.decide(authContext.currentCompanyId(), id, LeaveStatus.REJECTED, note, callerEmpId());
         auditService.recordCurrent(AuditAction.LEAVE_REJECTED, "LEAVE", String.valueOf(id), "Rejected leave of empId " + leave.getEmpId());
         return leave;
     }

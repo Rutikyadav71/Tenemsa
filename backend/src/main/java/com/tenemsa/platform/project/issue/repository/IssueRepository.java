@@ -24,6 +24,13 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     @Query("SELECT i.projectId, i.status, COUNT(i) FROM Issue i WHERE i.companyId = :companyId GROUP BY i.projectId, i.status")
     List<Object[]> countByProjectAndStatus(@Param("companyId") Long companyId);
 
+    /** Rows of [status, count] across the company, for the analytics page. */
+    @Query("SELECT i.status, COUNT(i) FROM Issue i WHERE i.companyId = :companyId GROUP BY i.status")
+    List<Object[]> countByStatus(@Param("companyId") Long companyId);
+
+    @Query("SELECT COUNT(i) FROM Issue i WHERE i.companyId = :companyId AND i.status <> :done AND i.dueDate IS NOT NULL AND i.dueDate < :today")
+    long countOverdue(@Param("companyId") Long companyId, @Param("today") java.time.LocalDate today, @Param("done") IssueStatus done);
+
     List<Issue> findByCompanyIdAndIdIn(Long companyId, Collection<Long> ids);
 
     @Modifying

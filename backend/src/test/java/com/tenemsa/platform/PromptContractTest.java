@@ -26,7 +26,9 @@ class PromptContractTest {
             new Contract(PromptCatalog.PROJECT_REPORT, List.of("<<<FACTS", "FACTS>>>"),
                     List.of("headline", "summary", "highlights", "risks", "nextSteps")),
             new Contract(PromptCatalog.HR_ASSISTANT, List.of("<<<QUESTION", "QUESTION>>>", "<<<FACTS", "FACTS>>>"),
-                    List.of("answer", "factsUsed")));
+                    List.of("answer", "factsUsed")),
+            new Contract(PromptCatalog.KB_ANSWER, List.of("<<<QUESTION", "QUESTION>>>", "<<<SOURCES", "SOURCES>>>"),
+                    List.of("answerable", "answer", "citations")));
 
     @Test
     void everyPromptKeepsItsSafetyRulesAndOutputShape() {

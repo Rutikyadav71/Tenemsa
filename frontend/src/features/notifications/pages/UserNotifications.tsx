@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axiosInstance from "../../../shared/api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import type { Notification } from "../../../shared/types/models";
+import { can } from "../../../shared/lib/roles";
+import EmailToggle from "../components/EmailToggle";
 
 const BellIcon = () => <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
 
@@ -20,22 +22,19 @@ export default function UserNotifications() {
   const fetchNotifications = async () => {
     try {
       const res  = await axiosInstance.get<Notification[]>("/api/notifications");
-      const mine = res.data.filter(n =>
-        n.message.toLowerCase().includes("leave") &&
-        n.message.includes(`Emp ID: ${empId}`)
-      );
-      setNotifications(mine);
+      setNotifications(res.data || []);   // the server returns only this person's notifications
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
   const handleClick = async (n: Notification) => {
     try {
-      await axiosInstance.put("/api/notifications/mark-all-read");
-      setNotifications(prev => prev.map(x => ({ ...x, read: true })));
-      const match = n.message.match(/Leave ID:\s*(\d+)/);
-      navigate(match ? `/user/leaves/employee/${empId}?leaveId=${match[1]}` : `/user/leaves/employee/${empId}`);
+      if (!n.read) await axiosInstance.put(`/api/notifications/${n.id}/read`);
+      setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, read: true } : x)));
     } catch (e) { console.error(e); }
+    if (n.type === "LEAVE_REQUESTED") navigate(can("leave:approve:team") ? "/user/team-leaves" : "/user/dashboard");
+    else if (n.type === "DOCUMENT_SHARED") navigate("/user/documents");
+    else if (n.leaveId) navigate(`/user/leaves/employee/${empId}?leaveId=${n.leaveId}`);
   };
 
   const unread = notifications.filter(n => !n.read).length;
@@ -56,6 +55,7 @@ export default function UserNotifications() {
         <div>
           <div className="page-title">Notifications</div>
           <div className="page-sub">{unread > 0 ? `${unread} unread updates` : "All caught up"}</div>
+          <div style={{ marginTop: 8 }}><EmailToggle /></div>
         </div>
         {unread > 0 && (
           <button
@@ -77,8 +77,8 @@ export default function UserNotifications() {
         ) : notifications.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12, opacity: 0.3 }}><BellIcon /></div>
-            <div style={{ fontSize: 14 }}>No leave notifications yet</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>You'll be notified when your leave status changes</div>
+            <div style={{ fontSize: 14 }}>No notifications yet</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>You'll be notified about leave requests and decisions</div>
           </div>
         ) : (
           notifications.map((n, i) => (

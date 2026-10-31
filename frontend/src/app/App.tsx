@@ -22,6 +22,11 @@ import MeetingDetailPage from "../features/meetings/pages/MeetingDetailPage";
 import AiUsagePage from "../features/ai/pages/AiUsagePage";
 import WriterPage from "../features/ai/pages/WriterPage";
 import AssistantPage from "../features/ai/pages/AssistantPage";
+import TeamLeavesPage from "../features/leave/pages/TeamLeavesPage";
+import DocumentsPage from "../features/documents/pages/DocumentsPage";
+import AnalyticsPage from "../features/analytics/pages/AnalyticsPage";
+import KnowledgePage from "../features/knowledge/pages/KnowledgePage";
+import AskKnowledgePage from "../features/knowledge/pages/AskKnowledgePage";
 import ChatPage from "../features/chat/pages/ChatPage";
 import AttendancePage from "../features/attendance/pages/Attendance";
 import TeamManagement from "../features/team/pages/TeamManagement";
@@ -116,6 +121,11 @@ const AdminLayout = () => {
             <Route path="ai-usage" element={<AiUsagePage />} />
             <Route path="writer" element={<WriterPage />} />
             <Route path="assistant" element={<AssistantPage />} />
+            <Route path="team-leaves" element={<TeamLeavesPage />} />
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="insights" element={<AnalyticsPage />} />
+            <Route path="knowledge" element={<KnowledgePage />} />
+            <Route path="ask-docs" element={<AskKnowledgePage />} />
           </Routes>
         </main>
       </div>
@@ -165,6 +175,11 @@ const UserLayout = () => {
             <Route path="meetings/:id" element={<MeetingDetailPage />} />
             <Route path="writer" element={<WriterPage />} />
             <Route path="assistant" element={<AssistantPage />} />
+            <Route path="team-leaves" element={<TeamLeavesPage />} />
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="insights" element={<AnalyticsPage />} />
+            <Route path="knowledge" element={<KnowledgePage />} />
+            <Route path="ask-docs" element={<AskKnowledgePage />} />
             <Route path="notifications" element={<UserNotifications />} />
             <Route path="chat" element={<ChatPage />} />
           </Routes>

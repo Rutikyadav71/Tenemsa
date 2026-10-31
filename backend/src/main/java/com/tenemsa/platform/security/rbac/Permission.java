@@ -69,7 +69,14 @@ public enum Permission {
     MEETING_MANAGE_ANY("meeting:manage:any"),
     /** Ask the HR assistant about your OWN leave and attendance. Held by every role. */
     AI_ASSISTANT_SELF("ai:assistant:self"),
+    /** Knowledge base: ask questions (everyone), read management-only documents, add/delete/reindex documents. */
+    KB_ASK("kb:ask"),
+    KB_READ_MANAGEMENT("kb:read:management"),
+    KB_MANAGE("kb:manage"),
 
+    /** Open the Documents page and download what is visible to you. Every role. */
+    DOCUMENT_VIEW("document:view"),
+    /** Upload company documents and documents for individual employees; delete any document. */
     DOCUMENT_UPLOAD("document:upload"),
     CHAT_USE("chat:use"),
     PROFILE_UPDATE_SELF("profile:update:self");
