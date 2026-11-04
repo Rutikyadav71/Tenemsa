@@ -1,0 +1,8 @@
+.tl-card{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;}
+.tl-main{flex:1;min-width:min(240px,100%);}
+.tl-who{display:flex;gap:6px;align-items:center;flex-wrap:wrap;color:var(--text-1);}
+.tl-who span{color:var(--text-3);font-size:12.5px;}
+.tl-dates{font-size:13.5px;color:var(--text-2);margin-top:4px;}
+.tl-note{font-size:13px;color:var(--text-3);margin-top:4px;overflow-wrap:anywhere;}
+.tl-clash{font-size:12.5px;color:var(--amber);margin-top:6px;}
+.tl-actions{display:flex;gap:8px;flex:none;}
