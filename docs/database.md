@@ -195,3 +195,10 @@ Each tenant table also has an index on `company_id` (Phase 4). Still no composit
 - `chat_messages` gains `attachment_id`, `attachment_name`, `attachment_type`, `attachment_size` (copied from the stored file by the server).
 - `chat_attachments`: company, uploader (`uploader_tag` + `uploader_id`), file name, content type, size, `message_id` (set when sent; an attachment is sent once).
 - `chat_attachment_files`: `attachment_id` primary key, `content` (BYTEA / LONGBLOB). Deleting a message or a conversation deletes its files.
+
+
+## V11: profile_images
+Profile photos kept in the database when Cloudinary is not configured (or fails). Columns: `token` (random public id), `company_id`, `owner_key` (`emp:<empId>` or `user:<id>`), `content_type`, `content`, `created_at`. Served at `GET /api/public/avatars/{token}` without sign-in, like a Cloudinary link.
+
+## V12: ai_conversations, ai_conversation_messages
+Saved AI chats. `ai_conversations(company_id, user_id, kind, title, created_at, updated_at)` and `ai_conversation_messages(conversation_id, role USER|ASSISTANT, content, metadata JSON text, created_at)`. Both vendors have a V12 migration.
