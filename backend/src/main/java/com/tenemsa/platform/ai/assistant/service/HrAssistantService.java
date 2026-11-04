@@ -3,6 +3,7 @@ package com.tenemsa.platform.ai.assistant.service;
 import com.tenemsa.platform.ai.assistant.dto.HrAiOutput;
 import com.tenemsa.platform.ai.assistant.dto.HrAnswerResponse;
 import com.tenemsa.platform.ai.assistant.dto.HrAskRequest;
+import com.tenemsa.platform.ai.conversation.service.AiConversationService;
 import com.tenemsa.platform.ai.model.AiFeature;
 import com.tenemsa.platform.ai.service.AiGateway;
 import com.tenemsa.platform.ai.service.AiResult;
@@ -46,15 +47,18 @@ public class HrAssistantService {
     private final AttendanceRepository attendance;
     private final UserRepository users;
     private final AuthContext authContext;
+    private final AiConversationService conversations;
 
     public HrAssistantService(AiGateway gateway, PromptCatalog prompts, LeaveRepository leaves,
-                              AttendanceRepository attendance, UserRepository users, AuthContext authContext) {
+                              AttendanceRepository attendance, UserRepository users, AuthContext authContext,
+                              AiConversationService conversations) {
         this.gateway = gateway;
         this.prompts = prompts;
         this.leaves = leaves;
         this.attendance = attendance;
         this.users = users;
         this.authContext = authContext;
+        this.conversations = conversations;
     }
 
     public HrAnswerResponse ask(HrAskRequest req) {
@@ -66,16 +70,21 @@ public class HrAssistantService {
         }
         String facts = String.join("\n", factsFor(companyId, me.getEmpId()));
 
-        String system = prompts.text(PromptCatalog.HR_ASSISTANT, PromptCatalog.V1);
+        List<AiConversationService.Turn> earlier = conversations.history(AiConversationService.HR, req.conversationId());
+        String history = AiConversationService.promptBlock(earlier);
+        String system = prompts.text(PromptCatalog.HR_ASSISTANT, PromptCatalog.V2);
         String user = "Today's date: " + LocalDate.now() + "\n\n"
+                + (history.isEmpty() ? "" : "Earlier in this chat:\n" + PromptInput.fence("HISTORY", history) + "\n\n")
                 + "Question:\n" + PromptInput.fence("QUESTION", req.question()) + "\n\n"
                 + "Facts about this employee:\n" + PromptInput.fence("FACTS", facts);
         AiResult<HrAiOutput> result = gateway.generate(new AiGateway.AiCall<>(AiFeature.HR_ASSISTANT,
-                PromptCatalog.versionLabel(PromptCatalog.HR_ASSISTANT, PromptCatalog.V1), system, user, HrAiOutput.class));
+                PromptCatalog.versionLabel(PromptCatalog.HR_ASSISTANT, PromptCatalog.V2), system, user, HrAiOutput.class));
 
         List<String> used = result.data().factsUsed() == null ? List.of()
                 : result.data().factsUsed().stream().filter(s -> s != null && !s.isBlank()).map(String::strip).limit(6).toList();
-        return new HrAnswerResponse(result.data().answer().strip(), used, result.model(), result.promptVersion());
+        String answer = result.data().answer().strip();
+        Long chatId = conversations.record(AiConversationService.HR, req.conversationId(), req.question(), answer, Map.of("factsUsed", used));
+        return new HrAnswerResponse(answer, used, result.model(), result.promptVersion(), chatId);
     }
 
     List<String> factsFor(Long companyId, int empId) {

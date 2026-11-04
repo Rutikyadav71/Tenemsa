@@ -27,6 +27,8 @@ public class PromptCatalog {
     public static final String KB_ANSWER = "kb-answer";
     /** Current version of each of the four prompts above (all v1 so far). */
     public static final int V1 = 1;
+    /** v2 of hr-assistant and kb-answer: adds the optional HISTORY block so follow-up questions work in a saved chat. */
+    public static final int V2 = 2;
 
     private final Map<String, String> cache = new ConcurrentHashMap<>();
 

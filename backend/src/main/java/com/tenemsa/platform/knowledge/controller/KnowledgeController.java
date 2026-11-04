@@ -36,7 +36,7 @@ public class KnowledgeController {
 
     @PreAuthorize("hasAuthority('kb:ask')")
     @PostMapping("/ask")
-    public KbAnswerResponse ask(@Valid @RequestBody KbAskRequest req) { return answers.ask(req.question()); }
+    public KbAnswerResponse ask(@Valid @RequestBody KbAskRequest req) { return answers.ask(req.question(), req.conversationId()); }
 
     @PreAuthorize("hasAuthority('kb:manage')")
     @GetMapping("/documents")

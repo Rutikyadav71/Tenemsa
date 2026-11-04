@@ -104,7 +104,7 @@ class AiDisabledTest {
         var res = call("POST", "/api/meetings", t.token(), Map.of("title", "Sync",
                 "notes", "Weekly sync. We agreed to ship v2 on Friday. Priya will prepare the release notes."));
         assertThat(res.getStatus()).isEqualTo(503);
-        assertThat(res.getContentAsString()).contains("AI_PROVIDER");
+        assertThat(res.getContentAsString()).contains("switched off").doesNotContain("AI_PROVIDER").doesNotContain("GEMINI");
         assertThat(ok(call("GET", "/api/meetings", t.token(), null), 200)).isEmpty();
         assertThat(call("GET", "/api/ai/status", "bad-token", null).getStatus()).as("needs a valid token").isIn(401, 403);
     }
