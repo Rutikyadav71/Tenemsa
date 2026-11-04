@@ -1,0 +1,50 @@
+.at-clock{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.at-clock>div{text-align:right;}
+.at-clock b{display:block;font:600 20px 'Outfit Variable','Outfit',sans-serif;color:var(--text-1);font-variant-numeric:tabular-nums;}
+.at-clock small{font-size:12px;color:var(--text-3);}
+.at-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:16px;align-items:start;}
+.at-side{display:grid;gap:14px;min-width:0;}
+.at-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+.at-nav h2{margin:0;font:600 16px 'Outfit Variable','Outfit',sans-serif;color:var(--text-1);}
+.at-cal{padding:14px;}
+.at-days,.at-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
+.at-days{margin-bottom:6px;}
+.at-days span{text-align:center;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;padding:4px 0;}
+.at-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;padding:4px 2px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--text-2);cursor:pointer;font:inherit;min-width:0;}
+.at-cell b{font-size:13px;font-weight:500;}
+.at-cell small{font-size:10px;font-weight:600;}
+.at-cell:hover:not(:disabled){background:var(--hairline);}
+.at-cell:disabled{opacity:.35;cursor:default;}
+.at-cell.today{background:var(--accent-glow);border-color:var(--accent);color:var(--accent-light);}
+.at-cell.today b{font-weight:700;}
+.at-cell.sel{border-color:var(--border-bright);background:var(--hairline);}
+.at-cell.s-PRESENT{background:var(--green-glow);color:var(--green);}
+.at-cell.s-ABSENT{background:var(--red-glow);color:var(--red);}
+.at-cell.s-HALF_DAY,.at-cell.s-LATE{background:var(--amber-glow);color:var(--amber);}
+.at-cell.s-ON_LEAVE{background:var(--accent-glow);color:var(--accent-light);}
+.at-cell.s-HOLIDAY{background:var(--teal-glow);color:var(--teal);}
+.at-cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.at-legend{list-style:none;display:flex;flex-wrap:wrap;gap:12px;margin:14px 0 0;padding:12px 0 0;border-top:1px solid var(--border);font-size:12px;color:var(--text-3);}
+.at-legend li{display:flex;gap:5px;align-items:center;}
+.at-dot{width:8px;height:8px;border-radius:50%;background:var(--text-3);}
+.at-dot.s-PRESENT{background:var(--green);}.at-dot.s-ABSENT{background:var(--red);}.at-dot.s-HALF_DAY,.at-dot.s-LATE{background:var(--amber);}.at-dot.s-ON_LEAVE{background:var(--accent-light);}.at-dot.s-HOLIDAY{background:var(--teal);}
+.at-kv{display:grid;gap:10px;}
+.at-kv>div{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:13.5px;}
+.at-kv span{color:var(--text-3);}.at-kv b{color:var(--text-1);}
+.at-muted{font-size:13px;color:var(--text-3);margin:0;}
+.at-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.at-stats>div{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-elevated,var(--hairline));min-width:0;}
+.at-stats small{display:block;font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;}
+.at-stats b{font:600 18px 'Outfit Variable','Outfit',sans-serif;color:var(--text-1);overflow-wrap:anywhere;}
+.at-rate{margin-top:12px;}.at-rate small{font-size:12px;color:var(--text-3);}
+.at-rate>div{display:flex;gap:10px;align-items:center;margin-top:4px;}
+.at-rate span{flex:1;height:6px;border-radius:99px;background:var(--hairline);overflow:hidden;}
+.at-rate i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--teal));border-radius:99px;}
+.at-rate b{color:var(--accent-light);font-size:13px;}
+.at-people{list-style:none;margin:0;padding:0;max-height:340px;overflow-y:auto;display:grid;gap:6px;}
+.at-people li{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:10px;}
+.at-who{flex:1;min-width:0;}
+.at-who b{display:block;font-size:13px;font-weight:500;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.at-who small{font-size:11px;color:var(--text-3);}
+@media (max-width:900px){.at-grid{grid-template-columns:minmax(0,1fr);}.at-clock>div{text-align:left;}}
+@media (max-width:480px){.at-cal{padding:8px;}.at-cell{min-height:44px;}.at-cell small{font-size:9px;}}

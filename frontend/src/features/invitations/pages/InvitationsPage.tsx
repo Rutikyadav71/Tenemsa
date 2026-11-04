@@ -1,6 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { LuMailPlus, LuSend, LuUserX } from "react-icons/lu";
 import { listInvitations, revokeInvitation, sendInvitation } from "../services/invitationService";
 import type { InvitationItem, Role } from "../../../shared/types/models";
+import { Alert, Badge, Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, PageHeader, Select, SkeletonList, useConfirm, useToast } from "../../../shared/ui";
+import { errorMessage } from "../../../shared/lib/errors";
+import * as v from "../../../shared/lib/validators";
 
 // Mirrors backend RoleAssignmentRegistry; the server is the real check.
 const ASSIGNABLE: Record<string, { value: Role; label: string }[]> = {
@@ -12,106 +16,102 @@ const ASSIGNABLE: Record<string, { value: Role; label: string }[]> = {
   ADMIN: [{ value: "MANAGER", label: "Manager" }],
   HR: [{ value: "EMPLOYEE", label: "Employee" }, { value: "INTERN", label: "Intern" }],
 };
+const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", HR: "HR", MANAGER: "Manager", EMPLOYEE: "Employee", INTERN: "Intern" };
+
+type Form = { name: string; email: string; department: string; role: Role };
 
 export default function InvitationsPage() {
+  const toast = useToast();
+  const confirmAction = useConfirm();
   const callerRole = localStorage.getItem("userRole") || "";
   const roles = ASSIGNABLE[callerRole] || [];
-  const [form, setForm] = useState({ name: "", email: "", department: "", role: (roles[0]?.value || "EMPLOYEE") as Role });
+  const [form, setForm] = useState<Form>({ name: "", email: "", department: "", role: (roles[0]?.value || "EMPLOYEE") as Role });
+  const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
   const [pending, setPending] = useState<InvitationItem[]>([]);
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "warning" } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [sending, setSending] = useState(false);
+  const [mailWarning, setMailWarning] = useState("");
 
-  const load = () => listInvitations().then(setPending).catch(() => setMessage({ text: "Could not load invitations.", type: "error" }));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(async () => {
+    try { setPending(await listInvitations()); setFailed(false); }
+    catch { setFailed(true); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => { setForm(f => ({ ...f, [key]: value })); setErrors(e => ({ ...e, [key]: "" })); };
 
   const handleSend = async (e: FormEvent) => {
-    e.preventDefault(); setMessage(null); setSending(true);
+    e.preventDefault();
+    const next = { name: v.required(form.name, "Name"), email: v.email(form.email), department: "", role: "" };
+    setErrors(next);
+    if (v.hasErrors(next)) return;
+    setSending(true); setMailWarning("");
     try {
-      const sent = await sendInvitation({ ...form, department: form.department || undefined });
+      const sent = await sendInvitation({ ...form, name: form.name.trim(), email: form.email.trim(), department: form.department.trim() || undefined });
       if (sent.emailSent === false) {
-        // Saved, but the mail server refused to send it (usually wrong SMTP login in backend/.env).
-        setMessage({
-          text: `Invitation created for ${form.email}, but the email could not be sent. ` +
-                "Check the mail settings (SMTP_USERNAME / SMTP_PASSWORD) in the backend, then send it again.",
-          type: "warning",
-        });
-      } else {
-        setMessage({ text: `Invitation sent to ${form.email}.`, type: "success" });
-      }
-      setForm({ ...form, name: "", email: "", department: "" });
-      load();
-    } catch (err: any) {
-      setMessage({ text: err.response?.data?.message || "Could not send the invitation.", type: "error" });
-    } finally { setSending(false); }
+        // Saved, but the mail server refused to send it, so the link was not delivered.
+        setMailWarning(`The invitation for ${form.email} was created, but the email could not be sent. Check the email settings on the server, then revoke it and send it again.`);
+      } else toast.success(`Invitation sent to ${form.email}.`);
+      setForm(f => ({ ...f, name: "", email: "", department: "" }));
+      void load();
+    } catch (err) { toast.fail(err, "We couldn't send the invitation."); }
+    finally { setSending(false); }
   };
 
-  const handleRevoke = async (id: number) => {
-    try { await revokeInvitation(id); load(); }
-    catch (err: any) { setMessage({ text: err.response?.data?.message || "Could not revoke.", type: "error" }); }
+  const handleRevoke = async (i: InvitationItem) => {
+    if (!(await confirmAction({ title: `Revoke the invitation for ${i.name}?`, message: "The link in their email will stop working.", confirmLabel: "Revoke", tone: "danger" }))) return;
+    try { await revokeInvitation(i.id); toast.success("Invitation revoked."); void load(); }
+    catch (err) { toast.error(errorMessage(err, "We couldn't revoke that invitation.")); }
   };
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">Invitations</div>
-          <div className="page-sub">Invite people by email. They choose their own password and join your workspace.</div>
-        </div>
-      </div>
+    <div>
+      <PageHeader title="Invitations" subtitle="Invite people by email. They choose their own password and join your workspace." />
 
-      {message && <div className={`alert-ems alert-${message.type === "warning" ? "error" : message.type}`}
-        style={message.type === "warning" ? { borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.08)" } : undefined}>{message.text}</div>}
-
-      {roles.length === 0 ? (
-        <div className="alert-ems alert-error">Your role cannot invite people.</div>
-      ) : (
-        <form className="ems-card" onSubmit={handleSend} style={{ marginBottom: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-            <div className="form-group">
-              <label className="form-label">Full name</label>
-              <input className="form-control-ems" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+      {roles.length === 0 ? <Alert tone="error">Your role can't invite people.</Alert> : (
+        <Card pad={false} style={{ marginBottom: 20 }}>
+          <CardHeader title="Invite someone" subtitle="They'll get an email with a secure link that expires." />
+          <div style={{ padding: 20 }}>
+          {mailWarning && <div style={{ marginBottom: 12 }}><Alert tone="warning">{mailWarning}</Alert></div>}
+          <form onSubmit={handleSend} noValidate>
+            <div className="tn-form-grid">
+              <Field label="Full name" required error={errors.name}><Input value={form.name} autoComplete="off" onChange={e => set("name", e.target.value)} /></Field>
+              <Field label="Work email" required error={errors.email}><Input type="email" value={form.email} autoComplete="off" onChange={e => set("email", e.target.value)} /></Field>
+              <Field label="Role" required><Select value={form.role} onChange={e => set("role", e.target.value as Role)}>{roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</Select></Field>
+              <Field label="Department" hint="Optional"><Input value={form.department} onChange={e => set("department", e.target.value)} /></Field>
             </div>
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input type="email" className="form-control-ems" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Role</label>
-              <select className="form-control-ems" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as Role })}>
-                {roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Department (optional)</label>
-              <input className="form-control-ems" value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
-            </div>
+            <div className="tn-form-actions"><Button type="submit" variant="primary" loading={sending} icon={<LuSend size={15} />}>Send invitation</Button></div>
+          </form>
           </div>
-          <button type="submit" className="btn-ems btn-primary-ems" disabled={sending}>
-            {sending ? "Sending..." : "Send invitation"}
-          </button>
-        </form>
+        </Card>
       )}
 
-      <div className="page-sub" style={{ marginBottom: 8 }}>Pending invitations</div>
-      <div className="ems-card" style={{ padding: 0 }}>
-        <div className="ems-table-wrap" style={{ borderRadius: 0, border: "none" }}>
-          <table className="ems-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
-            <tbody>
-              {pending.length === 0 && <tr><td colSpan={5}>No pending invitations.</td></tr>}
-              {pending.map(i => (
-                <tr key={i.id}>
-                  <td className="td-primary">{i.name}</td>
-                  <td>{i.email}</td>
-                  <td><span className="badge badge-blue">{i.role}</span></td>
-                  <td>{new Date(i.expiresAt).toLocaleDateString()}</td>
-                  <td><button className="btn-ems btn-danger-ems" onClick={() => handleRevoke(i.id)}>Revoke</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card pad={false}>
+        <CardHeader title="Pending invitations" subtitle={loading ? undefined : `${pending.length} waiting to be accepted`} />
+        {loading ? <div style={{ padding: 20 }}><SkeletonList rows={3} /></div>
+          : failed ? <ErrorState message="The invitations couldn't be loaded." onRetry={() => void load()} />
+          : pending.length === 0 ? <EmptyState icon={<LuMailPlus size={24} />} title="No pending invitations" text="People you invite will show up here until they accept." />
+          : (
+            <div className="tn-table-wrap">
+              <table className="tn-table tn-table-cards">
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Expires</th><th style={{ width: 110 }}><span className="sr-only">Actions</span></th></tr></thead>
+                <tbody>
+                  {pending.map(i => (
+                    <tr key={i.id}>
+                      <td><span className="strong">{i.name}</span></td>
+                      <td data-label="Email" style={{ wordBreak: "break-all" }}>{i.email}</td>
+                      <td data-label="Role"><Badge tone="accent">{ROLE_LABEL[i.role] ?? i.role}</Badge></td>
+                      <td data-label="Expires">{new Date(i.expiresAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</td>
+                      <td><div style={{ display: "flex", justifyContent: "flex-end" }}><Button variant="ghost" size="sm" icon={<LuUserX size={15} />} onClick={() => void handleRevoke(i)}>Revoke</Button></div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </Card>
     </div>
   );
 }
