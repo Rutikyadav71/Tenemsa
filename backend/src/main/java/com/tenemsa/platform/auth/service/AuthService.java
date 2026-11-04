@@ -189,6 +189,23 @@ public class AuthService {
         tokenService.revokeAllRefreshTokensForUser(userId);
     }
 
+    /** Signed-in user changes their own password. Other devices are signed out; the one named by keepRawRefreshToken stays. */
+    public void changePassword(User user, String currentPassword, String newPassword, String keepRawRefreshToken) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Your current password is incorrect.");
+        }
+        if (currentPassword.equals(newPassword)) {
+            throw new IllegalArgumentException("Choose a new password that is different from your current one.");
+        }
+        String policyError = PasswordPolicy.validate(newPassword);
+        if (policyError != null) throw new IllegalArgumentException(policyError);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        tokenService.revokeAllExcept(user.getId(), keepRawRefreshToken);
+        auditService.record(user.getCompany().getId(), user.getId(), user.getName(),
+                AuditAction.PASSWORD_CHANGED, "USER", String.valueOf(user.getId()), "Password changed from settings");
+    }
+
     // ---- Email verification --------------------------------------------
 
     public void sendVerificationEmail(User user) {
