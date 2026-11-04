@@ -19,11 +19,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 @EnableConfigurationProperties(KbProperties.class)
 public class KbConfig {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KbConfig.class);
+
     @Bean
     public EmbeddingClient embeddingClient(KbProperties props, ObjectMapper mapper) {
         if (!props.isEmbeddingEnabled()) {
-            return new DisabledEmbeddingClient("The knowledge base needs embeddings. An administrator can enable them by setting "
-                    + "AI_PROVIDER=google-genai and GEMINI_API_KEY on the server.");
+            log.info("Document search is off. To enable it set AI_PROVIDER=google-genai and GEMINI_API_KEY in backend/.env.");
+            return new DisabledEmbeddingClient("Document search is switched off on this server. Please ask your administrator to turn it on.");
         }
         return new GeminiEmbeddingClient(props, mapper);
     }

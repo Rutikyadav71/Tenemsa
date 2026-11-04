@@ -1,185 +1,169 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { LuPencil, LuFilterX, LuPlus, LuSearch, LuTrash2, LuUserRoundX } from "react-icons/lu";
 import { getEmployees, deleteEmployee, searchEmployees, deleteMultipleEmployees } from "../services/EmployeeService";
-import { useNavigate, useLocation } from "react-router-dom";
 import type { User } from "../../../shared/types/models";
+import { Avatar, Badge, Button, Card, EmptyState, ErrorState, Input, PageHeader, Pagination, Select, SkeletonList, useConfirm, useToast } from "../../../shared/ui";
+import { can } from "../../../shared/lib/roles";
 
-const avatarColors = ["#6366f1","#2dd4bf","#22c55e","#f59e0b","#ef4444","#a78bfa","#fb7185","#38bdf8"];
-const getColor = (name?: string | null) => avatarColors[(name?.charCodeAt(0) || 0) % avatarColors.length];
-const getInitials = (name?: string | null) => name ? name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2) : "?";
+const ROLE_LABEL: Record<string, string> = { OWNER: "Owner", SUPER_ADMIN: "Super admin", ADMIN: "Admin", HR: "HR", MANAGER: "Manager", EMPLOYEE: "Employee", INTERN: "Intern" };
 
-const SearchIcon = () => <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
-const EditIcon  = () => <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
-const TrashIcon = () => <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const PlusIcon  = () => <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
-
-const RowSkeleton = () => (
-  <tr>
-    {[32,90,80,70,70,60,70].map((w,i) => (
-      <td key={i} style={{padding:"13px 16px"}}>
-        <div className="skeleton" style={{width:w,height:14,borderRadius:4}}/>
-      </td>
-    ))}
-  </tr>
-);
-
-function EmployeeList() {
-  const [employees, setEmployees] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [selectAll, setSelectAll] = useState(false);
-  const [loading, setLoading] = useState(true);
+export default function EmployeeList() {
+  const confirmAction = useConfirm();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const base = `/${location.pathname.split("/")[1]}`;
+  const canEdit = can("user:update");
+  const canCreate = can("user:create");
 
-  const deptFilter = new URLSearchParams(location.search).get("department");
+  const [rows, setRows] = useState<User[]>([]);
+  const [term, setTerm] = useState("");
+  const [dept, setDept] = useState(new URLSearchParams(location.search).get("department") || "");
+  const [role, setRole] = useState("");
+  const [status, setStatus] = useState<"" | "active" | "frozen">("");
+  const [sort, setSort] = useState<"name" | "id" | "salary-desc" | "salary-asc">("name");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => { loadEmployees(); }, []);
-
-  const loadEmployees = async () => {
-    setLoading(true);
+  const load = useCallback(async (keyword: string) => {
+    setLoading(true); setFailed(false);
     try {
-      const res = await getEmployees();
-      setEmployees(res.data);
-      setSelectedIds([]); setSelectAll(false);
-    } catch(e) { console.error(e); }
+      const res = keyword.trim() ? await searchEmployees(keyword.trim()) : await getEmployees();
+      setRows(res.data); setSelected([]);
+    } catch { setFailed(true); }
     finally { setLoading(false); }
-  };
-
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      if (!searchTerm.trim()) { loadEmployees(); return; }
-      setLoading(true);
-      searchEmployees(searchTerm)
-        .then(res => setEmployees(res.data))
-        .catch(e => console.error(e))
-        .finally(() => setLoading(false));
-    }, 300);
-    return () => clearTimeout(delay);
-  }, [searchTerm]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.ctrlKey && e.key.toLowerCase()==="f") { e.preventDefault(); searchInputRef.current?.focus(); }};
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const handleDelete = async (empId: number) => {
-    if (!confirm("Remove this employee?")) return;
-    await deleteEmployee(empId).catch(e => console.error(e));
-    loadEmployees();
+  // Wait for a short pause in typing before asking the server.
+  useEffect(() => {
+    const t = setTimeout(() => { void load(term); }, term ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [term, load]);
+
+  const departments = useMemo(() => Array.from(new Set(rows.map(r => r.department).filter((d): d is string => !!d))).sort(), [rows]);
+  const roles = useMemo(() => Array.from(new Set(rows.map(r => r.role))), [rows]);
+  const filtering = !!(dept || role || status);
+  const clearFilters = () => { setDept(""); setRole(""); setStatus(""); };
+
+  const shown = useMemo(() => {
+    const list = rows.filter(e => (!dept || e.department === dept) && (!role || e.role === role)
+      && (!status || (status === "frozen" ? e.frozen : !e.frozen)));
+    const cmp: Record<typeof sort, (a: User, b: User) => number> = {
+      name: (a, b) => a.name.localeCompare(b.name),
+      id: (a, b) => (a.empId ?? 0) - (b.empId ?? 0),
+      "salary-desc": (a, b) => (b.salary ?? -1) - (a.salary ?? -1),
+      "salary-asc": (a, b) => (a.salary ?? Infinity) - (b.salary ?? Infinity),
+    };
+    return [...list].sort(cmp[sort]);
+  }, [rows, dept, role, status, sort]);
+  // pagination runs over the filtered + sorted list, so search, filters and sorting always cover every employee
+  const pageCount = Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(page, pageCount - 1);
+  const visible = useMemo(() => shown.slice(current * pageSize, (current + 1) * pageSize), [shown, current, pageSize]);
+  useEffect(() => { setPage(0); }, [term, dept, role, status, sort, pageSize]);
+  const ids = useMemo(() => visible.map(e => e.empId).filter((i): i is number => i != null && !visible.find(v => v.empId === i)?.primaryOwner), [visible]);
+  const allChecked = ids.length > 0 && ids.every(i => selected.includes(i));
+
+  const remove = async (e: User) => {
+    if (e.empId == null) return;
+    if (!(await confirmAction({ title: `Remove ${e.name}?`, message: "They will lose access to the workspace. This can't be undone.", confirmLabel: "Remove", tone: "danger" }))) return;
+    try { await deleteEmployee(e.empId); toast.success(`${e.name} was removed.`); }
+    catch (err) { toast.fail(err, "We couldn't remove this person."); }
+    void load(term);
   };
 
-  const toggleSelect = (id: number) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i=>i!==id) : [...prev, id]);
-
-  const toggleAll = () => {
-    if (selectAll) { setSelectedIds([]); setSelectAll(false); }
-    else { setSelectedIds(displayed.map(e=>e.empId).filter((id): id is number => id !== null)); setSelectAll(true); }
+  const removeSelected = async () => {
+    if (!(await confirmAction({ title: `Remove ${selected.length} ${selected.length === 1 ? "person" : "people"}?`, message: "They will lose access to the workspace. This can't be undone.", confirmLabel: "Remove all", tone: "danger" }))) return;
+    try { await deleteMultipleEmployees(selected); toast.success("The selected people were removed."); }
+    catch (err) { toast.fail(err, "We couldn't remove the selected people."); }
+    void load(term);
   };
-
-  const deleteSelected = async () => {
-    if (!selectedIds.length || !confirm(`Remove ${selectedIds.length} employees?`)) return;
-    await deleteMultipleEmployees(selectedIds).catch(e => console.error(e));
-    loadEmployees();
-  };
-
-  const displayed = deptFilter ? employees.filter(e => e.department === deptFilter) : employees;
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">Employees</div>
-          <div className="page-sub">{displayed.length} total member{displayed.length !== 1 ? "s" : ""}</div>
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {selectedIds.length > 0 && (
-            <button className="btn-ems btn-danger-ems" onClick={deleteSelected}>
-              <TrashIcon /> Delete ({selectedIds.length})
-            </button>
-          )}
-          <button className="btn-ems btn-primary-ems" onClick={() => navigate("/admin/add")}>
-            <PlusIcon /> Add Employee
-          </button>
-        </div>
-      </div>
+    <div>
+      <PageHeader title="Employees" subtitle={loading ? "Loading…" : `${shown.length} ${shown.length === 1 ? "person" : "people"}${filtering || term ? ` match${shown.length === 1 ? "es" : ""} (of ${rows.length})` : ""}`}
+        actions={<>
+          {selected.length > 0 && canEdit && <Button variant="danger" icon={<LuTrash2 size={15} />} onClick={removeSelected}>Remove ({selected.length})</Button>}
+          {canCreate && <Button variant="primary" icon={<LuPlus size={16} />} onClick={() => navigate(`${base}/add`)}>Add employee</Button>}
+        </>} />
 
-      <div className="ems-card" style={{padding:0}}>
-        {/* Toolbar */}
-        <div style={{padding:"14px 16px",borderBottom:"1px solid var(--border)",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-          <div className="search-bar" style={{flex:"1",minWidth:200}}>
-            <SearchIcon />
-            <input ref={searchInputRef} placeholder="Search employees... (Ctrl+F)" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
+      <Card pad={false}>
+        <div className="tn-toolbar">
+          <div className="tn-search">
+            <LuSearch size={16} aria-hidden="true" />
+            <Input type="search" aria-label="Search employees" placeholder="Search by name, email or department" value={term} onChange={e => setTerm(e.target.value)} />
           </div>
-          {deptFilter && (
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span className="badge badge-blue">Dept: {deptFilter}</span>
-              <button className="btn-icon" onClick={() => navigate("/admin/employees")}>
-                <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              </button>
+        </div>
+        <div className="tn-toolbar" style={{ paddingTop: 0 }} role="group" aria-label="Filters">
+          <Select aria-label="Department" value={dept} onChange={e => setDept(e.target.value)} style={{ width: "auto", minWidth: 150 }}>
+            <option value="">All departments</option>{departments.map(d => <option key={d} value={d}>{d}</option>)}
+          </Select>
+          <Select aria-label="Role" value={role} onChange={e => setRole(e.target.value)} style={{ width: "auto", minWidth: 130 }}>
+            <option value="">All roles</option>{roles.map(r => <option key={r} value={r}>{ROLE_LABEL[r] ?? r}</option>)}
+          </Select>
+          <Select aria-label="Status" value={status} onChange={e => setStatus(e.target.value as typeof status)} style={{ width: "auto", minWidth: 120 }}>
+            <option value="">Any status</option><option value="active">Active</option><option value="frozen">Frozen</option>
+          </Select>
+          <Select aria-label="Sort by" value={sort} onChange={e => setSort(e.target.value as typeof sort)} style={{ width: "auto", minWidth: 150, marginLeft: "auto" }}>
+            <option value="name">Name A to Z</option><option value="id">Employee ID</option>
+            {canEdit && <><option value="salary-desc">Salary, high to low</option><option value="salary-asc">Salary, low to high</option></>}
+          </Select>
+          {filtering && <Button variant="ghost" size="sm" icon={<LuFilterX size={15} />} onClick={clearFilters}>Clear filters</Button>}
+        </div>
+
+        {loading ? <div style={{ padding: 20 }}><SkeletonList rows={5} /></div>
+          : failed ? <ErrorState message="The employee list couldn't be loaded." onRetry={() => void load(term)} />
+          : shown.length === 0 ? <EmptyState icon={<LuUserRoundX size={24} />} title={term || filtering ? "No one matches these filters" : "No employees yet"}
+              text={term || filtering ? "Try a different search, or clear the filters." : "Add your first team member to get started."}
+              action={!term && !filtering && canCreate ? <Button variant="primary" onClick={() => navigate(`${base}/add`)}>Add employee</Button> : undefined} />
+          : (
+            <div className="tn-table-wrap">
+              <table className="tn-table tn-table-cards">
+                <thead>
+                  <tr>
+                    {canEdit && <th style={{ width: 40 }}><input type="checkbox" aria-label="Select all" checked={allChecked} onChange={() => setSelected(allChecked ? [] : ids)} /></th>}
+                    <th>Employee</th><th>Role</th><th>Department</th><th>Email</th>{canEdit && <th className="num">Salary</th>}{canEdit && <th style={{ width: 96 }}><span className="sr-only">Actions</span></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map(e => {
+                    const on = e.empId != null && selected.includes(e.empId);
+                    return (
+                      <tr key={e.id} className={on ? "is-selected" : ""}>
+                        {canEdit && <td>{e.empId != null && !e.primaryOwner && <input type="checkbox" aria-label={`Select ${e.name}`} checked={on}
+                          onChange={() => setSelected(s => on ? s.filter(i => i !== e.empId) : [...s, e.empId as number])} />}</td>}
+                        <td><div style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar name={e.name} src={e.profileImageUrl} />
+                          <div><div className="strong">{e.name}</div>{e.empId != null && <div style={{ fontSize: 12, color: "var(--text-3)" }}>ID {e.empId}</div>}</div></div></td>
+                        <td data-label="Role"><Badge tone={e.frozen ? "danger" : "neutral"}>{e.frozen ? "Frozen" : ROLE_LABEL[e.role] ?? e.role}</Badge></td>
+                        <td data-label="Department">{e.department || "–"}</td>
+                        <td data-label="Email" style={{ wordBreak: "break-all" }}>{e.email}</td>
+                        {canEdit && <td className="num" data-label="Salary">{e.salary != null ? `₹${Number(e.salary).toLocaleString("en-IN")}` : "–"}</td>}
+                        {canEdit && <td><div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                          {e.empId != null && <Button variant="ghost" size="sm" aria-label={`Edit ${e.name}`} icon={<LuPencil size={15} />} onClick={() => navigate(`${base}/update/${e.empId}`)} />}
+                          {e.empId != null && !e.primaryOwner && <Button variant="ghost" size="sm" aria-label={`Remove ${e.name}`} icon={<LuTrash2 size={15} />} onClick={() => void remove(e)} />}
+                        </div></td>}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
-        </div>
-
-        <div className="ems-table-wrap" style={{borderRadius:0,border:"none"}}>
-          <table className="ems-table">
-            <thead>
-              <tr>
-                <th style={{width:40}}>
-                  <input type="checkbox" checked={selectAll} onChange={toggleAll}
-                    style={{accentColor:"var(--accent)",width:14,height:14,cursor:"pointer"}}/>
-                </th>
-                <th>Employee</th>
-                <th>ID</th>
-                <th>Department</th>
-                <th>Email</th>
-                <th>Salary</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? Array(5).fill(0).map((_,i) => <RowSkeleton key={i}/>) :
-                displayed.length === 0 ? (
-                  <tr><td colSpan={7} style={{textAlign:"center",padding:"40px 16px",color:"var(--text-3)",fontSize:13}}>No employees found</td></tr>
-                ) :
-                displayed.map(emp => (
-                  <tr key={emp.empId} style={selectedIds.includes(emp.empId!) ? {background:"var(--accent-glow2)"} : {}}>
-                    <td>
-                      <input type="checkbox" checked={selectedIds.includes(emp.empId!)} onChange={() => toggleSelect(emp.empId!)}
-                        style={{accentColor:"var(--accent)",width:14,height:14,cursor:"pointer"}}/>
-                    </td>
-                    <td>
-                      <div style={{display:"flex",alignItems:"center",gap:9}}>
-                        <div className="emp-avatar" style={{background:`${getColor(emp.name)}22`,color:getColor(emp.name)}}>
-                          {getInitials(emp.name)}
-                        </div>
-                        <span className="td-primary">{emp.name}</span>
-                      </div>
-                    </td>
-                    <td><span className="badge badge-muted">#{emp.empId}</span></td>
-                    <td><span style={{color:"var(--text-2)",fontSize:13}}>{emp.department || "—"}</span></td>
-                    <td><span style={{color:"var(--text-3)",fontSize:12.5}}>{emp.email}</span></td>
-                    <td><span style={{color:"var(--teal)",fontWeight:600,fontSize:13}}>₹{Number(emp.salary).toLocaleString("en-IN")}</span></td>
-                    <td>
-                      <div style={{display:"flex",gap:6}}>
-                        <button className="btn-icon" title="Edit" onClick={() => navigate(`/admin/update/${emp.empId}`)}
-                          style={{color:"var(--accent-light)"}} onMouseOver={e=>e.currentTarget.style.background="var(--accent-glow)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
-                          <EditIcon/>
-                        </button>
-                        <button className="btn-icon danger" title="Delete" onClick={() => handleDelete(emp.empId!)}>
-                          <TrashIcon/>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
+        {!loading && !failed && shown.length > 0 && (
+          <div className="tn-pager-row">
+            <label className="tn-pager-size">Rows per page
+              <Select aria-label="Rows per page" value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ width: "auto", minWidth: 72 }}>
+                {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              </Select>
+            </label>
+            <Pagination page={current} pageCount={pageCount} total={shown.length} onPage={setPage} label={shown.length === 1 ? "person" : "people"} />
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
-
-export default EmployeeList;

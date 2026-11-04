@@ -83,6 +83,7 @@ public class SecurityConfig {
                     "/login/oauth2/**",
                     "/ws/**",
                     "/api/health",
+                    "/api/public/avatars/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**"
@@ -96,6 +97,12 @@ public class SecurityConfig {
                 // Everything else needs auth; method-level @PreAuthorize handles role checks
                 .anyRequest().authenticated()
             )
+            // A missing or expired access token must answer 401 so the browser knows to refresh it.
+            // Without this Spring answers 403, which the browser reads as "not allowed" and never
+            // refreshes, so after the 15-minute token expired every request failed until a new sign-in.
+            .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
+                    new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED),
+                    new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/**")))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         // Only wire up the OAuth2 login filter chain if a Google client

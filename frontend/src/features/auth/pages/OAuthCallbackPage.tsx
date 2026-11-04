@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { LuCircleAlert } from "react-icons/lu";
+import AuthLayout from "../components/AuthLayout";
 import axios from "axios";
 import { API_BASE_URL } from "../../../shared/api/apiConfig";
 import { storeAuthResponse } from "../../../shared/lib/authStorage";
@@ -49,21 +51,19 @@ export default function OAuthCallbackPage() {
   }, [searchParams, navigate]);
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <AuthLayout title={error ? "Sign-in failed" : "Signing you in…"}>
+      <div className="au-status" role="status" aria-live="polite">
         {error ? (
           <>
-            <h1>Sign-in failed</h1>
-            <p className="auth-error">{error}</p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 12 }}>
-              <a href="/auth/employee">Employee sign in</a>
-              <a href="/auth/admin">Admin sign in</a>
+            <div className="big bad"><LuCircleAlert size={26} /></div>
+            <p className="sub" style={{ margin: 0 }}>{error}</p>
+            <div className="au-row" style={{ justifyContent: "center" }}>
+              <Link className="tn-btn tn-btn-secondary" to="/auth/employee">Employee sign in</Link>
+              <Link className="tn-btn tn-btn-secondary" to="/auth/admin">Admin sign in</Link>
             </div>
           </>
-        ) : (
-          <p>Signing you in...</p>
-        )}
+        ) : <span className="tn-spinner" aria-hidden="true" />}
       </div>
-    </div>
+    </AuthLayout>
   );
 }

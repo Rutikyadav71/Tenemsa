@@ -1,159 +1,144 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { LuFilePlus2, LuLibrary, LuRefreshCw, LuTrash2, LuUpload } from "react-icons/lu";
 import { aiErrorMessage } from "../../ai/services/aiService";
 import { addTextDocument, deleteDocument, kbStatus, listDocuments, reindexDocument, uploadDocument } from "../services/knowledgeService";
 import type { KbAudience, KbDocument, KbServiceStatus } from "../../../shared/types/models";
+import { Alert, Badge, Button, Card, EmptyState, ErrorState, Field, Input, Modal, PageHeader, Select, SkeletonList, Textarea, useConfirm, useToast, type Tone } from "../../../shared/ui";
+import "./knowledge.css";
 
-const STATUS_COLOR: Record<string, string> = { READY: "#22c55e", PROCESSING: "#f59e0b", FAILED: "#ef4444" };
 const MAX_CHARS = 200000;
+const TONE: Record<string, Tone> = { READY: "success", PROCESSING: "warning", FAILED: "danger" };
+const LABEL: Record<string, string> = { READY: "Ready", PROCESSING: "Indexing", FAILED: "Failed" };
 
 export default function KnowledgePage() {
-  const [docs, setDocs] = useState<KbDocument[]>([]);
+  const confirmAction = useConfirm();
+  const toast = useToast();
+  const [docs, setDocs] = useState<KbDocument[] | null>(null);
   const [status, setStatus] = useState<KbServiceStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [failed, setFailed] = useState(false);
   const [mode, setMode] = useState<"file" | "text" | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rowBusy, setRowBusy] = useState<number | null>(null);
   const [formError, setFormError] = useState("");
   const [title, setTitle] = useState("");
   const [audience, setAudience] = useState<KbAudience>("ALL_STAFF");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
-  const load = () =>
-    listDocuments().then(setDocs).catch(() => setError("Could not load documents.")).finally(() => setLoading(false));
-
-  useEffect(() => { load(); kbStatus().then(setStatus).catch(() => {}); }, []);
+  const load = useCallback(() => {
+    setFailed(false);
+    return listDocuments().then(setDocs).catch(() => setFailed(true));
+  }, []);
+  useEffect(() => { void load(); kbStatus().then(setStatus).catch(() => {}); }, [load]);
 
   // Indexing runs in the background: keep refreshing while anything is still processing.
-  const processing = docs.some(d => d.status === "PROCESSING");
+  const processing = (docs ?? []).some(d => d.status === "PROCESSING");
   useEffect(() => {
     if (!processing) return;
-    const t = setInterval(load, 3000);
+    const t = setInterval(() => void load(), 3000);
     return () => clearInterval(t);
-  }, [processing]);
+  }, [processing, load]);
 
   const close = () => { setMode(null); setTitle(""); setText(""); setFile(null); setAudience("ALL_STAFF"); setFormError(""); };
 
   const submit = async (e: FormEvent) => {
-    e.preventDefault(); setFormError(""); setBusy(true);
+    e.preventDefault(); setFormError("");
+    if (mode === "file" && !file) { setFormError("Choose a file first."); return; }
+    setBusy(true);
     try {
-      if (mode === "file") {
-        if (!file) { setFormError("Choose a file."); setBusy(false); return; }
-        await uploadDocument(file, title, audience);
-      } else {
-        await addTextDocument(title, audience, text);
-      }
+      if (mode === "file") await uploadDocument(file!, title, audience);
+      else await addTextDocument(title, audience, text);
+      toast.success("Document added. It will be ready to search in a moment.");
       close(); await load();
-    } catch (err: any) {
-      setFormError(aiErrorMessage(err, "Could not add the document."));
-    } finally { setBusy(false); }
+    } catch (err) { setFormError(aiErrorMessage(err, "We couldn't add the document.")); }
+    finally { setBusy(false); }
   };
 
   const reindex = async (d: KbDocument) => {
-    setError("");
-    try { await reindexDocument(d.id); await load(); } catch (err: any) { setError(aiErrorMessage(err, "Could not re-index.")); }
+    setRowBusy(d.id);
+    try { await reindexDocument(d.id); await load(); toast.success("Re-indexing started."); }
+    catch (err) { toast.error(aiErrorMessage(err, "We couldn't re-index that document.")); }
+    finally { setRowBusy(null); }
   };
 
   const remove = async (d: KbDocument) => {
-    if (!window.confirm(`Delete "${d.title}"? It will no longer be used to answer questions.`)) return;
-    setError("");
-    try { await deleteDocument(d.id); await load(); } catch (err: any) { setError(aiErrorMessage(err, "Could not delete.")); }
+    if (!(await confirmAction({ title: `Delete “${d.title}”?`, message: "It will no longer be used to answer questions.", confirmLabel: "Delete" }))) return;
+    setRowBusy(d.id);
+    try { await deleteDocument(d.id); await load(); toast.success("Document deleted."); }
+    catch (err) { toast.error(aiErrorMessage(err, "We couldn't delete that document.")); }
+    finally { setRowBusy(null); }
   };
 
   const off = status !== null && !status.available;
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">Knowledge base</div>
-          <div className="page-sub">
-            Add company documents (policies, handbooks, FAQs). Everyone can then ask questions and get answers that cite these documents.
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn-ems btn-secondary-ems" disabled={off} onClick={() => setMode("text")}>Paste text</button>
-          <button className="btn-ems btn-primary-ems" disabled={off} onClick={() => setMode("file")}>Upload file</button>
-        </div>
-      </div>
-
+    <div>
+      <PageHeader title="Knowledge base" subtitle="Add policies, handbooks and FAQs. Everyone can then ask questions and get answers that cite these documents."
+        actions={<>
+          <Button icon={<LuFilePlus2 size={16} />} disabled={off} onClick={() => setMode("text")}>Paste text</Button>
+          <Button variant="primary" icon={<LuUpload size={16} />} disabled={off} onClick={() => setMode("file")}>Upload file</Button>
+        </>} />
       {off && (
-        <div className="alert-ems alert-error">
+        <Alert tone="warning">
           {status && !status.companyEnabled
-            ? "AI is switched off for your company. Turn it on in Company settings to index documents."
-            : "Document search is not configured on this server. Set AI_PROVIDER=google-genai and GEMINI_API_KEY."}
-        </div>
+            ? "AI is switched off for your company. Turn it on in Settings to index documents."
+            : "Document search isn't available right now. Please contact your administrator."}
+        </Alert>
       )}
-      {status && !off && (
-        <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>
-          Search: {status.vectorStore} · embedding model {status.embeddingModel}
-        </div>
-      )}
-      {error && <div className="alert-ems alert-error">{error}</div>}
 
-      <div className="ems-card" style={{ padding: 0 }}>
-        {loading && <div style={{ padding: 16, color: "var(--text-3)" }}>Loading...</div>}
-        {!loading && docs.length === 0 && (
-          <div style={{ padding: 24, color: "var(--text-3)" }}>No documents yet. Upload a PDF, Word or text file, or paste text.</div>
+      {failed ? <ErrorState message="We couldn't load the documents." onRetry={() => void load()} />
+        : docs === null ? <SkeletonList rows={3} />
+        : docs.length === 0 ? <EmptyState icon={<LuLibrary size={22} />} title="No documents yet" text="Upload a PDF, Word or text file, or paste text." />
+        : (
+          <Card pad={false}>
+            <ul className="tn-list">
+              {docs.map(d => (
+                <li key={d.id} className="kb-row">
+                  <div className="kb-main">
+                    <b>{d.title}</b>
+                    <small>
+                      {d.fileName ? `${d.fileName} · ` : ""}{d.chunkCount} passages · {d.audience === "MANAGEMENT" ? "Management only" : "All staff"}
+                      {d.uploadedByName ? ` · ${d.uploadedByName}` : ""} · {new Date(d.createdAt).toLocaleDateString()}
+                    </small>
+                    {d.status === "FAILED" && d.errorMessage && <small className="kb-bad">{d.errorMessage}</small>}
+                    {d.stale && <small className="kb-warn">Added before a search update. Re-index it to include it in answers.</small>}
+                  </div>
+                  <div className="kb-side">
+                    <Badge tone={TONE[d.status] ?? "neutral"}>{LABEL[d.status] ?? d.status}</Badge>
+                    <Button size="sm" icon={<LuRefreshCw size={14} />} loading={rowBusy === d.id} disabled={d.status === "PROCESSING" || off} onClick={() => reindex(d)}>Re-index</Button>
+                    <Button size="sm" variant="danger" icon={<LuTrash2 size={14} />} disabled={rowBusy === d.id} onClick={() => remove(d)}>Delete</Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
         )}
-        {docs.map(d => (
-          <div key={d.id} style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{d.title}</div>
-              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
-                {d.fileName ? `${d.fileName} · ` : ""}{d.chunkCount} passage(s) · {d.audience === "MANAGEMENT" ? "Management only" : "All staff"}
-                {d.uploadedByName ? ` · ${d.uploadedByName}` : ""} · {new Date(d.createdAt).toLocaleDateString()}
-              </div>
-              {d.status === "FAILED" && d.errorMessage && <div style={{ fontSize: 12, color: "#ef4444" }}>{d.errorMessage}</div>}
-              {d.stale && <div style={{ fontSize: 12, color: "#f59e0b" }}>Indexed with an older model. Re-index to include it in answers.</div>}
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: STATUS_COLOR[d.status] }}>{d.status}</span>
-            <button className="btn-ems btn-secondary-ems" disabled={d.status === "PROCESSING" || off} onClick={() => reindex(d)}>Re-index</button>
-            <button className="btn-ems btn-secondary-ems" onClick={() => remove(d)}>Delete</button>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 10 }}>
-        Only the extracted text is kept, not the original file. Scanned PDFs (images) contain no text and cannot be used.
-      </div>
+      <p className="kb-note">Only the extracted text is kept for search; the original file is not. Scanned PDFs (images) contain no text and can't be used.</p>
 
-      {mode && (
-        <div className="ems-modal-backdrop" onClick={() => !busy && close()}>
-          <form className="ems-modal" style={{ width: 640 }} onClick={e => e.stopPropagation()} onSubmit={submit}>
-            <div className="modal-title">{mode === "file" ? "Upload a document" : "Paste document text"}</div>
-            {formError && <div className="alert-ems alert-error">{formError}</div>}
-            <div className="form-group">
-              <label className="form-label">Title {mode === "text" ? "*" : "(optional, defaults to the file name)"}</label>
-              <input className="form-control-ems" required={mode === "text"} maxLength={200} value={title} onChange={e => setTitle(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Who can get answers from this document?</label>
-              <select className="form-control-ems" value={audience} onChange={e => setAudience(e.target.value as KbAudience)}>
-                <option value="ALL_STAFF">All staff</option>
-                <option value="MANAGEMENT">Management only (owner, admin, HR, managers)</option>
-              </select>
-            </div>
-            {mode === "file" ? (
-              <div className="form-group">
-                <label className="form-label">File (PDF, DOCX, TXT, MD or CSV, up to 10 MB) *</label>
-                <input ref={fileInput} type="file" className="form-control-ems" accept=".pdf,.docx,.txt,.md,.csv,.log,.json"
-                       onChange={e => setFile(e.target.files?.[0] ?? null)} />
-              </div>
-            ) : (
-              <div className="form-group">
-                <label className="form-label">Text *</label>
-                <textarea className="form-control-ems" rows={10} required minLength={50} maxLength={MAX_CHARS} value={text} onChange={e => setText(e.target.value)} />
-                <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "right" }}>{text.length} / {MAX_CHARS}</div>
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" className="btn-ems btn-secondary-ems" disabled={busy} onClick={close}>Cancel</button>
-              <button className="btn-ems btn-primary-ems" disabled={busy}>{busy ? "Adding..." : "Add document"}</button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Modal open={!!mode} onClose={close} dismissible={!busy} size="lg" title={mode === "file" ? "Upload a document" : "Paste document text"}
+        footer={<><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button variant="primary" type="submit" form="kb-form" loading={busy}>Add document</Button></>}>
+        <form id="kb-form" onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+          {formError && <Alert tone="error">{formError}</Alert>}
+          <Field label="Title" required={mode === "text"} hint={mode === "file" ? "Optional. Defaults to the file name." : undefined}>
+            <Input required={mode === "text"} maxLength={200} value={title} onChange={e => setTitle(e.target.value)} data-autofocus />
+          </Field>
+          <Field label="Who can get answers from this document?">
+            <Select value={audience} onChange={e => setAudience(e.target.value as KbAudience)}>
+              <option value="ALL_STAFF">All staff</option>
+              <option value="MANAGEMENT">Management only (owner, admin, HR, managers)</option>
+            </Select>
+          </Field>
+          {mode === "file" ? (
+            <Field label="File" required hint="PDF, DOCX, TXT, MD or CSV, up to 10 MB.">
+              <Input type="file" accept=".pdf,.docx,.txt,.md,.csv,.log,.json" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            </Field>
+          ) : (
+            <Field label="Text" required hint={`${text.length} / ${MAX_CHARS} · At least 50 characters.`}>
+              <Textarea rows={10} required minLength={50} maxLength={MAX_CHARS} value={text} onChange={e => setText(e.target.value)} />
+            </Field>
+          )}
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -142,3 +142,10 @@ Upload or paste documents (pdf, docx, txt, md, csv), index them in the backgroun
 - **8c:** Insights page: personal summary for everyone; company or team dashboards with leave, attendance, headcount and task figures.
 - **8d:** Chat overhaul: files sent in chat are stored in the database (no Cloudinary), shown as WhatsApp-style cards (type tile, original name, size, exact download) or image thumbnails with a preview, pending-file tray, drag and drop, paste, readable errors, read ticks that refresh.
 - **Not in Phase 8:** payroll and salary figures, object storage, scheduled reports. Next is Phase 9 (workflow automation).
+
+## Phase 9: UI/UX transformation (in progress)
+
+- **Stage 1 (done):** design tokens with a full light/dark theme, official logo, shared component kit, readable error handling, no browser pop-ups.
+- **Stage 2 (done):** one application shell for every role: grouped sidebar, breadcrumbs, command palette, notifications and profile menu, mobile bottom bar, Access Denied page, error boundary.
+- **Stage 3 (done):** redesigned sign-in, register, workspace, password reset, verify and invite screens; one role-aware dashboard built from real data (CSV export replaces the Excel/PDF libraries).
+- **Next:** auth screens and role dashboards, core modules, Tenemsa AI screens (no provider or model names in the UI), settings, responsive and accessibility pass. See docs/frontend.md.

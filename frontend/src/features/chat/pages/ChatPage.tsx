@@ -79,7 +79,7 @@ export default function ChatPage() {
         }
         <span className="chat-title">
           <ChatIco/>
-          {selectedUser?`Chatting with ${selectedUser.name}`:"Chat Room"}
+          {selectedUser?`Chatting with ${selectedUser.name}`:"Messages"}
         </span>
       </div>
 

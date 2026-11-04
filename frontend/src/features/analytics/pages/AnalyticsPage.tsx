@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { can } from "../../../shared/lib/roles";
 import { getMySummary, getOverview } from "../services/analyticsService";
+import { Alert, Card, PageHeader, SkeletonList } from "../../../shared/ui";
+import "./analytics.css";
 import type { AnalyticsOverview, Count, MySummary } from "../../../shared/types/models";
 
 const COLORS = ["#6366f1", "#2dd4bf", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#fb7185"];
@@ -10,11 +12,11 @@ const STATUS_COLOR: Record<string, string> = { TODO: "#a78bfa", IN_PROGRESS: "#6
 
 function Tile({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
-    <div className="ems-card" style={{ padding: 16, minWidth: 150, flex: "1 1 150px" }}>
-      <div style={{ fontSize: 12, color: "var(--text-3)" }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
-      {hint && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{hint}</div>}
-    </div>
+    <Card className="an-tile">
+      <div className="an-l">{label}</div>
+      <div className="an-v">{value}</div>
+      {hint && <div className="an-l">{hint}</div>}
+    </Card>
   );
 }
 
@@ -52,20 +54,15 @@ export default function AnalyticsPage() {
   const monthLabel = (l: string) => new Date(l + "-01T00:00:00").toLocaleDateString("en-IN", { month: "short" });
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">Insights</div>
-          <div className="page-sub">{overview ? (overview.scope === "TEAM" ? "Numbers for the teams you lead, plus your own." : "Company-wide numbers, plus your own.") : "Your own numbers."}</div>
-        </div>
-      </div>
-      {error && <div className="alert-ems alert-error">{error}</div>}
-      {loading && <div style={{ color: "var(--text-3)" }}>Loading...</div>}
+    <div>
+      <PageHeader title="Insights" subtitle={overview ? (overview.scope === "TEAM" ? "Numbers for the teams you lead, plus your own." : "Company-wide numbers, plus your own.") : "Your own numbers."} />
+      {error && <Alert tone="error">{error}</Alert>}
+      {loading && <SkeletonList rows={3} />}
 
       {mine && (
         <>
-          <div style={{ fontWeight: 600, color: "var(--text-1)", margin: "6px 0 8px" }}>My summary</div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+          <h2 className="an-h">My summary</h2>
+          <div className="an-tiles">
             <Tile label="Leave taken this year" value={`${mine.leaveDaysApprovedThisYear} days`} />
             <Tile label="Requests waiting" value={mine.pendingLeaveRequests} />
             <Tile label="Attendance, last 30 days" value={pct(mine.presentRateLast30Days)} />
@@ -77,8 +74,8 @@ export default function AnalyticsPage() {
 
       {overview && (
         <>
-          <div style={{ fontWeight: 600, color: "var(--text-1)", margin: "6px 0 8px" }}>{overview.scope === "TEAM" ? "My teams" : "Company"}</div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+          <h2 className="an-h">{overview.scope === "TEAM" ? "My teams" : "Company"}</h2>
+          <div className="an-tiles">
             <Tile label="People" value={overview.headcount} />
             <Tile label="Leave waiting for a decision" value={overview.leave.pending} />
             <Tile label="Off today" value={overview.leave.offToday.length} hint={overview.leave.offToday.slice(0, 3).join(", ") || "nobody"} />
@@ -87,7 +84,7 @@ export default function AnalyticsPage() {
             {overview.projects && <Tile label="Overdue tasks" value={overview.projects.overdueIssues} />}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 16 }}>
             <div className="chart-card">
               <div className="chart-title">Approved leave days per month</div>
               <Bars data={overview.leave.daysByMonth.map(c => ({ ...c, label: monthLabel(c.label) }))} />

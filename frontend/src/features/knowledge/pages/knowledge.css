@@ -1,0 +1,8 @@
+.kb-row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 20px;}
+.kb-main{flex:1;min-width:min(240px,100%);}
+.kb-main b{display:block;font-weight:600;color:var(--text-1);overflow-wrap:anywhere;}
+.kb-main small{display:block;color:var(--text-3);font-size:12.5px;margin-top:2px;overflow-wrap:anywhere;}
+.kb-main small.kb-bad{color:var(--red);}
+.kb-main small.kb-warn{color:var(--amber);}
+.kb-side{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.kb-note{font-size:12.5px;color:var(--text-3);margin-top:10px;}

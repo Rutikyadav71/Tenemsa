@@ -1,5 +1,6 @@
 package com.tenemsa.platform.knowledge.service;
 
+import com.tenemsa.platform.ai.conversation.service.AiConversationService;
 import com.tenemsa.platform.ai.model.AiFeature;
 import com.tenemsa.platform.ai.service.AiGateway;
 import com.tenemsa.platform.ai.service.AiResult;
@@ -48,10 +49,11 @@ public class KnowledgeAnswerService {
     private final KbDocumentRepository documents;
     private final CompanyRepository companies;
     private final AuthContext authContext;
+    private final AiConversationService conversations;
 
     public KnowledgeAnswerService(KbProperties props, EmbeddingGateway embeddings, VectorStore vectors, AiGateway gateway,
                                   PromptCatalog prompts, UserRepository users, KbDocumentRepository documents,
-                                  CompanyRepository companies, AuthContext authContext) {
+                                  CompanyRepository companies, AuthContext authContext, AiConversationService conversations) {
         this.props = props;
         this.embeddings = embeddings;
         this.vectors = vectors;
@@ -61,6 +63,7 @@ public class KnowledgeAnswerService {
         this.documents = documents;
         this.companies = companies;
         this.authContext = authContext;
+        this.conversations = conversations;
     }
 
     public KbStatusResponse status() {
@@ -77,16 +80,23 @@ public class KnowledgeAnswerService {
     private boolean canReadManagement() { return authContext.hasAuthority("kb:read:management"); }
 
     /** Not transactional on purpose: embedding and the model call can take seconds. */
-    public KbAnswerResponse ask(String rawQuestion) {
+    public KbAnswerResponse ask(String rawQuestion) { return ask(rawQuestion, null); }
+
+    /** {@code conversationId} null starts a new saved chat; otherwise the chat continues and the model sees its last turns. */
+    public KbAnswerResponse ask(String rawQuestion, Long conversationId) {
         Long companyId = authContext.currentCompanyId();
         User me = users.findByEmailAndCompanyId(authContext.currentEmail(), companyId)
                 .orElseThrow(() -> new AccessDeniedException("Unknown user."));
         String question = rawQuestion.strip();
+        List<AiConversationService.Turn> earlier = conversations.history(AiConversationService.KB, conversationId);
+        // A follow-up like "and for contractors?" has no meaning alone, so the search also uses the previous question.
+        String searchText = earlier.stream().filter(t -> "USER".equals(t.role())).reduce((a, b) -> b)
+                .map(t -> PromptInput.oneLine(t.content(), 300) + "\n" + question).orElse(question);
 
-        float[] q = embeddings.embed(companyId, me.getEmpId(), List.of(question), EmbeddingClient.Task.QUERY).get(0);
+        float[] q = embeddings.embed(companyId, me.getEmpId(), List.of(searchText), EmbeddingClient.Task.QUERY).get(0);
         List<VectorStore.Hit> hits = vectors.search(companyId, q, embeddings.modelName(), props.getTopK(), canReadManagement())
                 .stream().filter(h -> h.score() >= props.getMinScore()).toList();
-        if (hits.isEmpty()) return new KbAnswerResponse(false, NOT_FOUND, List.of(), null, null);
+        if (hits.isEmpty()) return saved(conversationId, question, new KbAnswerResponse(false, NOT_FOUND, List.of(), null, null, null));
 
         StringBuilder sources = new StringBuilder();
         for (int i = 0; i < hits.size(); i++) {
@@ -94,18 +104,20 @@ public class KnowledgeAnswerService {
             sources.append('[').append(i + 1).append("] ").append(PromptInput.oneLine(h.title(), 120)).append(":\n")
                     .append(PromptInput.neutralise(h.content())).append("\n\n");
         }
-        String system = prompts.text(PromptCatalog.KB_ANSWER, PromptCatalog.V1);
-        String user = "Question:\n" + PromptInput.fence("QUESTION", question) + "\n\n"
+        String history = AiConversationService.promptBlock(earlier);
+        String system = prompts.text(PromptCatalog.KB_ANSWER, PromptCatalog.V2);
+        String user = (history.isEmpty() ? "" : "Earlier in this chat:\n" + PromptInput.fence("HISTORY", history) + "\n\n")
+                + "Question:\n" + PromptInput.fence("QUESTION", question) + "\n\n"
                 + "Sources:\n" + PromptInput.fence("SOURCES", sources.toString());
         AiResult<KbAiOutput> result = gateway.generate(new AiGateway.AiCall<>(AiFeature.KB_ANSWER,
-                PromptCatalog.versionLabel(PromptCatalog.KB_ANSWER, PromptCatalog.V1), system, user, KbAiOutput.class));
+                PromptCatalog.versionLabel(PromptCatalog.KB_ANSWER, PromptCatalog.V2), system, user, KbAiOutput.class));
 
         Set<Integer> cited = new LinkedHashSet<>();
         if (result.data().citations() != null) {
             for (Integer n : result.data().citations()) if (n != null && n >= 1 && n <= hits.size()) cited.add(n);
         }
         if (!result.data().answerable() || cited.isEmpty()) {
-            return new KbAnswerResponse(false, NOT_FOUND, List.of(), result.model(), result.promptVersion());
+            return saved(conversationId, question, new KbAnswerResponse(false, NOT_FOUND, List.of(), result.model(), result.promptVersion(), null));
         }
         List<KbAnswerResponse.Source> out = new ArrayList<>();
         for (int n : cited) {
@@ -114,6 +126,12 @@ public class KnowledgeAnswerService {
             out.add(new KbAnswerResponse.Source(n, h.documentId(), h.title(),
                     c.length() <= SNIPPET_CHARS ? c : c.substring(0, SNIPPET_CHARS) + "…", Math.round(h.score() * 1000) / 1000.0));
         }
-        return new KbAnswerResponse(true, result.data().answer().strip(), out, result.model(), result.promptVersion());
+        return saved(conversationId, question, new KbAnswerResponse(true, result.data().answer().strip(), out, result.model(), result.promptVersion(), null));
+    }
+
+    private KbAnswerResponse saved(Long conversationId, String question, KbAnswerResponse r) {
+        Long id = conversations.record(AiConversationService.KB, conversationId, question, r.answer(),
+                java.util.Map.of("found", r.found(), "sources", r.sources()));
+        return r.withConversation(id);
     }
 }

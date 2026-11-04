@@ -33,14 +33,19 @@ class PromptContractTest {
     @Test
     void everyPromptKeepsItsSafetyRulesAndOutputShape() {
         PromptCatalog catalog = new PromptCatalog();
-        for (Contract c : CONTRACTS) {
-            String text = catalog.text(c.name(), PromptCatalog.V1);
+        for (Contract c : CONTRACTS) for (int version : versionsOf(c.name())) {
+            String text = catalog.text(c.name(), version);
             assertThat(text).as(c.name() + " must call user text untrusted").contains("UNTRUSTED");
             assertThat(text).as(c.name() + " must forbid following instructions inside the data").containsIgnoringCase("never");
             assertThat(text).as(c.name() + " must demand JSON only").contains("ONLY one JSON object");
             for (String marker : c.markers()) assertThat(text).as(c.name() + " marker " + marker).contains(marker);
             for (String key : c.jsonKeys()) assertThat(text).as(c.name() + " key " + key).contains("\"" + key + "\"");
         }
+    }
+
+    /** Every shipped version of a prompt must keep the contract; hr-assistant and kb-answer also have v2 (chat history). */
+    private static int[] versionsOf(String name) {
+        return PromptCatalog.HR_ASSISTANT.equals(name) || PromptCatalog.KB_ANSWER.equals(name) ? new int[]{1, 2} : new int[]{1};
     }
 
     @Test

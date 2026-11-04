@@ -7,11 +7,14 @@ import { listPeople, listProjects } from "../../projects/services/projectService
 import type {
   IssuePriority, MeetingActionItem, MeetingDetail, Person, Project,
 } from "../../../shared/types/models";
+import { Alert, Badge, Button, Card, ErrorState, Field, Input, PageHeader, Select, SkeletonList, Textarea, useConfirm } from "../../../shared/ui";
+import "./meetings.css";
 
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 const msg = (err: any, fallback: string) => err?.response?.data?.message || fallback;
 
 export default function MeetingDetailPage() {
+  const confirmAction = useConfirm();
   const { id } = useParams();
   const meetingId = Number(id);
   const navigate = useNavigate();
@@ -52,8 +55,8 @@ export default function MeetingDetailPage() {
     listProjects().then(p => setProjects(p.filter(x => x.status === "ACTIVE"))).catch(() => {});
   }, [meetingId]);
 
-  if (error && !meeting) return <div className="alert-ems alert-error">{error}</div>;
-  if (!meeting) return <div style={{ color: "var(--text-3)" }}>Loading...</div>;
+  if (error && !meeting) return <ErrorState message={error} onRetry={() => navigate(`${base}/meetings`)} />;
+  if (!meeting) return <SkeletonList rows={4} />;
 
   const draft = meeting.status === "DRAFT";
 
@@ -76,14 +79,14 @@ export default function MeetingDetailPage() {
   const save = () => run(async () => { adopt(await updateMeeting(meeting.id, payload())); setNotice("Saved."); }, "Could not save.");
 
   const approve = () => run(async () => {
-    if (!window.confirm("Approve this summary? It will be locked and its tasks can then be created as issues.")) return;
+    if (!(await confirmAction({ title: "Approve this summary?", message: "It will be locked, and its action items can then be created as issues.", confirmLabel: "Approve", tone: "primary" }))) return;
     await updateMeeting(meeting.id, payload());
     adopt(await approveMeeting(meeting.id));
     setNotice("Approved. Choose a project below to create issues from the action items.");
   }, "Could not approve.");
 
   const remove = () => run(async () => {
-    if (!window.confirm("Delete this summary and its original notes? This cannot be undone.")) return;
+    if (!(await confirmAction({ title: "Delete this summary?", message: "The summary and its original notes will be deleted. This cannot be undone.", confirmLabel: "Delete" }))) return;
     await deleteMeeting(meeting.id);
     navigate(`${base}/meetings`);
   }, "Could not delete.");
@@ -99,164 +102,119 @@ export default function MeetingDetailPage() {
   const setItem = (i: number, patch: Partial<MeetingActionItem>) =>
     setItems(items.map((a, k) => (k === i ? { ...a, ...patch } : a)));
 
-  const list = (values: string[], set: (v: string[]) => void, placeholder: string) => (
-    <div>
+  const list = (values: string[], set: (v: string[]) => void, placeholder: string, label: string) => (
+    <div className="md-list">
       {values.map((v, i) => (
-        <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-          <input className="form-control-ems" maxLength={1000} value={v} placeholder={placeholder}
-                 onChange={e => set(values.map((x, k) => (k === i ? e.target.value : x)))} />
-          <button type="button" className="btn-ems btn-secondary-ems" onClick={() => set(values.filter((_, k) => k !== i))}>Remove</button>
+        <div key={i} className="md-line">
+          <Input aria-label={`${label} ${i + 1}`} maxLength={1000} value={v} placeholder={placeholder} onChange={e => set(values.map((x, k) => (k === i ? e.target.value : x)))} />
+          <Button size="sm" onClick={() => set(values.filter((_, k) => k !== i))}>Remove</Button>
         </div>
       ))}
-      <button type="button" className="btn-ems btn-secondary-ems" onClick={() => set([...values, ""])}>Add</button>
+      <div><Button size="sm" onClick={() => set([...values, ""])}>Add</Button></div>
     </div>
   );
-
-  const heading = (t: string) => <div style={{ fontWeight: 600, color: "var(--text-1)", margin: "18px 0 8px" }}>{t}</div>;
+  const heading = (t: string) => <h3 className="md-h">{t}</h3>;
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">{meeting.title}</div>
-          <div className="page-sub">
-            {draft ? "AI draft: review and correct it before approving." : `Approved${meeting.approvedAt ? " on " + new Date(meeting.approvedAt).toLocaleDateString() : ""}.`}
-            {meeting.model ? ` Generated with ${meeting.model}.` : ""}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn-ems btn-secondary-ems" onClick={() => navigate(`${base}/meetings`)}>All summaries</button>
-          <button className="btn-ems btn-secondary-ems" disabled={busy} onClick={remove}>Delete</button>
-          {draft && <button className="btn-ems btn-secondary-ems" disabled={busy} onClick={save}>Save changes</button>}
-          {draft && <button className="btn-ems btn-primary-ems" disabled={busy} onClick={approve}>Approve</button>}
-        </div>
+    <div>
+      <PageHeader title={meeting.title}
+        subtitle={<>{draft ? "Draft from Tenemsa AI: review and correct it before approving." : `Approved${meeting.approvedAt ? " on " + new Date(meeting.approvedAt).toLocaleDateString() : ""}.`}</>}
+        actions={<>
+          <Button onClick={() => navigate(`${base}/meetings`)}>All summaries</Button>
+          <Button variant="danger" disabled={busy} onClick={remove}>Delete</Button>
+          {draft && <Button disabled={busy} onClick={save}>Save changes</Button>}
+          {draft && <Button variant="primary" loading={busy} onClick={approve}>Approve</Button>}
+        </>} />
+
+      <div style={{ display: "grid", gap: 10, marginBottom: 16 }}>
+        {error && <Alert tone="error">{error}</Alert>}
+        {notice && <Alert tone="success">{notice}</Alert>}
+        {draft && <Alert tone="info">AI can make mistakes. Check names, dates and tasks against the original notes before approving.</Alert>}
       </div>
 
-      {error && <div className="alert-ems alert-error" onClick={() => setError("")}>{error}</div>}
-      {notice && <div className="alert-ems" onClick={() => setNotice("")}>{notice}</div>}
-      {draft && (
-        <div className="alert-ems">
-          AI can make mistakes. Check names, dates and tasks against the original notes before approving.
-        </div>
-      )}
-
-      <div className="ems-card" style={{ padding: 18 }}>
+      <Card>
         {draft ? (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0 14px" }}>
-              <div className="form-group">
-                <label className="form-label">Title</label>
-                <input className="form-control-ems" maxLength={200} value={title} onChange={e => setTitle(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Meeting date</label>
-                <input type="date" className="form-control-ems" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} />
-              </div>
+            <div className="tn-form-grid">
+              <Field label="Title"><Input maxLength={200} value={title} onChange={e => setTitle(e.target.value)} /></Field>
+              <Field label="Meeting date"><Input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} /></Field>
             </div>
-            <label className="form-label">Summary</label>
-            <textarea className="form-control-ems" rows={5} maxLength={4000} value={summary} onChange={e => setSummary(e.target.value)} />
+            <Field label="Summary"><Textarea rows={5} maxLength={4000} value={summary} onChange={e => setSummary(e.target.value)} /></Field>
             {heading("Decisions")}
-            {list(decisions, setDecisions, "A decision that was made")}
+            {list(decisions, setDecisions, "A decision that was made", "Decision")}
             {heading("Open questions")}
-            {list(questions, setQuestions, "A question nobody resolved")}
+            {list(questions, setQuestions, "A question nobody resolved", "Open question")}
           </>
         ) : (
           <>
-            <div style={{ color: "var(--text-2)", whiteSpace: "pre-wrap" }}>{meeting.summary}</div>
+            <p className="md-summary">{meeting.summary}</p>
             {heading("Decisions")}
-            {meeting.decisions.length === 0 ? <div style={{ color: "var(--text-3)" }}>None recorded.</div>
-              : <ul style={{ color: "var(--text-2)" }}>{meeting.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul>}
+            {meeting.decisions.length === 0 ? <p className="mt-muted">None recorded.</p> : <ul className="md-ul">{meeting.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul>}
             {heading("Open questions")}
-            {meeting.openQuestions.length === 0 ? <div style={{ color: "var(--text-3)" }}>None recorded.</div>
-              : <ul style={{ color: "var(--text-2)" }}>{meeting.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>}
+            {meeting.openQuestions.length === 0 ? <p className="mt-muted">None recorded.</p> : <ul className="md-ul">{meeting.openQuestions.map((q, i) => <li key={i}>{q}</li>)}</ul>}
           </>
         )}
 
         {heading(`Action items (${items.length})`)}
         {draft ? (
-          <div>
+          <div style={{ display: "grid", gap: 10 }}>
             {items.map((a, i) => (
-              <div key={a.id ?? `new-${i}`} className="ems-card" style={{ padding: 12, marginBottom: 10 }}>
-                <input className="form-control-ems" placeholder="Task title" maxLength={200} value={a.title}
-                       onChange={e => setItem(i, { title: e.target.value })} style={{ marginBottom: 8 }} />
-                <textarea className="form-control-ems" rows={2} placeholder="Details (optional)" maxLength={2000}
-                          value={a.description || ""} onChange={e => setItem(i, { description: e.target.value })} style={{ marginBottom: 8 }} />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, alignItems: "end" }}>
-                  <div>
-                    <label className="form-label">Owner</label>
-                    <select className="form-control-ems" value={a.ownerEmpId ?? ""}
-                            onChange={e => {
-                              const emp = e.target.value ? Number(e.target.value) : null;
-                              setItem(i, { ownerEmpId: emp, ownerName: people.find(p => p.empId === emp)?.name ?? a.ownerName });
-                            }}>
-                      <option value="">{a.ownerName ? `Not matched: ${a.ownerName}` : "Unassigned"}</option>
-                      {people.map(p => <option key={p.empId} value={p.empId}>{p.name}</option>)}
-                    </select>
+              <Card key={a.id ?? `new-${i}`} className="md-item">
+                <div style={{ display: "grid", gap: 8 }}>
+                  <Input aria-label="Task title" placeholder="Task title" maxLength={200} value={a.title} onChange={e => setItem(i, { title: e.target.value })} />
+                  <Textarea aria-label="Details" rows={2} placeholder="Details (optional)" maxLength={2000} value={a.description || ""} onChange={e => setItem(i, { description: e.target.value })} />
+                  <div className="md-item-row">
+                    <Field label="Owner">
+                      <Select value={a.ownerEmpId ?? ""} onChange={e => {
+                        const emp = e.target.value ? Number(e.target.value) : null;
+                        setItem(i, { ownerEmpId: emp, ownerName: people.find(p => p.empId === emp)?.name ?? a.ownerName });
+                      }}>
+                        <option value="">{a.ownerName ? `Not matched: ${a.ownerName}` : "Unassigned"}</option>
+                        {people.map(p => <option key={p.empId} value={p.empId}>{p.name}</option>)}
+                      </Select>
+                    </Field>
+                    <Field label="Due date"><Input type="date" value={a.dueDate || ""} onChange={e => setItem(i, { dueDate: e.target.value || null })} /></Field>
+                    <Field label="Priority"><Select value={a.priority} onChange={e => setItem(i, { priority: e.target.value as IssuePriority })}>{PRIORITIES.map(p => <option key={p}>{p}</option>)}</Select></Field>
+                    <Button size="sm" onClick={() => setItems(items.filter((_, k) => k !== i))}>Remove</Button>
                   </div>
-                  <div>
-                    <label className="form-label">Due date</label>
-                    <input type="date" className="form-control-ems" value={a.dueDate || ""} onChange={e => setItem(i, { dueDate: e.target.value || null })} />
-                  </div>
-                  <div>
-                    <label className="form-label">Priority</label>
-                    <select className="form-control-ems" value={a.priority} onChange={e => setItem(i, { priority: e.target.value as IssuePriority })}>
-                      {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" className="btn-ems btn-secondary-ems" onClick={() => setItems(items.filter((_, k) => k !== i))}>Remove</button>
                 </div>
-              </div>
+              </Card>
             ))}
-            <button type="button" className="btn-ems btn-secondary-ems"
-                    onClick={() => setItems([...items, { id: null, title: "", description: "", ownerName: null, ownerEmpId: null, dueDate: null, priority: "MEDIUM", issueId: null, issueKey: null }])}>
-              Add action item
-            </button>
+            <div><Button onClick={() => setItems([...items, { id: null, title: "", description: "", ownerName: null, ownerEmpId: null, dueDate: null, priority: "MEDIUM", issueId: null, issueKey: null }])}>Add action item</Button></div>
           </div>
         ) : (
           <div>
-            {items.length === 0 && <div style={{ color: "var(--text-3)" }}>No action items.</div>}
+            {items.length === 0 && <p className="mt-muted">No action items.</p>}
             {items.map(a => (
-              <label key={a.id ?? a.title} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 14 }}>
-                {a.issueId === null ? (
-                  <input type="checkbox" style={{ marginTop: 4 }} checked={a.id !== null && selected.includes(a.id)}
-                         onChange={e => setSelected(e.target.checked ? [...selected, a.id as number] : selected.filter(x => x !== a.id))} />
-                ) : <span style={{ width: 13 }} />}
-                <span style={{ flex: 1 }}>
-                  <span style={{ color: "var(--text-1)" }}>{a.title}</span>
-                  <span style={{ display: "block", fontSize: 12, color: "var(--text-3)" }}>
-                    {a.ownerName || "No owner"} · {a.priority}{a.dueDate ? ` · due ${a.dueDate}` : ""}
-                  </span>
-                </span>
+              <label key={a.id ?? a.title} className="md-ai">
+                {a.issueId === null
+                  ? <input type="checkbox" checked={a.id !== null && selected.includes(a.id)} onChange={e => setSelected(e.target.checked ? [...selected, a.id as number] : selected.filter(x => x !== a.id))} />
+                  : <span style={{ width: 16 }} />}
+                <span className="md-ai-main"><b>{a.title}</b><small>{a.ownerName || "No owner"} · {a.priority}{a.dueDate ? ` · due ${a.dueDate}` : ""}</small></span>
                 {a.issueKey && (
-                  <span style={{ color: "#22c55e", fontSize: 12, cursor: "pointer" }}
-                        onClick={() => meeting.projectId && navigate(`${base}/projects/${meeting.projectId}`)}>{a.issueKey}</span>
+                  <button type="button" className="tn-link" style={{ background: "none", border: 0, cursor: "pointer" }}
+                    onClick={() => meeting.projectId && navigate(`${base}/projects/${meeting.projectId}`)}><Badge tone="success">{a.issueKey}</Badge></button>
                 )}
               </label>
             ))}
             {items.some(a => a.issueId === null) && (
-              <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-                <select className="form-control-ems" style={{ maxWidth: 260 }} value={projectId} onChange={e => setProjectId(e.target.value)}>
+              <div className="md-create">
+                <Select aria-label="Project" value={projectId} onChange={e => setProjectId(e.target.value)}>
                   <option value="">Choose a project…</option>
                   {projects.map(p => <option key={p.id} value={p.id}>{p.key} · {p.name}</option>)}
-                </select>
-                <button className="btn-ems btn-primary-ems" disabled={busy} onClick={create}>Create {selected.length} issue(s)</button>
+                </Select>
+                <Button variant="primary" loading={busy} onClick={create}>Create {selected.length} issue{selected.length === 1 ? "" : "s"}</Button>
               </div>
             )}
           </div>
         )}
 
         <div style={{ marginTop: 20 }}>
-          <button type="button" className="btn-ems btn-secondary-ems" onClick={() => setShowNotes(!showNotes)}>
-            {showNotes ? "Hide original notes" : "Show original notes"}
-          </button>
-          {meeting.sourceRef && <span style={{ marginLeft: 10, fontSize: 12, color: "var(--text-3)" }}>Source: {meeting.sourceRef}</span>}
-          {showNotes && (
-            <pre style={{ whiteSpace: "pre-wrap", marginTop: 10, padding: 12, background: "var(--bg-elevated)", borderRadius: 8, fontSize: 13, color: "var(--text-2)" }}>
-              {meeting.sourceText}
-            </pre>
-          )}
+          <Button size="sm" onClick={() => setShowNotes(!showNotes)}>{showNotes ? "Hide original notes" : "Show original notes"}</Button>
+          {meeting.sourceRef && <span className="mt-muted" style={{ marginLeft: 10 }}>Source: {meeting.sourceRef}</span>}
+          {showNotes && <pre className="md-pre">{meeting.sourceText}</pre>}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -3,6 +3,9 @@ package com.tenemsa.platform.auth.controller;
 import com.tenemsa.platform.audit.model.AuditAction;
 import com.tenemsa.platform.audit.service.AuditService;
 import com.tenemsa.platform.auth.dto.AuthResponse;
+import com.tenemsa.platform.auth.dto.ChangePasswordRequest;
+import com.tenemsa.platform.auth.dto.SessionResponse;
+import com.tenemsa.platform.auth.service.TokenService;
 import com.tenemsa.platform.auth.dto.ForgotPasswordRequest;
 import com.tenemsa.platform.auth.dto.LoginRequest;
 import com.tenemsa.platform.auth.dto.RefreshRequest;
@@ -30,6 +33,7 @@ public class AuthController {
     @Autowired private UserRepository userRepository;
     @Autowired private AuthContext authContext;
     @Autowired private AuditService auditService;
+    @Autowired private TokenService tokenService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
@@ -75,6 +79,39 @@ public class AuthController {
                 .orElseThrow(() -> new RuntimeException("Not authenticated"));
         authService.logoutAllDevices(user.getId());
         return ResponseEntity.ok(Map.of("message", "Signed out of all devices"));
+    }
+
+    private User caller() {
+        return userRepository.findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId())
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Not authenticated"));
+    }
+
+    // Signed-in password change (different from the emailed reset link): needs the current password.
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(caller(), request.currentPassword(), request.newPassword(), request.refreshToken());
+        return ResponseEntity.ok(Map.of("message", "Password updated. Your other devices were signed out."));
+    }
+
+    // The caller's own signed-in devices. The browser sends its own refresh token in X-Refresh-Token so it can be
+    // marked "this device"; the token is compared by hash and never echoed back.
+    @GetMapping("/sessions")
+    public java.util.List<SessionResponse> sessions(@RequestHeader(value = "X-Refresh-Token", required = false) String currentToken) {
+        User user = caller();
+        String mine = currentToken == null || currentToken.isBlank() ? null : tokenService.hashToken(currentToken);
+        return tokenService.activeSessions(user.getId()).stream()
+                .map(t -> new SessionResponse(t.getId(), t.getDeviceLabel(), t.getCreatedAt(), t.getExpiresAt(),
+                        mine != null && mine.equals(t.getTokenHash()))).toList();
+    }
+
+    @DeleteMapping("/sessions/{id}")
+    public ResponseEntity<?> revokeSession(@PathVariable Long id) {
+        User user = caller();
+        if (!tokenService.revokeSession(user.getId(), id)) {
+            throw new com.tenemsa.platform.common.ResourceNotFoundException("That session doesn't exist.");
+        }
+        auditService.recordCurrent(AuditAction.SESSION_REVOKED, "USER", String.valueOf(user.getId()), "Signed a device out from settings");
+        return ResponseEntity.ok(Map.of("message", "Device signed out."));
     }
 
     @PostMapping("/forgot-password")

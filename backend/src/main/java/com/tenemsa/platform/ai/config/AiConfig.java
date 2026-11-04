@@ -3,6 +3,8 @@ package com.tenemsa.platform.ai.config;
 import com.tenemsa.platform.ai.provider.AiClient;
 import com.tenemsa.platform.ai.provider.DisabledAiClient;
 import com.tenemsa.platform.ai.provider.SpringAiClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -25,15 +27,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 @EnableConfigurationProperties(AiProperties.class)
 public class AiConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(AiConfig.class);
+
     @Bean
     public AiClient aiClient(AiProperties props, ObjectProvider<ChatModel> chatModel) {
         if (!props.isEnabled()) {
-            return new DisabledAiClient("AI features are switched off. An administrator can enable them by setting "
-                    + "AI_PROVIDER=google-genai and GEMINI_API_KEY on the server.");
+            log.info("Tenemsa AI is off. To enable it set AI_PROVIDER=google-genai and GEMINI_API_KEY in backend/.env.");
+            return new DisabledAiClient("Tenemsa AI is switched off on this server. Please ask your administrator to turn it on.");
         }
         ChatModel model = chatModel.getIfAvailable();
         if (model == null) {
-            return new DisabledAiClient("AI is enabled but no model is configured. Check GEMINI_API_KEY and AI_PROVIDER.");
+            log.warn("AI_PROVIDER is set but no model could be created. Check GEMINI_API_KEY and AI_PROVIDER in backend/.env.");
+            return new DisabledAiClient("Tenemsa AI isn't set up on this server yet. Please ask your administrator to finish the AI setup.");
         }
         return new SpringAiClient(model, props.getProvider());
     }

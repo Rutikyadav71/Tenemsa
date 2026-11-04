@@ -35,8 +35,8 @@ export async function projectReport(projectId: number, type: ReportType, opts: {
   return (await axiosInstance.post<ProjectReport>(`/api/ai/projects/${projectId}/report`, { type, ...opts }, SLOW)).data;
 }
 
-export async function askHrAssistant(question: string): Promise<HrAnswer> {
-  return (await axiosInstance.post<HrAnswer>("/api/ai/hr-assistant/ask", { question }, SLOW)).data;
+export async function askHrAssistant(question: string, conversationId: number | null = null): Promise<HrAnswer> {
+  return (await axiosInstance.post<HrAnswer>("/api/ai/hr-assistant/ask", { question, conversationId }, SLOW)).data;
 }
 
 /** One place that turns any AI failure into a sentence a person can act on. */

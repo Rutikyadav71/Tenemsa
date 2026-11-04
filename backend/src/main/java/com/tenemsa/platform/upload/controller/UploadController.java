@@ -3,7 +3,7 @@ package com.tenemsa.platform.upload.controller;
 import com.tenemsa.platform.employee.repository.UserRepository;
 import com.tenemsa.platform.security.AuthContext;
 import com.tenemsa.platform.security.SecurityRoles;
-import com.tenemsa.platform.upload.service.CloudinaryService;
+import com.tenemsa.platform.upload.service.ProfileImageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
-    @Autowired private CloudinaryService cloudinaryService;
+    @Autowired private ProfileImageService profileImages;
     @Autowired private UserRepository userRepository;
     @Autowired private AuthContext authContext;
 
@@ -31,14 +31,14 @@ public class UploadController {
             @RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) return ResponseEntity.badRequest().body("No file provided");
         try {
-            String url = cloudinaryService.uploadProfileImage(file, "emp_" + empId);
+            String url = profileImages.store(file, authContext.currentCompanyId(), "emp:" + empId, "emp_" + empId);
             userRepository.findByCompanyIdAndEmpId(authContext.currentCompanyId(), empId).ifPresent(user -> {
                 user.setProfileImageUrl(url);
                 userRepository.save(user);
             });
             return ResponseEntity.ok(Map.of("url", url));
         } catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
-        catch (IOException e) { return ResponseEntity.internalServerError().body("Upload failed: " + e.getMessage()); }
+        catch (IOException e) { return ResponseEntity.internalServerError().body("We couldn't save the photo. Please try again."); }
     }
 
     // adminId here is the User's surrogate primary key (id), same as before
@@ -50,13 +50,13 @@ public class UploadController {
             @RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) return ResponseEntity.badRequest().body("No file provided");
         try {
-            String url = cloudinaryService.uploadProfileImage(file, "admin_" + adminId);
+            String url = profileImages.store(file, authContext.currentCompanyId(), "user:" + adminId, "admin_" + adminId);
             userRepository.findByIdAndCompanyId(adminId, authContext.currentCompanyId()).ifPresent(admin -> {
                 admin.setProfileImageUrl(url);
                 userRepository.save(admin);
             });
             return ResponseEntity.ok(Map.of("url", url));
         } catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
-        catch (IOException e) { return ResponseEntity.internalServerError().body("Upload failed: " + e.getMessage()); }
+        catch (IOException e) { return ResponseEntity.internalServerError().body("We couldn't save the photo. Please try again."); }
     }
 }

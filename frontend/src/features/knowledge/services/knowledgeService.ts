@@ -31,6 +31,6 @@ export async function deleteDocument(id: number): Promise<void> {
   await axiosInstance.delete(`/api/kb/documents/${id}`);
 }
 
-export async function askKnowledge(question: string): Promise<KbAnswer> {
-  return (await axiosInstance.post<KbAnswer>("/api/kb/ask", { question }, SLOW)).data;
+export async function askKnowledge(question: string, conversationId: number | null = null): Promise<KbAnswer> {
+  return (await axiosInstance.post<KbAnswer>("/api/kb/ask", { question, conversationId }, SLOW)).data;
 }

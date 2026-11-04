@@ -72,7 +72,7 @@ export default function ChatSidebar({ currentUserId, currentUserRole, onSelectUs
             else if (p.startsWith("[REPLY:")) p=p.replace(/^\[REPLY:.+?:.+?\]/s,"");
             lm[key]=p.slice(0,45)+(p.length>45?"…":"");
           }
-        } catch {}
+        } catch { /* a preview that fails to load just stays blank */ }
       }));
       setUnreadMap(um); setLastMap(lm);
     };

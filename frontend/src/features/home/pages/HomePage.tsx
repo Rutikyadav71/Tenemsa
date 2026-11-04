@@ -1,102 +1,52 @@
 import { Link } from "react-router-dom";
+import { LuBookOpenText, LuCalendarCheck, LuClock3, LuKanban, LuMessagesSquare, LuMoon, LuShieldCheck, LuSparkles, LuSun, LuUsersRound } from "react-icons/lu";
+import { Logo } from "../../../shared/ui";
+import { useTheme } from "../../../shared/theme/ThemeProvider";
+import "./HomePage.css";
 
-const LogoIcon = () => (
-  <svg width="32" height="32" fill="none" viewBox="0 0 24 24">
-    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const features = [
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>, label: "People Management", sub: "Directory, roles & role-based access" },
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>, label: "Leave Management", sub: "Apply, approve & track leave" },
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>, label: "Teams & Chat", sub: "Projects, teams and real-time chat" },
-  { icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>, label: "Attendance", sub: "Daily check-ins and work hours" },
+const FEATURES = [
+  { icon: <LuUsersRound size={20} />, title: "People", text: "Directory, teams and role-based access for everyone in the company." },
+  { icon: <LuCalendarCheck size={20} />, title: "Leave", text: "Apply, approve and track time off, with team views for managers." },
+  { icon: <LuClock3 size={20} />, title: "Attendance", text: "Daily check-ins and working hours at a glance." },
+  { icon: <LuKanban size={20} />, title: "Projects", text: "Boards, backlogs and meetings to keep work moving." },
+  { icon: <LuMessagesSquare size={20} />, title: "Chat", text: "Direct messages and file sharing without leaving the workspace." },
+  { icon: <LuSparkles size={20} />, title: "Tenemsa AI", text: "An assistant that answers questions, drafts documents and summarises meetings." },
+  { icon: <LuBookOpenText size={20} />, title: "Knowledge base", text: "Ask questions across your company documents and get sourced answers." },
+  { icon: <LuShieldCheck size={20} />, title: "Private by design", text: "Every company gets its own workspace. Nothing is shared between companies." },
 ];
 
 export default function HomePage() {
+  const { theme, setMode } = useTheme();
+  const dark = theme === "dark";
   return (
-    <div className="home-page">
-      {/* Noise texture overlay */}
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "repeat", opacity: 0.4,
-      }} />
-
-      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 900, margin: "0 auto" }}>
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{ width: 64, height: 64, background: "var(--accent)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 0 40px var(--accent-glow)" }}>
-            <LogoIcon />
+    <div className="hp">
+      <header className="hp-bar">
+        <Logo height={32} />
+        <nav aria-label="Primary">
+          <button type="button" className="tn-btn tn-btn-ghost tn-btn-icon" onClick={() => setMode(dark ? "light" : "dark")}
+            aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}>{dark ? <LuSun size={18} /> : <LuMoon size={18} />}</button>
+          <Link className="tn-btn tn-btn-secondary" to="/workspace">Sign in</Link>
+        </nav>
+      </header>
+      <main>
+        <section className="hp-hero">
+          <h1>Run your whole company <em>on Tenemsa</em></h1>
+          <p>People, leave, attendance, projects, chat and an AI assistant in one secure workspace, with the right access for owners, admins, HR, managers and employees.</p>
+          <div className="hp-cta">
+            <Link className="tn-btn tn-btn-primary tn-btn-lg" to="/register">Create your workspace</Link>
+            <Link className="tn-btn tn-btn-secondary tn-btn-lg" to="/workspace">Find your workspace</Link>
           </div>
-          <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: 44, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-1px", lineHeight: 1.1, marginBottom: 14 }}>
-            Run your whole company<br />
-            <span style={{ background: "linear-gradient(90deg, var(--accent-light), var(--teal))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              on Tenemsa
-            </span>
-          </div>
-          <p style={{ fontSize: 16, color: "var(--text-3)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}>
-            Tenemsa gives every company its own private workspace for people, leave, attendance, teams and chat, with role-based access for owners, admins, HR, managers and employees.
-          </p>
-        </div>
-
-        {/* Portal cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 40, maxWidth: 640, margin: "0 auto 40px" }}>
-          {/* Employee */}
-          <div style={{
-            background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)",
-            padding: 28, textAlign: "center", transition: "all 0.2s", cursor: "pointer",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--border-bright)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-          >
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--teal-glow)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: "var(--teal)" }}>
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="1.8" /></svg>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 6 }}>Create your workspace</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>Register your company in under a minute and become its Owner</div>
-            <Link to="/register">
-              <button className="btn-ems" style={{ width: "100%", justifyContent: "center", background: "var(--teal-glow)", color: "var(--teal)", border: "1px solid rgba(45,212,191,0.3)" }}>
-                Create workspace
-              </button>
-            </Link>
-          </div>
-
-          {/* Admin */}
-          <div style={{
-            background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)",
-            padding: 28, textAlign: "center", transition: "all 0.2s", cursor: "pointer",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 0 20px var(--accent-glow)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-          >
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--accent-glow)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", color: "var(--accent-light)" }}>
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Outfit',sans-serif", color: "var(--text-1)", marginBottom: 6 }}>Sign in to your workspace</div>
-            <div style={{ fontSize: 12.5, color: "var(--text-3)", marginBottom: 20, lineHeight: 1.6 }}>Find your company and sign in as an employee or admin</div>
-            <Link to="/workspace">
-              <button className="btn-ems btn-primary-ems" style={{ width: "100%", justifyContent: "center" }}>
-                Find your workspace
-              </button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Feature strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, maxWidth: 760, margin: "0 auto 40px" }}>
-          {features.map((f, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
-              <div style={{ color: "var(--accent-light)", flexShrink: 0, marginTop: 1 }}>{f.icon}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{f.label}</div>
-                <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>{f.sub}</div>
-              </div>
+        </section>
+        <section className="hp-grid" aria-label="What's inside">
+          {FEATURES.map(f => (
+            <div className="hp-feature" key={f.title}>
+              <div className="ic" aria-hidden="true">{f.icon}</div>
+              <b>{f.title}</b><span>{f.text}</span>
             </div>
           ))}
-        </div>
-
-      </div>
+        </section>
+      </main>
+      <footer className="hp-foot">© {new Date().getFullYear()} Tenemsa</footer>
     </div>
   );
 }

@@ -1,88 +1,73 @@
-import { useState, type FormEvent } from "react";
-import axiosInstance from "../../../shared/api/axiosInstance";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { LuCircleCheck, LuLink } from "react-icons/lu";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import { errorMessage } from "../../../shared/lib/errors";
+import * as v from "../../../shared/lib/validators";
+import { Alert, Button } from "../../../shared/ui";
+import AuthLayout from "../components/AuthLayout";
+import PasswordField from "../components/PasswordField";
 
 export default function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const [params] = useSearchParams();
+  const token = params.get("token") || "";
   const navigate = useNavigate();
-
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pw, setPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [errors, setErrors] = useState<{ pw?: string; confirm?: string }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => navigate("/auth/employee"), 2500);
+    return () => clearTimeout(t);
+  }, [done, navigate]);
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (newPassword !== confirmPassword) {
-      setError("Passwords don't match.");
-      return;
-    }
+    const next = { pw: v.password(pw), confirm: pw !== confirm ? "The passwords don't match." : "" };
+    setErrors(next);
+    if (v.hasErrors(next)) return;
     setLoading(true);
     try {
-      await axiosInstance.post("/api/auth/reset-password", { token, newPassword });
-      setSuccess(true);
-      setTimeout(() => navigate("/auth/employee"), 2500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "This link is invalid or has expired.");
-    } finally {
-      setLoading(false);
-    }
+      await axiosInstance.post("/api/auth/reset-password", { token, newPassword: pw });
+      setDone(true);
+    } catch (err) {
+      setError(errorMessage(err, "This link is invalid or has expired. Request a new one."));
+    } finally { setLoading(false); }
   };
 
   if (!token) {
     return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h1>Invalid link</h1>
-          <p>This password reset link is missing its token. Request a new one below.</p>
-          <Link to="/forgot-password">Request a new link</Link>
+      <AuthLayout title="This link isn't valid">
+        <div className="au-status">
+          <div className="big bad"><LuLink size={24} /></div>
+          <p className="sub" style={{ margin: 0 }}>The reset link is incomplete. Request a new one and use the link from the latest email.</p>
+          <Link className="tn-btn tn-btn-primary" to="/forgot-password">Request a new link</Link>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <h1>Set a new password</h1>
-        {success ? (
-          <div className="auth-success">
-            <p>Password updated. Redirecting you to sign in...</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">New password</label>
-              <input
-                type="password"
-                className="form-control-ems"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                autoFocus
-              />
-              <small>At least 8 characters, one uppercase, one lowercase, one number.</small>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Confirm new password</label>
-              <input
-                type="password"
-                className="form-control-ems"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
-            {error && <p className="auth-error">{error}</p>}
-            <button type="submit" className="btn-ems btn-primary-ems" disabled={loading}>
-              {loading ? "Updating..." : "Update password"}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+    <AuthLayout title={done ? "Password updated" : "Choose a new password"} subtitle={done ? undefined : "Pick something you haven't used elsewhere."}>
+      {done ? (
+        <div className="au-status">
+          <div className="big ok"><LuCircleCheck size={26} /></div>
+          <p className="sub" style={{ margin: 0 }}>Your password has been changed. Taking you to sign in…</p>
+          <Link className="au-link" to="/auth/employee">Sign in now</Link>
+        </div>
+      ) : (
+        <form className="au-form" onSubmit={submit} noValidate>
+          {error && <Alert tone="error">{error}</Alert>}
+          <PasswordField label="New password" value={pw} onChange={setPw} error={errors.pw} autoComplete="new-password" autoFocus showRules />
+          <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} error={errors.confirm} autoComplete="new-password" />
+          <Button type="submit" variant="primary" block loading={loading}>{loading ? "Updating…" : "Update password"}</Button>
+        </form>
+      )}
+    </AuthLayout>
   );
 }

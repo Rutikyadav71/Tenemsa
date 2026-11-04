@@ -10,6 +10,8 @@ import { can } from "../../../shared/lib/roles";
 import type {
   Issue, IssueComment, IssueInput, IssuePriority, IssueStatus, IssueType, Person, Project, Sprint,
 } from "../../../shared/types/models";
+import { Alert, Badge, Button, Card, EmptyState, ErrorState, Field, Input, Modal, PageHeader, Select, SkeletonList, Textarea, useConfirm } from "../../../shared/ui";
+import "./projects.css";
 
 const COLUMNS: { status: IssueStatus; label: string }[] = [
   { status: "TODO", label: "To do" },
@@ -18,6 +20,7 @@ const COLUMNS: { status: IssueStatus; label: string }[] = [
   { status: "DONE", label: "Done" },
 ];
 const PRIORITY_COLOR: Record<IssuePriority, string> = { LOW: "#64748b", MEDIUM: "#3b82f6", HIGH: "#f59e0b", URGENT: "#ef4444" };
+const pretty = (t: string) => t.charAt(0) + t.slice(1).toLowerCase();
 const TYPES: IssueType[] = ["TASK", "BUG", "STORY"];
 const PRIORITIES: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -25,6 +28,7 @@ const emptyInput = (): IssueInput => ({ title: "", description: "", type: "TASK"
 const msg = (err: any, fallback: string) => err?.response?.data?.message || fallback;
 
 export default function ProjectBoardPage() {
+  const confirmAction = useConfirm();
   const { id } = useParams();
   const projectId = Number(id);
   const navigate = useNavigate();
@@ -105,87 +109,72 @@ export default function ProjectBoardPage() {
   };
 
   const removeProject = async () => {
-    if (!project || !window.confirm(`Delete ${project.name} and ALL its issues? This cannot be undone.`)) return;
+    if (!project || !(await confirmAction({ title: `Delete ${project.name}?`, message: "The project and all of its issues will be deleted. This cannot be undone.", confirmLabel: "Delete project" }))) return;
     try { await deleteProject(project.id); navigate(`${base}/projects`); }
     catch (err: any) { setError(msg(err, "Could not delete the project.")); }
   };
 
-  if (error && !project) return <div className="alert-ems alert-error">{error}</div>;
-  if (!project) return <div style={{ color: "var(--text-3)" }}>Loading...</div>;
+  if (error && !project) return <ErrorState message={error} onRetry={() => void reload()} />;
+  if (!project) return <SkeletonList rows={4} />;
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">
-            <span style={{ color: "var(--accent-light)", marginRight: 8 }}>{project.key}</span>{project.name}
-            {archived && <span style={{ fontSize: 12, marginLeft: 10, color: "var(--text-3)" }}>ARCHIVED (read-only)</span>}
-          </div>
-          <div className="page-sub">{project.description || "No description"}{project.leadName ? ` · Lead: ${project.leadName}` : ""}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn-ems btn-secondary-ems" onClick={() => navigate(`${base}/projects`)}>All projects</button>
-          <button className="btn-ems btn-secondary-ems" onClick={() => navigate(`${base}/projects/${project.id}/backlog`)}>Backlog &amp; sprints</button>
-          {canManage && <button className="btn-ems btn-secondary-ems" onClick={toggleArchive}>{archived ? "Unarchive" : "Archive"}</button>}
-          {canManage && archived && <button className="btn-ems btn-secondary-ems" onClick={removeProject}>Delete</button>}
-          {can("ai:use") && <button className="btn-ems btn-secondary-ems" onClick={() => setAiReport(true)}>AI report</button>}
-          {!archived && can("ai:use") && can("issue:create") && <button className="btn-ems btn-secondary-ems" onClick={() => setAiTasks(true)}>AI suggest tasks</button>}
-          {!archived && <button className="btn-ems btn-primary-ems" onClick={() => setCreating(true)}>New issue</button>}
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        title={<><span style={{ color: "var(--accent-light)", marginRight: 8 }}>{project.key}</span>{project.name}{archived && <> <Badge>Archived · read-only</Badge></>}</>}
+        subtitle={`${project.description || "No description"}${project.leadName ? ` · Lead: ${project.leadName}` : ""}`}
+        actions={<>
+          <Button onClick={() => navigate(`${base}/projects`)}>All projects</Button>
+          <Button onClick={() => navigate(`${base}/projects/${project.id}/backlog`)}>Backlog &amp; sprints</Button>
+          {canManage && <Button onClick={toggleArchive}>{archived ? "Unarchive" : "Archive"}</Button>}
+          {canManage && archived && <Button variant="danger" onClick={removeProject}>Delete</Button>}
+          {can("ai:use") && <Button onClick={() => setAiReport(true)}>AI report</Button>}
+          {!archived && can("ai:use") && can("issue:create") && <Button onClick={() => setAiTasks(true)}>AI suggest tasks</Button>}
+          {!archived && <Button variant="primary" onClick={() => setCreating(true)}>New issue</Button>}
+        </>} />
 
-      {error && <div className="alert-ems alert-error" onClick={() => setError("")}>{error}</div>}
-      {notice && <div className="alert-ems" onClick={() => setNotice("")}>{notice}</div>}
+      <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+        {error && <Alert tone="error">{error}</Alert>}
+        {notice && <Alert tone="success">{notice}</Alert>}
+      </div>
       {aiTasks && <TaskGeneratorModal projectId={project.id} onClose={() => setAiTasks(false)}
-        onCreated={n => { setNotice(`Created ${n} AI-suggested issue(s). They are labelled "ai-draft".`); reload(); }} />}
+        onCreated={n => { setNotice(`Created ${n} AI-suggested issue(s). They are labelled "ai-draft".`); void reload(); }} />}
       {aiReport && <ProjectReportModal projectId={project.id} sprints={sprints} onClose={() => setAiReport(false)} />}
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <select className="form-control-ems" style={{ maxWidth: 220 }} value={sprintFilter} onChange={e => setSprintFilter(e.target.value)}>
+      <div className="pj-filters">
+        <Select aria-label="Sprint" value={sprintFilter} onChange={e => setSprintFilter(e.target.value)}>
           <option value="active">{activeSprint ? `Active: ${activeSprint.name}` : "All issues (no active sprint)"}</option>
           <option value="all">All issues</option>
           <option value="backlog">Backlog only</option>
           {sprints.map(s => <option key={s.id} value={s.id}>{s.name} ({s.status.toLowerCase()})</option>)}
-        </select>
-        <input className="form-control-ems" style={{ maxWidth: 280 }} placeholder="Search title, key or label"
-               value={search} onChange={e => setSearch(e.target.value)} />
-        <label style={{ fontSize: 13, color: "var(--text-3)", display: "flex", gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} /> Assigned to me
-        </label>
+        </Select>
+        <Input aria-label="Search issues" placeholder="Search title, key or label" value={search} onChange={e => setSearch(e.target.value)} />
+        <label className="pj-check"><input type="checkbox" checked={onlyMine} onChange={e => setOnlyMine(e.target.checked)} /> Assigned to me</label>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 14, alignItems: "start" }}>
+      <div className="pj-board">
         {COLUMNS.map(col => {
           const items = visible.filter(i => i.status === col.status);
           return (
-            <div key={col.status}
-                 onDragOver={e => e.preventDefault()}
-                 onDrop={() => { const i = issues.find(x => x.id === dragId); if (i && canChange(i)) move(i, col.status); setDragId(null); }}
-                 style={{ background: "var(--bg-elevated)", borderRadius: 10, padding: 10, minHeight: 160 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, color: "var(--text-3)", marginBottom: 10 }}>
-                {col.label.toUpperCase()} · {items.length}
-              </div>
+            <section key={col.status} className="pj-col" aria-label={`${col.label}, ${items.length} issues`}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => { const i = issues.find(x => x.id === dragId); if (i && canChange(i)) void move(i, col.status); setDragId(null); }}>
+              <h3 className="pj-col-h">{col.label}<span>{items.length}</span></h3>
+              {items.length === 0 && <p className="pj-empty">Nothing here</p>}
               {items.map(i => (
-                <div key={i.id} className="ems-card" draggable={canChange(i)}
-                     onDragStart={() => setDragId(i.id)} onClick={() => setOpen(i)}
-                     style={{ padding: 12, marginBottom: 8, cursor: "pointer", borderLeft: `3px solid ${PRIORITY_COLOR[i.priority]}` }}>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
-                    <span>{i.key} · {i.type}</span><span>{i.priority}</span>
-                  </div>
-                  <div style={{ fontSize: 14, color: "var(--text-1)", margin: "4px 0" }}>{i.title}</div>
+                <button key={i.id} className="pj-issue" draggable={canChange(i)} onDragStart={() => setDragId(i.id)} onClick={() => setOpen(i)}
+                  style={{ borderLeftColor: PRIORITY_COLOR[i.priority] }}>
+                  <span className="pj-meta"><span>{i.key} · {pretty(i.type)}</span><span>{pretty(i.priority)}</span></span>
+                  <span className="pj-title">{i.title}</span>
                   {(i.labels.length > 0 || i.storyPoints !== null) && (
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "4px 0" }}>
-                      {i.labels.map(l => <span key={l} style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "var(--bg-surface)", color: "var(--text-2)" }}>{l}</span>)}
-                      {i.storyPoints !== null && <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "var(--accent-light)", color: "#fff" }}>{i.storyPoints} pt</span>}
-                    </div>
+                    <span className="pj-tags">
+                      {i.labels.map(l => <span key={l} className="pj-tag">{l}</span>)}
+                      {i.storyPoints !== null && <span className="pj-tag pt">{i.storyPoints} pt</span>}
+                    </span>
                   )}
-                  <div style={{ fontSize: 12, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
-                    <span>{i.assigneeName || "Unassigned"}</span>
-                    {i.dueDate && <span>Due {i.dueDate}</span>}
-                  </div>
-                </div>
+                  <span className="pj-meta"><span>{i.assigneeName || "Unassigned"}</span>{i.dueDate && <span>Due {i.dueDate}</span>}</span>
+                </button>
               ))}
-            </div>
+            </section>
           );
         })}
       </div>
@@ -198,7 +187,7 @@ export default function ProjectBoardPage() {
 
       {open && (
         <IssueDetail issue={open} people={people} canChange={canChange(open)} archived={archived}
-          onClose={() => setOpen(null)} onMove={s => move(open, s)}
+          onClose={() => setOpen(null)} onMove={s => void move(open, s)}
           onSaved={saved => { setOpen(saved); setIssues(cur => cur.map(i => (i.id === saved.id ? saved : i))); }}
           onDeleted={async () => { setOpen(null); await reload(); }} />
       )}
@@ -222,62 +211,31 @@ function IssueForm(props: {
     try {
       await props.onSubmit({ ...f, title: f.title.trim(), description: f.description?.trim() || undefined, dueDate: f.dueDate || null,
         labels: labelText.split(",").map(l => l.trim()).filter(Boolean) });
-    } catch (error: any) { setErr(msg(error, "Could not save the issue.")); setBusy(false); }
+    } catch (error: any) { setErr(msg(error, "We couldn't save the issue.")); setBusy(false); }
   };
 
   return (
-    <div className="ems-modal-backdrop" onClick={props.onClose}>
-      <form className="ems-modal" style={{ width: 520 }} onClick={e => e.stopPropagation()} onSubmit={submit}>
-        <div className="modal-title">{props.title}</div>
-        {err && <div className="alert-ems alert-error">{err}</div>}
-        <div className="form-group">
-          <label className="form-label">Title *</label>
-          <input className="form-control-ems" required maxLength={200} value={f.title} onChange={e => setF({ ...f, title: e.target.value })} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Description</label>
-          <textarea className="form-control-ems" rows={4} value={f.description || ""} onChange={e => setF({ ...f, description: e.target.value })} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 14px" }}>
-          <div className="form-group">
-            <label className="form-label">Type</label>
-            <select className="form-control-ems" value={f.type} onChange={e => setF({ ...f, type: e.target.value as IssueType })}>
-              {TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Priority</label>
-            <select className="form-control-ems" value={f.priority} onChange={e => setF({ ...f, priority: e.target.value as IssuePriority })}>
-              {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Assignee</label>
-            <select className="form-control-ems" value={f.assigneeEmpId ?? ""} onChange={e => setF({ ...f, assigneeEmpId: e.target.value ? Number(e.target.value) : null })}>
+    <Modal open onClose={props.onClose} dismissible={!busy} title={props.title}
+      footer={<><Button variant="secondary" disabled={busy} onClick={props.onClose}>Cancel</Button><Button variant="primary" type="submit" form="issue-form" loading={busy}>{props.submitLabel}</Button></>}>
+      <form id="issue-form" onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+        {err && <Alert tone="error">{err}</Alert>}
+        <Field label="Title" required><Input required maxLength={200} value={f.title} onChange={e => setF({ ...f, title: e.target.value })} data-autofocus /></Field>
+        <Field label="Description"><Textarea rows={4} value={f.description || ""} onChange={e => setF({ ...f, description: e.target.value })} /></Field>
+        <div className="tn-form-grid">
+          <Field label="Type"><Select value={f.type} onChange={e => setF({ ...f, type: e.target.value as IssueType })}>{TYPES.map(t => <option key={t} value={t}>{pretty(t)}</option>)}</Select></Field>
+          <Field label="Priority"><Select value={f.priority} onChange={e => setF({ ...f, priority: e.target.value as IssuePriority })}>{PRIORITIES.map(p => <option key={p} value={p}>{pretty(p)}</option>)}</Select></Field>
+          <Field label="Assignee">
+            <Select value={f.assigneeEmpId ?? ""} onChange={e => setF({ ...f, assigneeEmpId: e.target.value ? Number(e.target.value) : null })}>
               <option value="">Unassigned</option>
               {props.people.map(p => <option key={p.empId} value={p.empId}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Due date</label>
-            <input type="date" className="form-control-ems" value={f.dueDate || ""} onChange={e => setF({ ...f, dueDate: e.target.value || null })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Story points</label>
-            <input type="number" min={0} max={100} className="form-control-ems" value={f.storyPoints ?? ""}
-                   onChange={e => setF({ ...f, storyPoints: e.target.value === "" ? null : Number(e.target.value) })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Labels (comma separated)</label>
-            <input className="form-control-ems" value={labelText} onChange={e => setLabelText(e.target.value)} placeholder="backend, api" />
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button type="button" className="btn-ems btn-secondary-ems" onClick={props.onClose}>Cancel</button>
-          <button type="submit" className="btn-ems btn-primary-ems" disabled={busy}>{props.submitLabel}</button>
+            </Select>
+          </Field>
+          <Field label="Due date"><Input type="date" value={f.dueDate || ""} onChange={e => setF({ ...f, dueDate: e.target.value || null })} /></Field>
+          <Field label="Story points"><Input type="number" min={0} max={100} value={f.storyPoints ?? ""} onChange={e => setF({ ...f, storyPoints: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
+          <Field label="Labels" hint="Separate with commas"><Input value={labelText} onChange={e => setLabelText(e.target.value)} placeholder="backend, api" /></Field>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 
@@ -288,87 +246,79 @@ function IssueDetail(props: {
   onClose: () => void; onMove: (s: IssueStatus) => void;
   onSaved: (i: Issue) => void; onDeleted: () => Promise<void>;
 }) {
+  const confirmAction = useConfirm();
   const { issue } = props;
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [text, setText] = useState("");
   const [editing, setEditing] = useState(false);
   const [err, setErr] = useState("");
 
-  useEffect(() => { listComments(issue.id).then(setComments).catch(() => setErr("Could not load comments.")); }, [issue.id]);
+  useEffect(() => { listComments(issue.id).then(setComments).catch(() => setErr("We couldn't load the comments.")); }, [issue.id]);
 
   const post = async (e: FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
     try { const c = await addComment(issue.id, text.trim()); setComments([...comments, c]); setText(""); }
-    catch (error: any) { setErr(msg(error, "Could not add the comment.")); }
+    catch (error: any) { setErr(msg(error, "We couldn't add the comment.")); }
   };
 
   const remove = async () => {
-    if (!window.confirm(`Delete ${issue.key}?`)) return;
+    if (!(await confirmAction({ title: `Delete ${issue.key}?`, message: "This issue and its comments will be deleted.", confirmLabel: "Delete issue" }))) return;
     try { await deleteIssue(issue.id); await props.onDeleted(); }
-    catch (error: any) { setErr(msg(error, "Could not delete the issue.")); }
+    catch (error: any) { setErr(msg(error, "We couldn't delete the issue.")); }
   };
 
   if (editing) {
     return (
       <IssueForm title={`Edit ${issue.key}`} submitLabel="Save" people={props.people}
         initial={{ title: issue.title, description: issue.description || "", type: issue.type, priority: issue.priority,
-                   assigneeEmpId: issue.assigneeEmpId, dueDate: issue.dueDate,
-                   storyPoints: issue.storyPoints, labels: issue.labels }}
+                   assigneeEmpId: issue.assigneeEmpId, dueDate: issue.dueDate, storyPoints: issue.storyPoints, labels: issue.labels }}
         onClose={() => setEditing(false)}
         onSubmit={async input => { props.onSaved(await updateIssue(issue.id, input)); setEditing(false); }} />
     );
   }
 
+  const facts: [string, string][] = [
+    ["Assignee", issue.assigneeName || "Unassigned"], ["Reporter", issue.reporterName || "Unknown"],
+    ["Due", issue.dueDate || "None"], ["Sprint", issue.sprintName || "Backlog"],
+    ["Points", issue.storyPoints === null ? "–" : String(issue.storyPoints)], ["Labels", issue.labels.length ? issue.labels.join(", ") : "None"],
+  ];
+
   return (
-    <div className="ems-modal-backdrop" onClick={props.onClose}>
-      <div className="ems-modal" style={{ width: 620 }} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: 12, color: "var(--text-3)" }}>{issue.key} · {issue.type} · {issue.priority}</div>
-        <div className="modal-title" style={{ marginTop: 4 }}>{issue.title}</div>
-        {err && <div className="alert-ems alert-error">{err}</div>}
-        <div style={{ whiteSpace: "pre-wrap", color: "var(--text-2)", fontSize: 14, marginBottom: 14 }}>
-          {issue.description || "No description."}
+    <Modal open onClose={props.onClose} size="lg" title={issue.title} description={`${issue.key} · ${pretty(issue.type)} · ${pretty(issue.priority)}`}
+      footer={<>
+        {props.canChange && <Button variant="danger" onClick={remove}>Delete</Button>}
+        {props.canChange && <Button onClick={() => setEditing(true)}>Edit</Button>}
+        <Button variant="primary" onClick={props.onClose}>Close</Button>
+      </>}>
+      {err && <Alert tone="error">{err}</Alert>}
+      <p className="pj-desc-full">{issue.description || "No description."}</p>
+      <dl className="pj-facts">
+        {facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+        <div>
+          <dt>Status</dt>
+          <dd><Select aria-label="Status" disabled={!props.canChange} value={issue.status} onChange={e => props.onMove(e.target.value as IssueStatus)}>
+            {COLUMNS.map(c => <option key={c.status} value={c.status}>{c.label}</option>)}
+          </Select></dd>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13, color: "var(--text-3)", marginBottom: 14 }}>
-          <div>Assignee: <b style={{ color: "var(--text-1)" }}>{issue.assigneeName || "Unassigned"}</b></div>
-          <div>Reporter: <b style={{ color: "var(--text-1)" }}>{issue.reporterName || "Unknown"}</b></div>
-          <div>Due: <b style={{ color: "var(--text-1)" }}>{issue.dueDate || "None"}</b></div>
-          <div>Sprint: <b style={{ color: "var(--text-1)" }}>{issue.sprintName || "Backlog"}</b></div>
-          <div>Points: <b style={{ color: "var(--text-1)" }}>{issue.storyPoints ?? "-"}</b></div>
-          <div>Labels: <b style={{ color: "var(--text-1)" }}>{issue.labels.length ? issue.labels.join(", ") : "None"}</b></div>
-          <div>
-            Status:{" "}
-            <select className="form-control-ems" style={{ display: "inline-block", width: "auto", padding: "2px 8px" }}
-                    disabled={!props.canChange} value={issue.status} onChange={e => props.onMove(e.target.value as IssueStatus)}>
-              {COLUMNS.map(c => <option key={c.status} value={c.status}>{c.label}</option>)}
-            </select>
+      </dl>
+
+      <h4 className="pj-h4">Comments ({comments.length})</h4>
+      <div className="pj-comments">
+        {comments.length === 0 && <p className="pj-empty">No comments yet.</p>}
+        {comments.map(c => (
+          <div key={c.id} className="pj-comment">
+            <b>{c.authorName}</b> <small>{new Date(c.createdAt).toLocaleString()}</small>
+            <div>{c.body}</div>
           </div>
-        </div>
-
-        <div style={{ fontWeight: 600, margin: "10px 0 6px", color: "var(--text-1)" }}>Comments ({comments.length})</div>
-        <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 10 }}>
-          {comments.length === 0 && <div style={{ color: "var(--text-3)", fontSize: 13 }}>No comments yet.</div>}
-          {comments.map(c => (
-            <div key={c.id} style={{ marginBottom: 8, fontSize: 13 }}>
-              <b style={{ color: "var(--text-1)" }}>{c.authorName}</b>{" "}
-              <span style={{ color: "var(--text-3)", fontSize: 11 }}>{new Date(c.createdAt).toLocaleString()}</span>
-              <div style={{ whiteSpace: "pre-wrap", color: "var(--text-2)" }}>{c.body}</div>
-            </div>
-          ))}
-        </div>
-        {!props.archived && (
-          <form onSubmit={post} style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <input className="form-control-ems" placeholder="Add a comment" maxLength={5000} value={text} onChange={e => setText(e.target.value)} />
-            <button className="btn-ems btn-primary-ems" type="submit">Post</button>
-          </form>
-        )}
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          {props.canChange && <button className="btn-ems btn-secondary-ems" onClick={remove}>Delete</button>}
-          {props.canChange && <button className="btn-ems btn-secondary-ems" onClick={() => setEditing(true)}>Edit</button>}
-          <button className="btn-ems btn-primary-ems" onClick={props.onClose}>Close</button>
-        </div>
+        ))}
       </div>
-    </div>
+      {!props.archived && (
+        <form onSubmit={post} className="pj-post">
+          <Input aria-label="Add a comment" placeholder="Add a comment" maxLength={5000} value={text} onChange={e => setText(e.target.value)} />
+          <Button variant="primary" type="submit" disabled={!text.trim()}>Post</Button>
+        </form>
+      )}
+    </Modal>
   );
 }

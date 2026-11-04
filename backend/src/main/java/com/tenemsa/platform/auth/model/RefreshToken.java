@@ -52,10 +52,12 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    public Long getId() { return id; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
 
     public String getTokenHash() { return tokenHash; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
     public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
 
     public String getDeviceLabel() { return deviceLabel; }

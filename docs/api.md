@@ -28,7 +28,7 @@ No OpenAPI/Swagger spec exists yet (roadmap item). This is a hand-maintained ref
 ## Errors, validation and rate limits
 
 - **Validation:** request bodies for sign-in, forgot/resend, company registration, invitations, employees, teams and attendance marking are validated (`@Valid`). Malformed JSON or an unknown enum value also returns `400`. A failure returns `400` with `{ message, fieldErrors }`, where `message` is the first field error ("Company name is required.").
-- **Rate limits (per client IP, `429` with a `Retry-After` header and `{ message }`):** sign-in (`/api/auth/login` and `/api/admin/login` share one budget) 10 per minute; `POST /api/companies/register` 5 per hour; `GET /api/companies/lookup` 30 per minute; `forgot-password` and `resend-verification` (shared) 5 per 10 minutes; `reset-password` 10 per 10 minutes; invitation `preview` and `accept` (shared) 20 per minute.
+- **Rate limits (per client IP, `429` with a `Retry-After` header and `{ message }`):** sign-in (`/api/auth/login` and `/api/admin/login` share one budget) 10 per minute; `POST /api/companies/register` 5 per hour; `GET /api/companies/lookup` 30 per minute; `forgot-password` and `resend-verification` (shared) 5 per 10 minutes; `reset-password` 10 per 10 minutes; `change-password` 10 per 10 minutes; invitation `preview` and `accept` (shared) 20 per minute.
 
 ## Companies — `/api/companies`
 
@@ -44,6 +44,9 @@ No OpenAPI/Swagger spec exists yet (roadmap item). This is a hand-maintained ref
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/api/auth/login` | Public | Login for any role. Returns JWT + profile fields. |
+| POST | `/api/auth/change-password` | Signed in | `{ currentPassword, newPassword, refreshToken? }`. Checks the current password, refuses an unchanged or weak one, then signs out every other device (the one whose `refreshToken` is sent stays). Audited as `PASSWORD_CHANGED`. Rate limited to 10 per 10 minutes. |
+| GET | `/api/auth/sessions` | Signed in | The caller's own signed-in devices `{ id, device, signedInAt, expiresAt, current }`. Send this browser's refresh token in `X-Refresh-Token` to mark `current`; tokens are compared by hash and never returned. |
+| DELETE | `/api/auth/sessions/{id}` | Signed in | Signs one device out. `404` when it isn't the caller's. Audited as `SESSION_REVOKED`. |
 | POST | `/api/admin/register-by-admin` | Admin | Add another admin-equivalent user. Capped at 4 per company. |
 | POST | `/api/admin/login` | Public | Login restricted to admin-equivalent roles. Optional `workspace` (slug) in the body: if given and it differs from the user's company, login fails with a generic error. |
 | GET | `/api/admin/all` | Admin | List all admin-equivalent users. |
@@ -260,3 +263,21 @@ Who is notified: a new request goes to the leads of the applicant's teams and ev
 |---|---|---|---|
 | GET | `/api/analytics/overview` | `report:view:company` or `report:view:team` | Owner/Admin/HR: `scope=COMPANY` with headcount, by department and role, leave (pending, off today, approved days per month for 6 months, status counts), attendance for 30 days, task counts by status and overdue. Manager: `scope=TEAM`, only people on teams they lead; `byRole` is empty and `projects` is null. Employees get `403`. No salary or payroll data. |
 | GET | `/api/analytics/me` | any signed-in user | Your own leave days this year, pending requests, 30-day attendance rate, open and overdue tasks, unread notifications. |
+
+
+## Sessions and profile photos (Phase 9)
+- A missing or expired access token now answers **401** on `/api/**` (it used to answer 403), so the browser refreshes the token instead of showing errors. A signed-in person who lacks permission still gets 403.
+- `GET /api/public/avatars/{token}`: stored profile photo (public, cached). `POST /api/upload/profile/{empId}` and `/admin-profile/{id}` use Cloudinary when configured and fall back to this storage.
+
+## Saved AI chats (Phase 9)
+Private to the person who had the chat; company and user are part of every lookup. HR_ASSISTANT needs `ai:assistant:self`, KB_ASK needs `kb:ask`.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/ai/conversations?kind=HR_ASSISTANT\|KB_ASK` | Own chats, newest first (max 50 kept per kind) |
+| GET | `/api/ai/conversations/{id}` | Chat with messages; each answer has `details` (facts used, or found + sources) |
+| PATCH | `/api/ai/conversations/{id}` | `{ "title": "…" }` (max 80) |
+| DELETE | `/api/ai/conversations/{id}` | 204; messages are deleted too |
+| DELETE | `/api/ai/conversations?kind=…` | Clears the caller's chats of that kind, returns `{ "deleted": n }` |
+
+`POST /api/ai/hr-assistant/ask` and `POST /api/kb/ask` take an optional `conversationId` and now return `conversationId`. Without it a new chat is saved (title = first question); with it the chat continues and the model is given the last 8 turns inside a fenced, untrusted `HISTORY` block (prompts `hr-assistant.v2` / `kb-answer.v2`). A document follow-up also searches with the previous question so "and for contractors?" works. A failed AI call saves nothing. A chat holds up to 100 messages; using another person's chat, another feature's chat, or a missing one returns 404.

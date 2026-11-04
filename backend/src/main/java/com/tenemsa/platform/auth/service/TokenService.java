@@ -78,6 +78,29 @@ public class TokenService {
         refreshTokenRepository.save(token);
     }
 
+    /** Devices that can still refresh: not revoked and not expired. Newest first. */
+    public java.util.List<RefreshToken> activeSessions(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        return refreshTokenRepository.findAllByUserIdAndRevokedFalse(userId).stream()
+                .filter(t -> t.getExpiresAt().isAfter(now))
+                .sorted(java.util.Comparator.comparing(RefreshToken::getCreatedAt).reversed()).toList();
+    }
+
+    /** Signs out one device. Returns false when that session is not this user's (or is already gone). */
+    public boolean revokeSession(Long userId, Long sessionId) {
+        return refreshTokenRepository.findById(sessionId)
+                .filter(t -> t.getUser().getId().equals(userId) && !t.isRevoked())
+                .map(t -> { revokeRefreshToken(t); return true; }).orElse(false);
+    }
+
+    /** Signs out every device except the one whose raw token is given (null keeps none). */
+    public void revokeAllExcept(Long userId, String keepRawToken) {
+        String keep = keepRawToken == null || keepRawToken.isBlank() ? null : hash(keepRawToken);
+        for (RefreshToken t : refreshTokenRepository.findAllByUserIdAndRevokedFalse(userId)) {
+            if (keep == null || !keep.equals(t.getTokenHash())) revokeRefreshToken(t);
+        }
+    }
+
     public void revokeAllRefreshTokensForUser(Long userId) {
         refreshTokenRepository.revokeAllForUser(userId);
     }

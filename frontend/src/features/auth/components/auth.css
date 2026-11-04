@@ -1,0 +1,49 @@
+/* Auth screens: brand panel + form card. Colours come from tokens.css so both themes work. */
+.au-page{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,520px);background:var(--bg-base);}
+.au-brand{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:40px 56px;
+  background:linear-gradient(145deg,var(--bg-surface) 0%,var(--bg-elevated) 100%);border-right:1px solid var(--border);}
+.au-brand::before{content:"";position:absolute;inset:-20% auto auto -10%;width:520px;height:520px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--accent) 22%,transparent) 0%,transparent 65%);pointer-events:none;}
+.au-brand>*{position:relative;}
+.au-brand h1{font-family:'Outfit Variable','Outfit',sans-serif;font-size:clamp(28px,3.2vw,40px);line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;color:var(--text-1);}
+.au-brand p.lead{font-size:16px;line-height:1.65;color:var(--text-2);max-width:480px;margin:0 0 28px;}
+.au-points{list-style:none;margin:0;padding:0;display:grid;gap:14px;max-width:480px;}
+.au-points li{display:flex;gap:12px;align-items:flex-start;}
+.au-points .ic{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--accent-glow,color-mix(in srgb,var(--accent) 16%,transparent));color:var(--accent-light);}
+.au-points b{display:block;font-size:14px;color:var(--text-1);}
+.au-points span{font-size:13px;color:var(--text-3);}
+.au-foot{font-size:12px;color:var(--text-3);}
+.au-main{display:flex;flex-direction:column;justify-content:center;padding:40px clamp(20px,5vw,56px);background:var(--bg-base);}
+.au-card{width:100%;max-width:420px;margin:0 auto;}
+.au-mobile-logo{display:none;margin-bottom:28px;}
+.au-card h2{font-family:'Outfit Variable','Outfit',sans-serif;font-size:26px;letter-spacing:-.01em;margin:0 0 6px;color:var(--text-1);}
+.au-card .sub{font-size:14px;color:var(--text-3);margin:0 0 24px;line-height:1.55;}
+.au-form{display:grid;gap:16px;}
+.au-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.au-check{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer;}
+.au-link{font-size:13px;color:var(--accent-light);text-decoration:none;font-weight:500;}
+.au-link:hover{text-decoration:underline;}
+.au-divider{display:flex;align-items:center;gap:12px;color:var(--text-3);font-size:12px;margin:2px 0;}
+.au-divider::before,.au-divider::after{content:"";flex:1;height:1px;background:var(--border);}
+.au-switch{margin-top:22px;font-size:13px;color:var(--text-3);text-align:center;display:grid;gap:8px;}
+.au-pw{position:relative;}
+.au-pw .tn-input{padding-right:44px;}
+.au-pw button{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:transparent;color:var(--text-3);border-radius:8px;cursor:pointer;display:grid;place-items:center;}
+.au-pw button:hover{color:var(--text-1);background:var(--bg-elevated);}
+.au-rules{display:grid;gap:4px;margin:2px 0 0;padding:0;list-style:none;font-size:12px;color:var(--text-3);}
+.au-rules li{display:flex;gap:6px;align-items:center;}
+.au-rules li.ok{color:var(--green);}
+.au-status{text-align:center;display:grid;gap:14px;justify-items:center;}
+.au-status .big{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--bg-elevated);color:var(--accent-light);}
+.au-status .big.ok{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);}
+.au-status .big.bad{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red);}
+.au-ws{border:1px solid var(--border);background:var(--bg-surface);border-radius:12px;padding:16px;display:grid;gap:12px;}
+.au-ws small{color:var(--text-3);font-size:12px;}
+.au-ws strong{font-family:'Outfit Variable','Outfit',sans-serif;font-size:18px;color:var(--text-1);}
+.au-google{gap:10px;}
+@media (max-width:960px){
+  .au-page{grid-template-columns:1fr;}
+  .au-brand{display:none;}
+  .au-mobile-logo{display:block;}
+  .au-main{justify-content:flex-start;padding-top:36px;}
+}
