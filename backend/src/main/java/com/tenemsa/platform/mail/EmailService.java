@@ -19,10 +19,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(EmailService.class);
+
     private final JavaMailSender mailSender;
 
     @Value("${app.email.enabled}")
     private boolean emailEnabled;
+
+    @Value("${spring.mail.username:}")
+    private String smtpUser;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -89,7 +94,7 @@ public class EmailService {
     /** true = handed to the mail server (or email is switched off); false = delivery failed. */
     private boolean send(String toEmail, String subject, String htmlBody) {
         if (!emailEnabled) {
-            System.out.println("Email disabled — would have sent \"" + subject + "\" to " + toEmail);
+            log.info("Email is switched off - would have sent \"{}\" to {}", subject, toEmail);
             return true;
         }
         try {
@@ -107,8 +112,27 @@ public class EmailService {
             // MailException (unchecked) is what Spring throws for a rejected SMTP login
             // ("Authentication failed"); catching only MessagingException let it escape and
             // roll back the whole request, including a just-saved invitation.
-            System.err.println("Failed to send email \"" + subject + "\" to " + toEmail + ": " + e.getMessage());
+            String cause = rootMessage(e);
+            String hint = "";
+            if (cause.contains("535") || cause.toLowerCase().contains("authentication") || cause.toLowerCase().contains("username and password"))
+                hint = " Hint: the mail server rejected the sign-in. For Gmail use an App Password (Google Account > Security > 2-Step Verification > App passwords) as SMTP_PASSWORD, with your full Gmail address as SMTP_USERNAME.";
+            else if (cause.toLowerCase().contains("connect") || cause.toLowerCase().contains("timed out") || cause.toLowerCase().contains("unknown host"))
+                hint = " Hint: the mail server could not be reached. Check MAIL_HOST, MAIL_PORT and your internet connection.";
+            log.error("Failed to send email \"{}\" to {}: {}.{}", subject, toEmail, cause, hint);
             return false;
         }
+    }
+
+    private static String rootMessage(Throwable t) {
+        Throwable r = t;
+        while (r.getCause() != null && r.getCause() != r) r = r.getCause();
+        String m = r.getMessage();
+        return m == null || m.isBlank() ? r.getClass().getSimpleName() : m.replaceAll("[\\r\\n]+", " ");
+    }
+
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void warnIfMailNotConfigured() {
+        if (emailEnabled && (smtpUser == null || smtpUser.isBlank()))
+            log.warn("Email is on but SMTP_USERNAME is empty, so password-reset, invitation and verification emails will NOT be delivered. Set SMTP_USERNAME and SMTP_PASSWORD in backend/.env.");
     }
 }
