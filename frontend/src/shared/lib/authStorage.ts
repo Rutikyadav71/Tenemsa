@@ -9,10 +9,20 @@ import { chatTagFor } from "./roles";
  * ChatUserController's history). One function, one place to fix if a field
  * is ever added or renamed again.
  */
+/** Device preferences that must survive signing in and out (theme, which menu groups are open). */
+const DEVICE_PREFS = ["tenemsa-theme", "tenemsa-nav-open", "tenemsa-sidebar-collapsed"];
+
+/** Clears the signed-in user's data but keeps the device preferences above. */
+function clearSessionData(): void {
+  const keep = DEVICE_PREFS.map(k => [k, localStorage.getItem(k)] as const);
+  localStorage.clear();
+  keep.forEach(([k, v]) => { if (v !== null) localStorage.setItem(k, v); });
+}
+
 export function storeAuthResponse(resp: AuthResponse, roleTagOverride?: ChatRoleTag): void {
   // The chat tag always follows the business role (same rule as the backend), whichever sign-in page was used.
   const roleTag = chatTagFor(resp.role) || roleTagOverride;
-  localStorage.clear();
+  clearSessionData();
   localStorage.setItem("token", resp.token);
   localStorage.setItem("refreshToken", resp.refreshToken || "");
   localStorage.setItem("role", roleTag);
@@ -54,5 +64,5 @@ export function getRefreshToken(): string | null {
 }
 
 export function clearAuthStorage(): void {
-  localStorage.clear();
+  clearSessionData();
 }

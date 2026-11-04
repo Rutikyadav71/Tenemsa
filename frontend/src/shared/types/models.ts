@@ -459,7 +459,7 @@ export interface ProjectReport {
   model: string; promptVersion: string; generatedAt: string;
 }
 
-export interface HrAnswer { answer: string; factsUsed: string[]; model: string; promptVersion: string; }
+export interface HrAnswer { answer: string; factsUsed: string[]; model: string; promptVersion: string; conversationId: number | null; }
 
 // ---- Knowledge base (Phase 7) ----
 export type KbAudience = "ALL_STAFF" | "MANAGEMENT";
@@ -490,6 +490,7 @@ export interface KbAnswer {
   sources: KbSource[];
   model: string | null;
   promptVersion: string | null;
+  conversationId: number | null;
 }
 
 export interface KbServiceStatus {
@@ -546,3 +547,9 @@ export interface MySummary {
   overdueIssues: number;
   unreadNotifications: number;
 }
+
+// ---- Saved AI chats (Phase 9) ----
+export type AiChatKind = "HR_ASSISTANT" | "KB_ASK";
+export interface AiChatSummary { id: number; kind: AiChatKind; title: string; updatedAt: string; }
+export interface AiChatMessage { id: number; role: "USER" | "ASSISTANT"; content: string; details: unknown; createdAt: string; }
+export interface AiChatDetail extends AiChatSummary { messages: AiChatMessage[]; }

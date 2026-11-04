@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect, type ChangeEvent, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent, type WheelEvent as ReactWheelEvent } from "react";
 import axiosInstance from "../api/axiosInstance";
+import { errorMessage } from "../lib/errors";
 
 interface ImageCropperModalProps {
   imageDataUrl: string;
@@ -225,9 +226,8 @@ export default function ProfileImageUpload({ empId, currentUrl, name, onUpload, 
       if (String(empId) === String(localStorage.getItem("empId"))) {
         localStorage.setItem("profileImageUrl", url);
       }
-    } catch (err: any) {
-      const msg = err.response?.data;
-      setError(typeof msg === "string" ? msg : "Upload failed. Check Cloudinary config.");
+    } catch (err) {
+      setError(errorMessage(err, "We couldn't upload the photo. Please try again."));
       setCropSrc(null);
     } finally { setUploading(false); }
   };

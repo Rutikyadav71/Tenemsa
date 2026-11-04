@@ -1,3 +1,4 @@
+import { flagSessionExpired } from '../../features/auth/components/sessionNotice';
 import axios, { type InternalAxiosRequestConfig, type AxiosError, type AxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from './apiConfig';
 import { clearAuthStorage, getRefreshToken, updateTokens } from '../lib/authStorage';
@@ -9,8 +10,15 @@ const axiosInstance = axios.create({
 
 // Attach JWT token to every request
 axiosInstance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
+  async (config: InternalAxiosRequestConfig) => {
+    let token = localStorage.getItem('token');
+    // Renew a token that is about to expire (or already has) before sending, so the request
+    // doesn't fail first. Never for the sign-in/refresh calls themselves.
+    if (token && !isAuthCall(config.url) && secondsLeft(token) < 20 && getRefreshToken()) {
+      if (!inFlightRefresh) inFlightRefresh = performRefresh().finally(() => { inFlightRefresh = null; });
+      const fresh = await inFlightRefresh;
+      if (fresh && fresh !== TRANSIENT) token = fresh;
+    }
     if (token) {
       config.headers.set('Authorization', `Bearer ${token}`);
     }
@@ -33,11 +41,25 @@ axiosInstance.interceptors.request.use(
 // refresh call instead.
 let inFlightRefresh: Promise<string | null> | null = null;
 
+const isAuthCall = (url?: string) => !!url && /\/api\/(auth\/(login|refresh|forgot-password|reset-password)|admin\/login)/.test(url);
+
+/** Seconds until the access token expires; 0 when it can't be read. Only used to decide when to refresh. */
+function secondsLeft(token: string): number {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const exp = JSON.parse(atob(part)).exp;
+    return typeof exp === 'number' ? exp - Date.now() / 1000 : 0;
+  } catch { return 0; }
+}
+
 function redirectToLogin() {
   const role = localStorage.getItem('role');
   clearAuthStorage();
+  flagSessionExpired();
   window.location.href = role === 'ADMIN' ? '/auth/admin' : '/auth/employee';
 }
+
+const TRANSIENT = '__transient__';
 
 async function performRefresh(): Promise<string | null> {
   const refreshToken = getRefreshToken();
@@ -50,8 +72,12 @@ async function performRefresh(): Promise<string | null> {
     const res = await axios.post<AuthResponse>(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
     updateTokens(res.data.token, res.data.refreshToken);
     return res.data.token;
-  } catch {
-    return null;
+  } catch (e) {
+    const status = (e as AxiosError).response?.status;
+    // Only a real rejection of the refresh token means "signed out". A network blip or server
+    // restart must not throw the person out of their session.
+    if (status === 400 || status === 401 || status === 403) return null;
+    return TRANSIENT;
   }
 }
 
@@ -63,7 +89,10 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as (AxiosRequestConfig & { _retried?: boolean }) | undefined;
 
-    if (error.response && error.response.status === 401 && original && !original._retried) {
+    const token = localStorage.getItem('token');
+    // Older servers answered 403 (not 401) for an expired token.
+    const expiredButForbidden = error.response?.status === 403 && !!token && secondsLeft(token) <= 0 && !!getRefreshToken();
+    if (error.response && (error.response.status === 401 || expiredButForbidden) && original && !original._retried) {
       // Never attempt to refresh in response to the refresh/login endpoints
       // themselves failing — that's a real "you are logged out," not an
       // expired-access-token blip.
@@ -79,6 +108,7 @@ axiosInstance.interceptors.response.use(
       }
       const newToken = await inFlightRefresh;
 
+      if (newToken === TRANSIENT) return Promise.reject(error);
       if (newToken) {
         original.headers = { ...original.headers, Authorization: `Bearer ${newToken}` };
         return axiosInstance.request(original);
