@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { LuCopy, LuMail, LuSparkles } from "react-icons/lu";
 import { aiErrorMessage, draftMessage, getAiStatus } from "../services/aiService";
 import type { AiStatus, CommunicationDraft, CommunicationKind, CommunicationTone } from "../../../shared/types/models";
+import { Alert, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Textarea, useToast } from "../../../shared/ui";
+import "./aiPages.css";
 
 const KINDS: [CommunicationKind, string][] = [
   ["ANNOUNCEMENT", "Announcement"], ["REMINDER", "Reminder"], ["FEEDBACK", "Feedback"],
@@ -11,6 +14,7 @@ const TONES: [CommunicationTone, string][] = [
 ];
 
 export default function WriterPage() {
+  const toast = useToast();
   const [kind, setKind] = useState<CommunicationKind>("ANNOUNCEMENT");
   const [tone, setTone] = useState<CommunicationTone>("FRIENDLY");
   const [audience, setAudience] = useState("");
@@ -21,7 +25,6 @@ export default function WriterPage() {
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState("");
 
   useEffect(() => { getAiStatus().then(setStatus).catch(() => {}); }, []);
 
@@ -31,83 +34,62 @@ export default function WriterPage() {
       const d = await draftMessage({ kind, audience: audience.trim(), tone, points: points.trim() });
       setDraft(d); setSubject(d.subject); setBody(d.body);
       getAiStatus().then(setStatus).catch(() => {});
-    } catch (err: any) { setError(aiErrorMessage(err, "Could not write the draft.")); }
+    } catch (err) { setError(aiErrorMessage(err, "We couldn't write the draft.")); }
     finally { setBusy(false); }
   };
 
-  const copy = async (label: string, text: string) => {
-    try { await navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(""), 1500); } catch { /* clipboard blocked */ }
+  const copy = async (what: string, text: string) => {
+    try { await navigator.clipboard.writeText(text); toast.success(`${what} copied.`); }
+    catch { toast.error("Your browser blocked copying. Select the text and copy it by hand."); }
   };
 
   const off = status !== null && !status.enabled;
   const valid = audience.trim().length > 0 && points.trim().length >= 15;
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <div>
-          <div className="page-title">AI message writer</div>
-          <div className="page-sub">Draft an announcement, reminder or feedback note. You edit and send it yourself; nothing is sent from here.</div>
-        </div>
-      </div>
+    <div>
+      <PageHeader title="AI writer" subtitle="Draft an announcement, reminder or feedback note. You edit and send it yourself; nothing is sent from here." />
       {off && (
-        <div className="alert-ems alert-error">
+        <Alert tone="warning">
           {status && !status.companyEnabled
-            ? "AI is switched off for your company. An owner or admin can turn it on in Company settings."
-            : "AI is not configured on this server."}
-        </div>
+            ? "AI is switched off for your company. An owner or admin can turn it on in Settings."
+            : "Tenemsa AI isn't available right now. Please contact your administrator."}
+        </Alert>
       )}
-      {error && <div className="alert-ems alert-error" onClick={() => setError("")}>{error}</div>}
+      {error && <Alert tone="error">{error}</Alert>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
-        <div className="ems-card" style={{ padding: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <label className="form-label">Kind</label>
-              <select className="form-control-ems" value={kind} onChange={e => setKind(e.target.value as CommunicationKind)}>
-                {KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="form-label">Tone</label>
-              <select className="form-control-ems" value={tone} onChange={e => setTone(e.target.value as CommunicationTone)}>
-                {TONES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
+      <div className="ai-two">
+        <Card>
+          <CardHeader title="What do you need?" />
+          <div className="tn-form-grid">
+            <Field label="Kind"><Select value={kind} onChange={e => setKind(e.target.value as CommunicationKind)}>{KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
+            <Field label="Tone"><Select value={tone} onChange={e => setTone(e.target.value as CommunicationTone)}>{TONES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
           </div>
-          <label className="form-label" style={{ marginTop: 10 }}>Who is it for?</label>
-          <input className="form-control-ems" maxLength={200} value={audience} onChange={e => setAudience(e.target.value)} placeholder="For example: all engineering staff" />
-          <label className="form-label" style={{ marginTop: 10 }}>Key points</label>
-          <textarea className="form-control-ems" rows={7} maxLength={3000} value={points} onChange={e => setPoints(e.target.value)}
-                    placeholder="The facts the message must contain: what, when, what people need to do" />
-          <div style={{ fontSize: 12, color: "var(--text-3)", margin: "4px 0 12px" }}>
-            {points.length} / 3000 · sent to the AI provider, so do not include secrets or private details about individuals.
+          <Field label="Who is it for?" required><Input maxLength={200} value={audience} onChange={e => setAudience(e.target.value)} placeholder="For example: all engineering staff" /></Field>
+          <Field label="Key points" required hint={`${points.length} / 3000 · Sent to Tenemsa AI, so leave out secrets and private details about individuals. At least 15 characters.`}>
+            <Textarea rows={7} maxLength={3000} value={points} onChange={e => setPoints(e.target.value)} placeholder="The facts the message must contain: what, when, what people need to do" />
+          </Field>
+          <div className="tn-form-actions" style={{ alignItems: "center", justifyContent: "flex-start" }}>
+            <Button variant="primary" icon={<LuSparkles size={16} />} loading={busy} disabled={off || !valid} onClick={run}>Write draft</Button>
+            {status?.enabled && <span className="ai-muted">{status.requestsLeftThisHour} requests left this hour</span>}
           </div>
-          <button className="btn-ems btn-primary-ems" disabled={busy || off || !valid} onClick={run}>{busy ? "Writing…" : "Write draft"}</button>
-          {status?.enabled && <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 12 }}>{status.requestsLeftThisHour} request(s) left this hour</span>}
-        </div>
+        </Card>
 
-        <div className="ems-card" style={{ padding: 18 }}>
-          {!draft ? (
-            <div style={{ color: "var(--text-3)", fontSize: 14 }}>Your draft will appear here. You can edit it before copying.</div>
-          ) : (
+        <Card>
+          <CardHeader title="Your draft" />
+          {!draft ? <EmptyState title="Nothing written yet" text="Your draft will appear here. You can edit it before copying." icon={<LuSparkles size={22} />} /> : (
             <>
-              <label className="form-label">Subject</label>
-              <input className="form-control-ems" value={subject} maxLength={200} onChange={e => setSubject(e.target.value)} />
-              <label className="form-label" style={{ marginTop: 10 }}>Message</label>
-              <textarea className="form-control-ems" rows={12} value={body} onChange={e => setBody(e.target.value)} />
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                <button className="btn-ems btn-secondary-ems" onClick={() => copy("subject", subject)}>{copied === "subject" ? "Copied" : "Copy subject"}</button>
-                <button className="btn-ems btn-secondary-ems" onClick={() => copy("body", body)}>{copied === "body" ? "Copied" : "Copy message"}</button>
-                <a className="btn-ems btn-secondary-ems" style={{ textDecoration: "none" }}
-                   href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}>Open in mail app</a>
+              <Field label="Subject"><Input value={subject} maxLength={200} onChange={e => setSubject(e.target.value)} /></Field>
+              <Field label="Message"><Textarea rows={12} value={body} onChange={e => setBody(e.target.value)} /></Field>
+              <div className="tn-form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <Button icon={<LuCopy size={15} />} onClick={() => copy("Subject", subject)}>Copy subject</Button>
+                <Button icon={<LuCopy size={15} />} onClick={() => copy("Message", body)}>Copy message</Button>
+                <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} style={{ textDecoration: "none" }}><Button icon={<LuMail size={15} />}>Open in mail app</Button></a>
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 10 }}>
-                AI can make mistakes. Check names, dates and tone, and replace any [placeholders] before sending.
-              </div>
+              <p className="ai-muted" style={{ marginTop: 10 }}>AI can make mistakes. Check names, dates and tone, and replace any [placeholders] before sending.</p>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

@@ -1,91 +1,49 @@
-import { useEffect, useRef, useState } from "react";
-import { aiErrorMessage } from "../../ai/services/aiService";
+import { useEffect, useState } from "react";
 import { askKnowledge, kbStatus } from "../services/knowledgeService";
-import type { KbAnswer, KbServiceStatus } from "../../../shared/types/models";
+import type { KbServiceStatus, KbSource } from "../../../shared/types/models";
+import AiChat, { type ChatAnswer } from "../../ai/components/AiChat";
 
-interface Turn { question: string; result?: KbAnswer; error?: string; }
+const SUGGESTIONS = [
+  "How many days of notice do I need for annual leave?",
+  "What is the company policy on working from home?",
+  "How do I claim travel expenses?",
+];
+
+function sources(details: unknown) {
+  const d = details as { found?: boolean; sources?: KbSource[] } | null;
+  if (!d?.found || !d.sources?.length) return null;
+  return (
+    <div className="ai-extra">
+      <div style={{ marginBottom: 4 }}>Sources</div>
+      {d.sources.map(s => (
+        <details key={s.n}><summary>[{s.n}] {s.title}</summary><div className="ai-snippet">{s.snippet}</div></details>
+      ))}
+    </div>
+  );
+}
 
 export default function AskKnowledgePage() {
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [question, setQuestion] = useState("");
-  const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<KbServiceStatus | null>(null);
-  const end = useRef<HTMLDivElement>(null);
-
   useEffect(() => { kbStatus().then(setStatus).catch(() => {}); }, []);
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [turns]);
 
-  const ask = async (q: string) => {
-    const text = q.trim();
-    if (text.length < 3 || busy) return;
-    setQuestion(""); setBusy(true);
-    setTurns(t => [...t, { question: text }]);
-    try {
-      const result = await askKnowledge(text);
-      setTurns(t => t.map((x, i) => (i === t.length - 1 ? { ...x, result } : x)));
-    } catch (err: any) {
-      setTurns(t => t.map((x, i) => (i === t.length - 1 ? { ...x, error: aiErrorMessage(err, "Could not get an answer.") } : x)));
-    } finally { setBusy(false); }
+  const ask = async (question: string, conversationId: number | null): Promise<ChatAnswer> => {
+    const res = await askKnowledge(question, conversationId);
+    return { conversationId: res.conversationId, answer: res.answer, details: { found: res.found, sources: res.sources } };
   };
 
-  const off = status !== null && !status.available;
-  const empty = status !== null && status.available && status.readyDocuments === 0;
+  const blocked = !status ? null
+    : !status.companyEnabled ? { tone: "error" as const, text: "Tenemsa AI is switched off for your company." }
+    : !status.available ? { tone: "error" as const, text: "Document answers aren't available right now. Please contact your administrator." }
+    : status.readyDocuments === 0 ? { tone: "info" as const, text: "No documents are available to you yet. Ask HR to add the company policies." }
+    : null;
 
   return (
-    <div className="fade-in" style={{ maxWidth: 800 }}>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Ask company documents</div>
-          <div className="page-sub">Ask about policies and procedures. Answers come only from your company's documents and show where they were found.</div>
-        </div>
-      </div>
-      {off && (
-        <div className="alert-ems alert-error">
-          {status && !status.companyEnabled ? "AI is switched off for your company." : "Document search is not configured on this server."}
-        </div>
-      )}
-      {empty && <div className="alert-ems alert-error">No documents are available to you yet. Ask HR to add the policies.</div>}
-
-      <div className="ems-card" style={{ padding: 16, minHeight: 280 }}>
-        {turns.length === 0 && <div style={{ color: "var(--text-3)", fontSize: 14 }}>For example: "How many days of notice do I need for annual leave?"</div>}
-        {turns.map((t, i) => (
-          <div key={i} style={{ marginBottom: 18 }}>
-            <div style={{ textAlign: "right" }}>
-              <span style={{ display: "inline-block", background: "var(--accent)", color: "white", padding: "8px 12px", borderRadius: 12, maxWidth: "85%", fontSize: 14 }}>{t.question}</span>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              {t.error ? <div className="alert-ems alert-error">{t.error}</div>
-                : !t.result ? <span style={{ color: "var(--text-3)", fontSize: 14 }}>Searching documents…</span>
-                : (
-                  <div style={{ background: "var(--bg-elevated)", padding: "10px 12px", borderRadius: 12, maxWidth: "95%", fontSize: 14, color: "var(--text-1)" }}>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{t.result.answer}</div>
-                    {t.result.found && t.result.sources.length > 0 && (
-                      <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-                        <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 4 }}>Sources</div>
-                        {t.result.sources.map(s => (
-                          <details key={s.n} style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>
-                            <summary style={{ cursor: "pointer" }}>[{s.n}] {s.title}</summary>
-                            <div style={{ padding: "4px 0 4px 14px", color: "var(--text-3)", whiteSpace: "pre-wrap" }}>{s.snippet}</div>
-                          </details>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-            </div>
-          </div>
-        ))}
-        <div ref={end} />
-      </div>
-
-      <form onSubmit={e => { e.preventDefault(); ask(question); }} style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <input className="form-control-ems" maxLength={500} value={question} onChange={e => setQuestion(e.target.value)}
-               placeholder="Ask a question about company policy" disabled={off} />
-        <button className="btn-ems btn-primary-ems" disabled={busy || off || question.trim().length < 3}>Ask</button>
-      </form>
-      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
-        AI can make mistakes. Check the cited source, and ask HR for anything important.
-      </div>
-    </div>
+    <AiChat kind="KB_ASK" title="Ask documents"
+      subtitle="Ask about policies and procedures. Answers come only from your company's documents and show where they were found."
+      welcomeTitle="What would you like to know?"
+      welcomeText="I'll search your company's documents and tell you where the answer came from. Your chats are saved, and follow-up questions work."
+      placeholder="Ask a question about company policy" suggestions={SUGGESTIONS}
+      ask={ask} blocked={blocked} renderDetails={sources}
+      note="Tenemsa AI can make mistakes. Check the cited source, and ask HR about anything important." />
   );
 }
