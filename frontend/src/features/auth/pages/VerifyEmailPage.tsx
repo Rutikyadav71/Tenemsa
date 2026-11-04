@@ -1,55 +1,44 @@
 import { useEffect, useState } from "react";
-import axiosInstance from "../../../shared/api/axiosInstance";
 import { Link, useSearchParams } from "react-router-dom";
+import { LuCircleCheck, LuCircleAlert } from "react-icons/lu";
+import axiosInstance from "../../../shared/api/axiosInstance";
+import { errorMessage } from "../../../shared/lib/errors";
+import AuthLayout from "../components/AuthLayout";
 
 type Status = "verifying" | "success" | "error";
 
 export default function VerifyEmailPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
-  const [status, setStatus] = useState<Status>("verifying");
-  const [message, setMessage] = useState("");
+  const [params] = useSearchParams();
+  const token = params.get("token") || "";
+  const [status, setStatus] = useState<Status>(token ? "verifying" : "error");
+  const [message, setMessage] = useState(token ? "" : "This verification link is incomplete.");
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setMessage("This verification link is missing its token.");
-      return;
-    }
+    if (!token) return;
     axiosInstance.post("/api/auth/verify-email", { token })
       .then(() => {
         setStatus("success");
-        // localStorage.emailVerified may be stale if this is opened in the
-        // same browser as an active session — refresh it so the UI (e.g. a
-        // "verify your email" banner) updates without needing a re-login.
-        if (localStorage.getItem("token")) {
-          localStorage.setItem("emailVerified", "true");
-        }
+        // Keep an already signed-in tab in sync so any "verify your email" prompt disappears.
+        if (localStorage.getItem("token")) localStorage.setItem("emailVerified", "true");
       })
-      .catch((err) => {
-        setStatus("error");
-        setMessage(err.response?.data?.message || "This verification link is invalid or has expired.");
-      });
+      .catch(err => { setStatus("error"); setMessage(errorMessage(err, "This verification link is invalid or has expired.")); });
   }, [token]);
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <h1>Email verification</h1>
-        {status === "verifying" && <p>Verifying your email...</p>}
-        {status === "success" && (
-          <div className="auth-success">
-            <p>Your email is verified.</p>
-            <Link to="/auth/employee">Continue to sign in</Link>
-          </div>
-        )}
-        {status === "error" && (
-          <div>
-            <p className="auth-error">{message}</p>
-            <Link to="/auth/employee">Back to sign in</Link>
-          </div>
-        )}
+    <AuthLayout title="Email verification">
+      <div className="au-status" role="status" aria-live="polite">
+        {status === "verifying" && <><span className="tn-spinner" aria-hidden="true" /><p className="sub" style={{ margin: 0 }}>Verifying your email…</p></>}
+        {status === "success" && <>
+          <div className="big ok"><LuCircleCheck size={26} /></div>
+          <p className="sub" style={{ margin: 0 }}>Your email address is verified.</p>
+          <Link className="tn-btn tn-btn-primary" to="/auth/employee">Continue to sign in</Link>
+        </>}
+        {status === "error" && <>
+          <div className="big bad"><LuCircleAlert size={26} /></div>
+          <p className="sub" style={{ margin: 0 }}>{message}</p>
+          <Link className="au-link" to="/auth/employee">Back to sign in</Link>
+        </>}
       </div>
-    </div>
+    </AuthLayout>
   );
 }
