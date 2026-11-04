@@ -1,0 +1,5 @@
+.an-h{font:600 15px 'Outfit Variable','Outfit',sans-serif;color:var(--text-1);margin:6px 0 10px;}
+.an-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:12px;margin-bottom:20px;}
+.an-tile{min-width:0;}
+.an-l{font-size:12.5px;color:var(--text-3);overflow-wrap:anywhere;}
+.an-v{font:600 26px 'Outfit Variable','Outfit',sans-serif;color:var(--text-1);}
