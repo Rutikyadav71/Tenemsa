@@ -28,8 +28,8 @@ public record EmployeeCreateRequest(
         @NotBlank(message = "Email is required.") @Email(message = "Enter a valid email address.")
         @Size(max = 255, message = "Email is too long.")
         String email,
-        @NotBlank(message = "Password is required.")
-        @Size(min = 6, max = 128, message = "Password must be between 6 and 128 characters.")
+        // Optional: when absent (or blank) the person receives an email to set their own password.
+        @jakarta.validation.constraints.Pattern(regexp = "^$|^.{6,128}$", message = "Password must be between 6 and 128 characters.")
         String password,
         @NotNull(message = "Role is required.")
         Role role,

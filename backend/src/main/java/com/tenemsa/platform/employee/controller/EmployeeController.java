@@ -42,6 +42,12 @@ public class EmployeeController {
     private UserMapper userMapper;
 
     @Autowired
+    private com.tenemsa.platform.auth.service.AuthService authService;
+
+    @Autowired
+    private com.tenemsa.platform.employee.repository.UserRepository userRepository;
+
+    @Autowired
     private TeamSecurity teamSecurity;
 
     @Autowired
@@ -94,14 +100,22 @@ public class EmployeeController {
         user.setEmpId(req.empId());
         user.setName(req.name().trim());
         user.setEmail(req.email().trim());
-        user.setPassword(req.password());
+        // No password given: store an unguessable one; the person sets their own from the emailed link.
+        user.setPassword(req.password() == null || req.password().isBlank()
+                ? java.util.UUID.randomUUID().toString().replace("-", "") + "Aa1!" : req.password());   // under bcrypt's 72-byte limit
         user.setRole(req.role());
         user.setDepartment(req.department());
         user.setSalary(req.salary());
         User created = service.create(authContext.currentCompanyId(), user);
+        authService.sendAccountSetupEmail(created, callerName());
         auditService.recordCurrent(AuditAction.USER_CREATED, "USER", String.valueOf(created.getId()),
                 "Created " + created.getRole() + " " + created.getName() + " (empId " + created.getEmpId() + ")");
         return userMapper.toDto(created);
+    }
+
+    private String callerName() {
+        return userRepository.findByEmailAndCompanyId(authContext.currentEmail(), authContext.currentCompanyId())
+                .map(User::getName).orElse("Your administrator");
     }
 
     @PreAuthorize("hasAuthority('user:update')")

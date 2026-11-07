@@ -52,6 +52,7 @@ public class InvitationService {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TokenService tokenService;
     @Autowired private EmailService emailService;
+    @Autowired private com.tenemsa.platform.company.service.CompanyLimits limits;
     @Autowired private AuditService auditService;
 
     /** The saved invitation, plus whether the email with the link could be delivered. */
@@ -70,6 +71,8 @@ public class InvitationService {
         if (!RoleAssignmentRegistry.canAssign(inviter.getRole(), role)) {
             throw new AccessDeniedException("Your role (" + inviter.getRole() + ") cannot invite a " + role + ".");
         }
+        try { limits.assertCanAddUser(companyId); }
+        catch (com.tenemsa.platform.company.service.PlanLimitException e) { throw new InvitationException(e.getMessage()); }
         if (userRepository.existsByEmailAndCompanyId(email, companyId)) {
             throw new InvitationException("That email already belongs to someone in your company.");
         }
@@ -137,6 +140,8 @@ public class InvitationService {
         }
         Role role = Role.valueOf(inv.getRole());
         requireAdminSlot(companyId, role);
+        try { limits.assertCanAddUser(companyId); }
+        catch (com.tenemsa.platform.company.service.PlanLimitException e) { throw new InvitationException(e.getMessage()); }
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new InvitationException("This invitation is invalid or has expired."));
 
@@ -158,6 +163,7 @@ public class InvitationService {
         invitationRepository.save(inv);
         auditService.record(companyId, u.getId(), u.getName(), AuditAction.INVITE_ACCEPTED,
                 "USER", String.valueOf(u.getId()), u.getName() + " joined as " + role);
+        emailService.sendInviteAcceptedEmail(u.getEmail(), u.getName(), company.getName(), company.getSlug());
         return u;
     }
 

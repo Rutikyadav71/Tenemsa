@@ -11,6 +11,7 @@ import PasswordField from "../components/PasswordField";
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
   const token = params.get("token") || "";
+  const setup = params.get("setup") === "1";   // new person following the welcome email
   const navigate = useNavigate();
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -53,11 +54,11 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout title={done ? "Password updated" : "Choose a new password"} subtitle={done ? undefined : "Pick something you haven't used elsewhere."}>
+    <AuthLayout title={done ? (setup ? "You're all set" : "Password updated") : setup ? "Set your password" : "Choose a new password"} subtitle={done ? undefined : setup ? "This activates your account. Pick something you haven't used elsewhere." : "Pick something you haven't used elsewhere."}>
       {done ? (
         <div className="au-status">
           <div className="big ok"><LuCircleCheck size={26} /></div>
-          <p className="sub" style={{ margin: 0 }}>Your password has been changed. Taking you to sign in…</p>
+          <p className="sub" style={{ margin: 0 }}>{setup ? "Your password is set and your email is confirmed. Taking you to sign in…" : "Your password has been changed. Taking you to sign in…"}</p>
           <Link className="au-link" to="/auth/employee">Sign in now</Link>
         </div>
       ) : (
@@ -65,7 +66,7 @@ export default function ResetPasswordPage() {
           {error && <Alert tone="error">{error}</Alert>}
           <PasswordField label="New password" value={pw} onChange={setPw} error={errors.pw} autoComplete="new-password" autoFocus showRules />
           <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} error={errors.confirm} autoComplete="new-password" />
-          <Button type="submit" variant="primary" block loading={loading}>{loading ? "Updating…" : "Update password"}</Button>
+          <Button type="submit" variant="primary" block loading={loading}>{loading ? "Saving…" : setup ? "Set password" : "Update password"}</Button>
         </form>
       )}
     </AuthLayout>
