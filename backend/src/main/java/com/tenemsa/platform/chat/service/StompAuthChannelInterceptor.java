@@ -38,10 +38,13 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final com.tenemsa.platform.company.service.CompanyAccessGuard companyGuard;
 
-    public StompAuthChannelInterceptor(JwtUtil jwtUtil, UserRepository userRepository) {
+    public StompAuthChannelInterceptor(JwtUtil jwtUtil, UserRepository userRepository,
+                                       com.tenemsa.platform.company.service.CompanyAccessGuard companyGuard) {
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
+        this.companyGuard = companyGuard;
     }
 
     @Override
@@ -67,7 +70,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         try {
             if (!jwtUtil.isTokenValid(token)) return false;
             User user = userRepository.findByEmailAndCompanyId(jwtUtil.extractEmail(token), jwtUtil.extractCompanyId(token)).orElse(null);
-            if (user == null || user.isFrozen() || user.getCompany() == null) return false;
+            if (user == null || user.isFrozen() || user.getCompany() == null || companyGuard.isSuspended(user.getCompany().getId())) return false;
 
             Map<String, Object> session = accessor.getSessionAttributes();
             if (session == null) return false;

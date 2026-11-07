@@ -23,6 +23,8 @@ public class SecurityConfig {
     // ObjectProvider rather than a direct injection means that's fine;
     // getIfAvailable() just returns null instead of failing context startup.
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
+    // Only exists when PLATFORM_ENABLED=true (the system-admin console API).
+    private final ObjectProvider<com.tenemsa.platform.platformadmin.security.PlatformJwtFilter> platformFilterProvider;
 
     // Single source of truth for CORS. Previously this was duplicated across
     // 10 different controllers via @CrossOrigin, each hardcoded to one origin
@@ -35,7 +37,9 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtFilter jwtFilter,
                            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
-                           ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider) {
+                           ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+                           ObjectProvider<com.tenemsa.platform.platformadmin.security.PlatformJwtFilter> platformFilterProvider) {
+        this.platformFilterProvider = platformFilterProvider;
         this.jwtFilter = jwtFilter;
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
         this.clientRegistrationRepositoryProvider = clientRegistrationRepositoryProvider;
@@ -83,6 +87,7 @@ public class SecurityConfig {
                     "/login/oauth2/**",
                     "/ws/**",
                     "/api/health",
+                    "/api/platform/auth/**",
                     "/api/public/avatars/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
@@ -104,6 +109,11 @@ public class SecurityConfig {
                     new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED),
                     new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/**")))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // The platform console has its own token and its own filter, which runs after the company filter and
+        // replaces whatever it set for /api/platform/** (see PlatformJwtFilter).
+        var platformFilter = platformFilterProvider.getIfAvailable();
+        if (platformFilter != null) http.addFilterAfter(platformFilter, JwtFilter.class);
 
         // Only wire up the OAuth2 login filter chain if a Google client
         // registration actually exists (see OAuth2ClientConfig) — with no
