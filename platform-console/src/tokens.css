@@ -1,0 +1,88 @@
+/* =============================================
+   Tenemsa design tokens. Same variable names the app already uses,
+   so every existing screen follows the theme. Dark is the default.
+   ============================================= */
+:root {
+  color-scheme: dark;
+  --bg-base:      #0a0d14;
+  --bg-surface:   #10141d;
+  --bg-elevated:  #161b27;
+  --bg-hover:     #1e2535;
+  --border:       rgba(255,255,255,0.08);
+  --border-bright: rgba(255,255,255,0.16);
+  --accent:       #5f5fe8;
+  --accent-strong:#5b5bd6;
+  --accent-light: #a5a8ff;
+  --on-accent:    #ffffff;
+  --accent-glow:  rgba(109,109,242,0.18);
+  --accent-glow2: rgba(109,109,242,0.10);
+  --teal:         #2dd4bf;
+  --teal-glow:    rgba(45,212,191,0.14);
+  --green:        #34d399;
+  --green-glow:   rgba(52,211,153,0.14);
+  --red:          #f87171;
+  --red-glow:     rgba(248,113,113,0.14);
+  --amber:        #fbbf24;
+  --amber-glow:   rgba(251,191,36,0.14);
+  --violet:       #a78bfa;
+  --blue:         #60a5fa;
+  --text-1:       #f1f5f9;
+  --text-2:       #aab4c5;
+  --text-3:       #8d98ac;
+  --focus-ring:   0 0 0 3px rgba(129,140,248,0.55);
+  --sidebar-w:    256px;
+  --sidebar-w-collapsed: 72px;
+  --navbar-h:     60px;
+  --radius:       12px;
+  --radius-lg:    16px;
+  --radius-sm:    8px;
+  --shadow:       0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg:    0 12px 48px rgba(0,0,0,0.6);
+  --overlay:      rgba(3,6,12,0.66);
+  --hairline:     rgba(255,255,255,0.05);
+  --transition:   0.18s cubic-bezier(0.4,0,0.2,1);
+  /* chart palette (validated for both themes) */
+  --chart-1: #818cf8; --chart-2: #2dd4bf; --chart-3: #fbbf24; --chart-4: #f472b6; --chart-5: #60a5fa; --chart-6: #34d399;
+  --chart-grid: rgba(255,255,255,0.08);
+  /* The logo has dark lettering, so on dark surfaces it sits on a light plate. */
+  --logo-plate: #ffffff;
+  --logo-plate-pad: 6px 12px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-base:      #f3f5fa;
+  --bg-surface:   #ffffff;
+  --bg-elevated:  #f7f8fc;
+  --bg-hover:     #eceff7;
+  --border:       rgba(15,23,42,0.09);
+  --border-bright: rgba(15,23,42,0.17);
+  --accent:       #5b5bd6;
+  --accent-strong:#4a4ac0;
+  --accent-light: #4338ca;
+  --on-accent:    #ffffff;
+  --accent-glow:  rgba(91,91,214,0.12);
+  --accent-glow2: rgba(91,91,214,0.07);
+  --teal:         #0f766e;
+  --teal-glow:    rgba(15,118,110,0.11);
+  --green:        #166534;
+  --green-glow:   rgba(21,128,61,0.11);
+  --red:          #b42323;
+  --red-glow:     rgba(201,42,42,0.10);
+  --amber:        #9a4a08;
+  --amber-glow:   rgba(180,83,9,0.11);
+  --violet:       #6d28d9;
+  --blue:         #1d4ed8;
+  --text-1:       #0f172a;
+  --text-2:       #46546b;
+  --text-3:       #556579;
+  --focus-ring:   0 0 0 3px rgba(91,91,214,0.45);
+  --shadow:       0 2px 12px rgba(15,23,42,0.07);
+  --shadow-lg:    0 12px 40px rgba(15,23,42,0.16);
+  --overlay:      rgba(15,23,42,0.42);
+  --hairline:     rgba(15,23,42,0.05);
+  --chart-1: #5b5bd6; --chart-2: #0f766e; --chart-3: #b45309; --chart-4: #be185d; --chart-5: #1d4ed8; --chart-6: #15803d;
+  --chart-grid: rgba(15,23,42,0.09);
+  --logo-plate: transparent;
+  --logo-plate-pad: 0;
+}
