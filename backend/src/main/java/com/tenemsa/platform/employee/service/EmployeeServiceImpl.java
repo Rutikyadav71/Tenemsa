@@ -29,6 +29,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     // see that class for why, and for the other emails it now sends
     // (verification, password reset) that this class has no reason to know about.
     @Autowired private EmailService emailService;
+    @Autowired private com.tenemsa.platform.company.service.CompanyLimits limits;
 
     @Override
     public Page<User> getAll(Long companyId, Pageable pageable) {
@@ -50,6 +51,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Company company = companyRepo.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
         user.setCompany(company);
+        limits.assertCanAddUser(companyId);
 
         // Employee numbers are per company: use the one asked for if it is free,
         // otherwise (or when none was given) the next free number.
@@ -70,7 +72,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         Notification notif = new Notification("Employee added: " + saved.getName());
         notif.setCompanyId(companyId);
         notificationRepo.save(notif);
-        emailService.sendWelcomeEmail(user.getEmail(), user.getName(), plainPassword);
 
         return saved;
     }

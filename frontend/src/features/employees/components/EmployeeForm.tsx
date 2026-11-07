@@ -35,7 +35,7 @@ export default function EmployeeForm({ mode, initial, roleOptions = [], submitti
       department: values.department ? "" : "Choose a department.",
       email: v.email(values.email),
       salary: values.salary === "" || Number(values.salary) < 0 || Number.isNaN(Number(values.salary)) ? "Enter a salary of 0 or more." : "",
-      password: edit && !values.password ? "" : v.minLength(values.password, 6, "Password"),
+      password: !values.password ? "" : v.minLength(values.password, 6, "Password"),
     };
     setErrors(next);
     if (!v.hasErrors(next as Record<string, string>)) onSubmit({ ...values, name: values.name.trim(), email: values.email.trim(), empId: values.empId.trim() });
@@ -65,8 +65,8 @@ export default function EmployeeForm({ mode, initial, roleOptions = [], submitti
       <Field label="Email" required error={errors.email}>
         <Input type="email" value={values.email} onChange={e => set("email")(e.target.value)} autoComplete="off" />
       </Field>
-      <Field label={edit ? "New password" : "Password"} required={!edit} error={errors.password}
-        hint={edit ? "Leave blank to keep the current password." : "At least 6 characters. The person gets it by email and can change it after signing in."}>
+      <Field label={edit ? "New password" : "Password (optional)"} error={errors.password}
+        hint={edit ? "Leave blank to keep the current password." : "Leave blank and we email them a link to choose their own password. That is the safer option. If you type one, tell them yourself: we never email it."}>
         <div className="au-pw">
           <Input type={show ? "text" : "password"} value={values.password} onChange={e => set("password")(e.target.value)} autoComplete="new-password" style={{ paddingRight: 44 }} />
           <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? "Hide password" : "Show password"} aria-pressed={show}>{show ? <LuEyeOff size={16} /> : <LuEye size={16} />}</button>

@@ -118,6 +118,18 @@ public class TokenService {
         return raw;
     }
 
+    /** Same as above with an explicit lifetime, used for the "set your password" link sent to new people. */
+    public String issueVerificationToken(User user, VerificationToken.Purpose purpose, long minutes) {
+        String raw = randomToken();
+        VerificationToken vt = new VerificationToken();
+        vt.setUser(user);
+        vt.setTokenHash(hash(raw));
+        vt.setPurpose(purpose);
+        vt.setExpiresAt(LocalDateTime.now().plusMinutes(minutes));
+        verificationTokenRepository.save(vt);
+        return raw;
+    }
+
     public Optional<VerificationToken> validateVerificationToken(String rawToken, VerificationToken.Purpose purpose) {
         return verificationTokenRepository.findByTokenHash(hash(rawToken))
                 .filter(VerificationToken::isValid)

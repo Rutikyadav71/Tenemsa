@@ -8,10 +8,11 @@ This project is built with a student/portfolio cost constraint in mind — every
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DB_HOST`, `DB_PORT`, `DB_NAME` | Yes | PostgreSQL connection. |
+| `SPRING_PROFILES_ACTIVE` | No | `postgres` (default) or `mysql`. |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | Yes | Database connection. |
 | `DATABASE_USERNAME`, `DATABASE_PASSWORD` | Yes | |
 | `JWT_SECRET` | Yes | Generate with `openssl rand -base64 64`. The app **refuses to start** without this — that's intentional. Never commit a real value. |
-| `JWT_EXPIRATION_MS` | No | Defaults to 3,600,000 (1 hour). |
+| `JWT_EXPIRATION_MS` | No | Access token lifetime, defaults to 900,000 (15 minutes). Sessions are kept alive by rotating refresh tokens (`REFRESH_TOKEN_EXPIRATION_DAYS`, `REMEMBER_ME_EXPIRATION_DAYS`). |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated. Defaults to `http://localhost:5173,https://ry-ems.vercel.app` — update once you have your own deployed frontend URL. |
 | `MAIL_HOST`, `MAIL_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Only if `app.email.enabled=true` | Welcome emails on employee creation. |
 | `RATE_LIMIT_ENABLED` | No | Defaults to `true`. Per-IP limits on sign-in, registration, workspace lookup, password-reset mail and invitation links (see architecture doc). |
@@ -61,6 +62,10 @@ Given the `leave_type` schema gap documented in `docs/database.md`, confirm the 
 
 The older instructions below apply only to databases still on a pre-Phase-4 schema. Follow the run order documented at the top of `backend/migration-phase1.sql` exactly — it's written as a staged, reviewable process (backup → deploy → migrate → verify → smoke-test → optional cleanup), not a single blind script execution. Running it out of order against a database with existing data risks data loss.
 
+## Demo data (never in production)
+
+`--tenemsa.seed.enabled=true` fills a database with demo companies and data for testing (see `docs/seed-data.md`). It is off by default, only touches companies whose slug starts with `demo-`, and refuses to run when the `prod` or `production` Spring profile is active. Use it on local and staging databases only; every demo account has the same known password.
+
 ## What's not set up yet
 
 Documented here so it's an explicit roadmap item, not a silent gap:
@@ -106,3 +111,7 @@ Set `AI_PRICE_INPUT_PER_MILLION_USD` and `AI_PRICE_OUTPUT_PER_MILLION_USD` to yo
 ## Document storage
 
 Uploaded files are stored in the database (`document_files`). Limit per company: `DOCUMENTS_MAX_COMPANY_BYTES` (default 209715200 = 200 MB). Include the database in backups. Individual uploads are limited to 10 MB by `spring.servlet.multipart.*`.
+
+## Platform console
+
+Not deployed with the site. Backend switch `PLATFORM_ENABLED` (default false); set `PLATFORM_JWT_SECRET`, `PLATFORM_SETUP_KEY` (remove after both admins register) and add `http://localhost:5174` to `CORS_ALLOWED_ORIGINS` to use it locally. Full steps in [platform-admin.md](platform-admin.md).

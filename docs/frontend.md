@@ -63,3 +63,7 @@ Every screen now uses `shared/ui`. Rebuilt in this pass: one shared profile page
 Notes for future pages: use `Card pad={false}` when a card starts with a `CardHeader`, or rely on the `.tn-card-pad > .tn-card-head:first-child` rule that cancels the double padding; give every icon-only button an `aria-label`; keep grid tracks at `minmax(0,1fr)`.
 
 Accessibility pass: axe-core (WCAG 2.0/2.1 A and AA) reports no violations on the checked pages in light and dark. To get there the muted text colour and the status colours in the light theme were darkened, and the dark accent used for filled buttons was deepened to keep white text above 4.5:1.
+
+## Testing with large data
+
+Run the backend seeder (`docs/seed-data.md`) and sign in as `owner@demo-001.test` / `Demo@1234`, or `demo-005` for a 90-person company. Look for lists that are not paginated, slow tables, long names that break layouts and empty states that never appear.

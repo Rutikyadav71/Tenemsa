@@ -35,6 +35,7 @@ public class AuthService {
     @Autowired private EmailService emailService;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private AuditService auditService;
+    @Autowired private com.tenemsa.platform.company.service.CompanyAccessGuard companyGuard;
 
     // RBAC phase 3: ADMIN added as its own role (was previously conflated
     // with OWNER) — without it here, a newly created Admin account would be
@@ -69,6 +70,11 @@ public class AuthService {
         resp.setEmailVerified(user.isEmailVerified());
         resp.setPermissions(permissionKeys(user));
         return resp;
+    }
+
+    /** Throws when the user's company is frozen or closed by the platform (used by Google sign-in too). */
+    public void assertWorkspaceActive(User user) {
+        companyGuard.assertActive(user.getCompany().getId());
     }
 
     public User login(LoginRequest request) {
@@ -110,6 +116,7 @@ public class AuthService {
         }
         User user = passwordMatches.get(0);
 
+        companyGuard.assertActive(user.getCompany().getId());
         if (user.isFrozen()) {
             throw new RuntimeException("ACCOUNT_FROZEN: Your account has been frozen. Contact your administrator.");
         }
@@ -160,6 +167,7 @@ public class AuthService {
         var token = tokenService.validateRefreshToken(rawRefreshToken)
                 .orElseThrow(() -> new RuntimeException("Refresh token is invalid or has expired. Please sign in again."));
         User user = token.getUser();
+        companyGuard.assertActive(user.getCompany().getId());
         if (user.isFrozen()) {
             throw new RuntimeException("ACCOUNT_FROZEN: Your account has been frozen. Contact your administrator.");
         }
@@ -202,11 +210,24 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         tokenService.revokeAllExcept(user.getId(), keepRawRefreshToken);
+        emailService.sendPasswordChangedEmail(user.getEmail(), user.getName(), user.getCompany().getName());
         auditService.record(user.getCompany().getId(), user.getId(), user.getName(),
                 AuditAction.PASSWORD_CHANGED, "USER", String.valueOf(user.getId()), "Password changed from settings");
     }
 
     // ---- Email verification --------------------------------------------
+
+    @org.springframework.beans.factory.annotation.Value("${app.account-setup.expiration-days:7}")
+    private int setupDays;
+
+    /** Onboarding mail for a person an administrator just added: welcome, workspace name, a set-your-password
+     *  link (also proves the mailbox) and next steps. No password is ever put in an email. */
+    public boolean sendAccountSetupEmail(User user, String addedByName) {
+        if (user.getAuthProvider() == User.AuthProvider.GOOGLE) return false;
+        String raw = tokenService.issueVerificationToken(user, VerificationToken.Purpose.PASSWORD_RESET, setupDays * 24L * 60L);
+        return emailService.sendAccountSetupEmail(user.getEmail(), user.getName(), user.getCompany().getName(),
+                user.getCompany().getSlug(), user.getRole().name(), addedByName == null ? "Your administrator" : addedByName, raw);
+    }
 
     public void sendVerificationEmail(User user) {
         if (user.isEmailVerified()) return;
@@ -233,9 +254,13 @@ public class AuthService {
         VerificationToken token = tokenService.validateVerificationToken(rawToken, VerificationToken.Purpose.EMAIL_VERIFICATION)
                 .orElseThrow(() -> new RuntimeException("This verification link is invalid or has expired."));
         User user = token.getUser();
+        boolean firstTime = !user.isEmailVerified();
         user.setEmailVerified(true);
         userRepository.save(user);
         tokenService.consumeVerificationToken(token);
+        if (firstTime && user.isPrimaryOwner()) {
+            emailService.sendOwnerWelcomeEmail(user.getEmail(), user.getName(), user.getCompany().getName(), user.getCompany().getSlug());
+        }
     }
 
     // ---- Password reset --------------------------------------------------
@@ -261,8 +286,10 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("This reset link is invalid or has expired."));
         User user = token.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setEmailVerified(true);   // the link only reached the owner of this mailbox
         userRepository.save(user);
         tokenService.consumeVerificationToken(token);
+        emailService.sendPasswordChangedEmail(user.getEmail(), user.getName(), user.getCompany().getName());
 
         // Resetting a password should invalidate every existing session —
         // otherwise a leaked/stolen refresh token would survive the very

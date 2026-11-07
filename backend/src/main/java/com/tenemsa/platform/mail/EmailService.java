@@ -32,80 +32,102 @@ public class EmailService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    /** Sender address. Empty means the SMTP account itself, which is what most providers require. */
+    @Value("${app.email.from:}")
+    private String fromAddress;
+
+    @Value("${app.email.from-name:Tenemsa}")
+    private String fromName;
+
+    @Value("${app.email.reply-to:}")
+    private String replyTo;
+
+    @Value("${app.verification-token.expiration-minutes:30}")
+    private int verifyMinutes;
+
+    @Value("${app.account-setup.expiration-days:7}")
+    private int setupDays;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
-    public void sendWelcomeEmail(String toEmail, String name, String rawPassword) {
-        send(toEmail, "Welcome to Tenemsa — Your Login Credentials",
-                "<p>Hello <strong>" + name + "</strong>,</p>" +
-                "<p>You've been added as an employee on Tenemsa.</p>" +
-                "<p><strong>Email:</strong> " + toEmail + "<br>" +
-                "<strong>Temporary password:</strong> " + rawPassword + "</p>" +
-                "<p>Sign in and change your password from your profile as soon as you can.</p>" +
-                "<p>— Tenemsa</p>");
+    private String url(String path) { return frontendUrl.replaceAll("/+$", "") + path; }
+
+    private static String enc(String s) { return java.net.URLEncoder.encode(s == null ? "" : s, java.nio.charset.StandardCharsets.UTF_8); }
+
+    public String signInUrl(String workspaceSlug) { return url("/auth/employee?workspace=" + enc(workspaceSlug)); }
+
+    public boolean sendVerificationEmail(String toEmail, String name, String rawToken) {
+        return send(toEmail, MailTemplates.verifyEmail(name, url("/verify-email?token=" + enc(rawToken)), verifyMinutes));
     }
 
-    public void sendVerificationEmail(String toEmail, String name, String rawToken) {
-        String link = frontendUrl + "/verify-email?token=" + rawToken;
-        send(toEmail, "Verify your Tenemsa email address",
-                "<p>Hi <strong>" + name + "</strong>,</p>" +
-                "<p>Confirm your email address to finish setting up your Tenemsa account:</p>" +
-                "<p><a href=\"" + link + "\">Verify my email</a></p>" +
-                "<p>This link expires in 30 minutes. If you didn't request this, you can ignore it.</p>" +
-                "<p>— Tenemsa</p>");
+    public boolean sendOwnerWelcomeEmail(String toEmail, String name, String company, String slug) {
+        return send(toEmail, MailTemplates.welcomeOwner(name, company, slug, toEmail, signInUrl(slug)));
     }
 
-    public void sendPasswordResetEmail(String toEmail, String name, String companyName, String rawToken) {
-        String link = frontendUrl + "/reset-password?token=" + rawToken;
-        send(toEmail, "Reset your Tenemsa password",
-                "<p>Hi <strong>" + name + "</strong>,</p>" +
-                "<p>Someone requested a password reset for your account at <strong>" + companyName + "</strong>. If that was you:</p>" +
-                "<p><a href=\"" + link + "\">Reset my password</a></p>" +
-                "<p>This link expires in 30 minutes. If you didn't request this, your password is still safe — " +
-                "just ignore this email.</p>" +
-                "<p>— Tenemsa</p>");
+    /** Sent when an administrator adds someone. The person sets their own password; none is ever emailed. */
+    public boolean sendAccountSetupEmail(String toEmail, String name, String company, String slug, String role, String addedBy, String rawToken) {
+        return send(toEmail, MailTemplates.accountSetup(name, company, slug, toEmail, role, addedBy,
+                url("/reset-password?setup=1&token=" + enc(rawToken)), setupDays));
+    }
+
+    public boolean sendPasswordResetEmail(String toEmail, String name, String companyName, String rawToken) {
+        return send(toEmail, MailTemplates.passwordReset(name, companyName, url("/reset-password?token=" + enc(rawToken)), verifyMinutes));
+    }
+
+    public boolean sendPasswordChangedEmail(String toEmail, String name, String companyName) {
+        return send(toEmail, MailTemplates.passwordChanged(name, companyName, url("/forgot-password")));
     }
 
     /** Returns false when the mail server refused or could not deliver the message. */
     public boolean sendInviteEmail(String toEmail, String inviteeName, String companyName,
                                 String inviterName, String roleLabel, String rawToken) {
-        String link = frontendUrl + "/accept-invite?token=" + rawToken;
-        return send(toEmail, inviterName + " invited you to " + companyName + " on Tenemsa",
-                "<p>Hi <strong>" + inviteeName + "</strong>,</p>" +
-                "<p><strong>" + inviterName + "</strong> invited you to join <strong>" + companyName +
-                "</strong> on Tenemsa as <strong>" + roleLabel + "</strong>.</p>" +
-                "<p><a href=\"" + link + "\">Accept the invitation</a> and choose your password.</p>" +
-                "<p>This link expires in 7 days. If you weren't expecting it, you can ignore this email.</p>" +
-                "<p>— Tenemsa</p>");
+        return send(toEmail, MailTemplates.invitation(inviteeName, companyName, inviterName, roleLabel,
+                url("/accept-invite?token=" + enc(rawToken)), 7));
     }
 
-    /** In-app notification copied to email. The message is plain text and is escaped here. */
+    public boolean sendInviteAcceptedEmail(String toEmail, String name, String company, String slug) {
+        return send(toEmail, MailTemplates.welcomeAfterInvite(name, company, slug, toEmail, signInUrl(slug)));
+    }
+
+    /** In-app notification copied to email. The message is plain text and is escaped by the template. */
     public boolean sendNotificationEmail(String toEmail, String name, String message) {
-        String oneLine = message.replaceAll("[\\r\\n]+", " ");   // never let text reach a mail header with a line break
-        return send(toEmail, "Tenemsa: " + (oneLine.length() > 60 ? oneLine.substring(0, 57) + "..." : oneLine),
-                "<p>Hi <strong>" + org.springframework.web.util.HtmlUtils.htmlEscape(name == null ? "" : name) + "</strong>,</p>" +
-                "<p>" + org.springframework.web.util.HtmlUtils.htmlEscape(message) + "</p>" +
-                "<p><a href=\"" + frontendUrl + "\">Open Tenemsa</a></p>" +
-                "<p style=\"color:#888;font-size:12px\">You can turn email notifications off on your Notifications page.</p>" +
-                "<p>— Tenemsa</p>");
+        return send(toEmail, MailTemplates.notification(name, message, url("/")));
+    }
+
+    public boolean sendAnnouncementEmail(String toEmail, String name, String company, String sender, String subject, String body) {
+        return send(toEmail, MailTemplates.announcement(name, company, sender, subject, body, url("/")));
+    }
+
+    public boolean sendPlatformNoticeEmail(String toEmail, String name, String title, String message, String severity) {
+        return send(toEmail, MailTemplates.platformNotice(name, title, message, severity, url("/")));
+    }
+
+    private boolean send(String toEmail, MailTemplates.Mail mail) {
+        return send(toEmail, mail.subject(), mail.html(), mail.text());
     }
 
     /** true = handed to the mail server (or email is switched off); false = delivery failed. */
-    private boolean send(String toEmail, String subject, String htmlBody) {
+    private boolean send(String toEmail, String rawSubject, String htmlBody, String textBody) {
+        String subject = rawSubject.replaceAll("[\\r\\n]+", " ");   // a line break here would let text reach a mail header
         if (!emailEnabled) {
             log.info("Email is switched off - would have sent \"{}\" to {}", subject, toEmail);
             return true;
         }
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            String from = fromAddress == null || fromAddress.isBlank() ? smtpUser : fromAddress;
+            if (from != null && !from.isBlank()) helper.setFrom(from, fromName);
+            if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
             helper.setTo(toEmail);
             helper.setSubject(subject);
-            helper.setText(htmlBody, true);
+            helper.setText(textBody, htmlBody);   // plain text and HTML in one multipart/alternative message
+            message.setHeader("Auto-Submitted", "auto-generated");
             mailSender.send(message);
             return true;
-        } catch (MessagingException | MailException e) {
+        } catch (MessagingException | MailException | java.io.UnsupportedEncodingException e) {
             // Email delivery failing shouldn't ever fail the calling request
             // (e.g. account creation succeeding but the welcome email
             // bouncing) — log and move on rather than propagate.
@@ -134,5 +156,9 @@ public class EmailService {
     public void warnIfMailNotConfigured() {
         if (emailEnabled && (smtpUser == null || smtpUser.isBlank()))
             log.warn("Email is on but SMTP_USERNAME is empty, so password-reset, invitation and verification emails will NOT be delivered. Set SMTP_USERNAME and SMTP_PASSWORD in backend/.env.");
+        if (emailEnabled && frontendUrl.contains("localhost"))
+            log.warn("FRONTEND_URL is {}: links in emails point at your own computer and mail providers often treat such mail as spam. Fine for testing; set FRONTEND_URL to the real site before going live.", frontendUrl);
+        if (emailEnabled && smtpUser != null && smtpUser.toLowerCase().endsWith("@gmail.com"))
+            log.warn("Sending from a Gmail address: expect some mail in spam. For real use send from your own domain (SPF, DKIM and DMARC set up) through a mail service. See docs/email.md.");
     }
 }

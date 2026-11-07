@@ -42,7 +42,7 @@ public final class RolePermissionRegistry {
         AUDIT_VIEW,
                 REPORT_VIEW_COMPANY,
                 PROJECT_VIEW, PROJECT_MANAGE, ISSUE_CREATE, ISSUE_MANAGE_ANY,
-                AI_USE, AI_USAGE_VIEW, MEETING_MANAGE_ANY, KB_MANAGE, KB_READ_MANAGEMENT,
+                AI_USE, AI_USAGE_VIEW, MEETING_MANAGE_ANY, KB_MANAGE, KB_READ_MANAGEMENT, ANNOUNCEMENT_SEND,
                 AI_ASSISTANT_SELF, KB_ASK, DOCUMENT_VIEW, CHAT_USE, PROFILE_UPDATE_SELF, ATTENDANCE_MARK_SELF, LEAVE_APPLY_SELF, PAYROLL_VIEW_SELF
                 // Deliberately NOT: user:delete, leave:approve:*, attendance:manage:any,
                 // payroll:manage, document:upload — spec: "Admin is NOT primarily
@@ -57,7 +57,7 @@ public final class RolePermissionRegistry {
                 DOCUMENT_UPLOAD,
                 REPORT_VIEW_COMPANY,
                 PROJECT_VIEW, ISSUE_CREATE,
-                AI_USE, KB_MANAGE, KB_READ_MANAGEMENT,
+                AI_USE, KB_MANAGE, KB_READ_MANAGEMENT, ANNOUNCEMENT_SEND,
                 AI_ASSISTANT_SELF, KB_ASK, DOCUMENT_VIEW, CHAT_USE, PROFILE_UPDATE_SELF
                 // Deliberately NOT: subscription:manage, user:delete-of-Owner
                 // (enforced separately — see AdminController's primaryOwner

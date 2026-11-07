@@ -32,6 +32,7 @@ import java.util.*;
 public class AdminController {
 
     @Autowired UserRepository userRepository;
+    @Autowired com.tenemsa.platform.company.service.CompanyLimits companyLimits;
     @Autowired CompanyRepository companyRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired AuthService authService;
@@ -86,12 +87,15 @@ public class AdminController {
         if (userRepository.existsByEmailAndCompanyId(req.getEmail(), companyId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already registered in this company.");
         }
+        try { companyLimits.assertCanAddUser(companyId); }
+        catch (com.tenemsa.platform.company.service.PlanLimitException e) { return ResponseEntity.badRequest().body(e.getMessage()); }
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
         User newUser = buildUser(req, company, targetRole);
         newUser.setPrimaryOwner(false);
         userRepository.save(newUser);
-        authService.sendVerificationEmail(newUser);
+        String addedBy = userRepository.findByEmailAndCompanyId(authContext.currentEmail(), companyId).map(User::getName).orElse("The workspace owner");
+        authService.sendAccountSetupEmail(newUser, addedBy);
         auditService.recordCurrent(AuditAction.USER_CREATED, "USER", String.valueOf(newUser.getId()),
                 "Created " + targetRole + " account for " + newUser.getName());
         return ResponseEntity.ok(Map.of("message", targetRole + " added successfully"));

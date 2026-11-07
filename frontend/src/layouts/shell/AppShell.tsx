@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import PlatformNotices from "../../features/announcements/components/PlatformNotices";
 import type { Workspace } from "../../shared/lib/roles";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -57,7 +58,7 @@ export default function AppShell({ workspace }: { workspace: Workspace }) {
 
       <div className="sh-body">
         <Topbar workspace={workspace} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} onOpenMenu={() => setDrawer(true)} onOpenSearch={() => setPalette(true)} />
-        <main id="main" className="sh-main" tabIndex={-1}><ErrorBoundary resetKey={pathname}>{content}</ErrorBoundary></main>
+        <main id="main" className="sh-main" tabIndex={-1}><PlatformNotices /><ErrorBoundary resetKey={pathname}>{content}</ErrorBoundary></main>
       </div>
 
       <BottomNav workspace={workspace} onMore={() => setDrawer(true)} />

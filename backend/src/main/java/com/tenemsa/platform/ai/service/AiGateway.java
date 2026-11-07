@@ -69,6 +69,9 @@ public class AiGateway {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .build();
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.tenemsa.platform.company.service.CompanyLimits companyLimits;
+
     public AiGateway(AiClient client, AiProperties props, AiRequestLogRepository logs, UserRepository users,
                      CompanyRepository companies, AuthContext authContext, Validator validator, ExecutorService aiExecutor,
                      PlatformTransactionManager txManager) {
@@ -148,11 +151,13 @@ public class AiGateway {
         String refused = AiRequestStatus.RATE_LIMITED.name();
         long perUser = empId == null ? 0 : logs.countChatByUser(companyId, empId, LocalDateTime.now().minusHours(1));
         long perCompany = logs.countChatByCompany(companyId, LocalDateTime.now().minusHours(24));
+        Integer override = companyLimits.of(companyId).aiDailyLimit();   // set per company from the platform console
+        long dailyLimit = override != null ? override : props.getPerCompanyPerDay();
         String message = null;
         if (perUser >= props.getPerUserPerHour()) {
             message = "You have reached the limit of " + props.getPerUserPerHour() + " AI requests per hour. Try again later.";
-        } else if (perCompany >= props.getPerCompanyPerDay()) {
-            message = "Your company has reached its daily limit of " + props.getPerCompanyPerDay() + " AI requests.";
+        } else if (perCompany >= dailyLimit) {
+            message = "Your company has reached its daily limit of " + dailyLimit + " AI requests.";
         }
         if (message != null) {
             record(call, companyId, empId, AiRequestStatus.RATE_LIMITED, 0, null, null, "QUOTA");

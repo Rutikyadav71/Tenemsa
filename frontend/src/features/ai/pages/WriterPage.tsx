@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { LuCopy, LuMail, LuSparkles } from "react-icons/lu";
+import { useLocation, useNavigate } from "react-router-dom";
+import { LuCopy, LuMail, LuSend, LuSparkles } from "react-icons/lu";
+import { can } from "../../../shared/lib/roles";
 import { aiErrorMessage, draftMessage, getAiStatus } from "../services/aiService";
 import type { AiStatus, CommunicationDraft, CommunicationKind, CommunicationTone } from "../../../shared/types/models";
 import { Alert, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, Select, Textarea, useToast } from "../../../shared/ui";
@@ -15,6 +17,8 @@ const TONES: [CommunicationTone, string][] = [
 
 export default function WriterPage() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const base = `/${useLocation().pathname.split("/")[1]}`;
   const [kind, setKind] = useState<CommunicationKind>("ANNOUNCEMENT");
   const [tone, setTone] = useState<CommunicationTone>("FRIENDLY");
   const [audience, setAudience] = useState("");
@@ -48,7 +52,7 @@ export default function WriterPage() {
 
   return (
     <div>
-      <PageHeader title="AI writer" subtitle="Draft an announcement, reminder or feedback note. You edit and send it yourself; nothing is sent from here." />
+      <PageHeader title="AI writer" subtitle="Draft an announcement, reminder or feedback note. Edit it, then copy it or send it to people from Announcements. Nothing is sent until you confirm." />
       {off && (
         <Alert tone="warning">
           {status && !status.companyEnabled
@@ -82,6 +86,7 @@ export default function WriterPage() {
               <Field label="Subject"><Input value={subject} maxLength={200} onChange={e => setSubject(e.target.value)} /></Field>
               <Field label="Message"><Textarea rows={12} value={body} onChange={e => setBody(e.target.value)} /></Field>
               <div className="tn-form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                {can("announcement:send") && <Button variant="primary" icon={<LuSend size={15} />} onClick={() => navigate(`${base}/announcements`, { state: { subject, body } })}>Send to people</Button>}
                 <Button icon={<LuCopy size={15} />} onClick={() => copy("Subject", subject)}>Copy subject</Button>
                 <Button icon={<LuCopy size={15} />} onClick={() => copy("Message", body)}>Copy message</Button>
                 <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} style={{ textDecoration: "none" }}><Button icon={<LuMail size={15} />}>Open in mail app</Button></a>

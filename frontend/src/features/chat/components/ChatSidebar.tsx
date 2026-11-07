@@ -12,7 +12,7 @@ function SidebarAvatar({ user, size=42 }: { user?: ChatUser | null; size?: numbe
   const c = getColor(user?.name||"");
   return (
     <div style={{width:size,height:size,borderRadius:"50%",flexShrink:0,
-      background:`${c}22`,color:c,overflow:"hidden",display:"flex",
+      background:`${c}22`,color:`color-mix(in srgb, ${c} 60%, var(--text-1))`,overflow:"hidden",display:"flex",
       alignItems:"center",justifyContent:"center",
       fontSize:size*0.35,fontWeight:700,fontFamily:"'Outfit',sans-serif",
       position:"relative"}}>
@@ -69,7 +69,7 @@ export default function ChatSidebar({ currentUserId, currentUserRole, onSelectUs
             let p=last.message||"";
             if (last.attachmentId)          p="📎 "+(last.attachmentName||"File");
             else if (p.startsWith("[FILE:"))     p="📎 File attachment";
-            else if (p.startsWith("[REPLY:")) p=p.replace(/^\[REPLY:.+?:.+?\]/s,"");
+            else if (p.startsWith("[REPLY:")) p=p.replace(/^\[REPLY:[^\]]*\]/,"");
             lm[key]=p.slice(0,45)+(p.length>45?"…":"");
           }
         } catch { /* a preview that fails to load just stays blank */ }

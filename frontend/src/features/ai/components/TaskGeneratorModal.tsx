@@ -93,7 +93,7 @@ export default function TaskGeneratorModal({ projectId, onClose, onCreated }: Pr
                     <Select aria-label="Priority" style={{ width: "auto" }} value={r.priority} onChange={e => patch(i, { priority: e.target.value as IssuePriority })}>{PRIORITIES.map(p => <option key={p}>{p}</option>)}</Select>
                     <Input aria-label="Story points" type="number" min={0} max={100} style={{ width: 90 }} placeholder="Points" value={r.storyPoints ?? ""}
                       onChange={e => patch(i, { storyPoints: e.target.value === "" ? null : Number(e.target.value) })} />
-                    {r.labels.map(l => <span key={l} style={{ fontSize: 12, color: "var(--text-3)" }}>#{l}</span>)}
+                    {[...new Set(r.labels)].map(l => <span key={l} style={{ fontSize: 12, color: "var(--text-3)" }}>#{l}</span>)}
                   </div>
                 </div>
               </Card>

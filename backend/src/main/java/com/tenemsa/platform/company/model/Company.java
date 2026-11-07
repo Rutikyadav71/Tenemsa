@@ -37,6 +37,33 @@ public class Company {
     @Column(name = "ai_enabled", nullable = false)
     private boolean aiEnabled = true;
 
+    /** ACTIVE, FROZEN (suspended by the platform) or DELETED (closed, kept for restore). Set only by the platform console. */
+    /** Plan label and limits, set from the platform console. A null limit means unlimited (AI: platform default). */
+    @Column(name = "plan", nullable = false, length = 30)
+    private String plan = "FREE";
+
+    @Column(name = "max_users")
+    private Integer maxUsers;
+
+    @Column(name = "ai_daily_limit")
+    private Integer aiDailyLimit;
+
+    public String getPlan() { return plan; }
+    public void setPlan(String plan) { this.plan = plan; }
+    public Integer getMaxUsers() { return maxUsers; }
+    public void setMaxUsers(Integer maxUsers) { this.maxUsers = maxUsers; }
+    public Integer getAiDailyLimit() { return aiDailyLimit; }
+    public void setAiDailyLimit(Integer aiDailyLimit) { this.aiDailyLimit = aiDailyLimit; }
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "ACTIVE";
+
+    @Column(name = "status_reason", length = 300)
+    private String statusReason;
+
+    @Column(name = "status_changed_at")
+    private LocalDateTime statusChangedAt;
+
     public Company() {}
 
     public Company(String name, String slug) {
@@ -55,6 +82,13 @@ public class Company {
 
     public boolean isAiEnabled() { return aiEnabled; }
     public void setAiEnabled(boolean aiEnabled) { this.aiEnabled = aiEnabled; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public String getStatusReason() { return statusReason; }
+    public void setStatusReason(String statusReason) { this.statusReason = statusReason; }
+    public LocalDateTime getStatusChangedAt() { return statusChangedAt; }
+    public void setStatusChangedAt(LocalDateTime t) { this.statusChangedAt = t; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

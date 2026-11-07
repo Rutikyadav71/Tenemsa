@@ -2,7 +2,7 @@ import type { IconType } from "react-icons";
 import {
   LuBell, LuBookOpen, LuBot, LuBuilding2, LuCalendarCheck, LuCalendarDays, LuChartColumn, LuClipboardCheck, LuFileText,
   LuFolderKanban, LuHistory, LuLayoutDashboard, LuMail, LuMessageSquare, LuPenLine, LuShieldCheck, LuSparkles,
-  LuUserPlus, LuUsers, LuUsersRound, LuVideo, LuGauge, LuLibrary,
+  LuMegaphone, LuUserPlus, LuUsers, LuUsersRound, LuVideo, LuGauge, LuLibrary,
 } from "react-icons/lu";
 import { can } from "../../shared/lib/roles";
 import type { Workspace } from "../../shared/lib/roles";
@@ -56,6 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
   ] },
   { id: "engage", label: "Engage", icon: LuMessageSquare, items: [
     { id: "chat", label: "Chat", path: "chat", icon: LuMessageSquare, perms: ["chat:use"], keywords: "messages" },
+    { id: "announcements", label: "Announcements", path: "announcements", icon: LuMegaphone, perms: ["announcement:send"], workspaces: ["admin"], keywords: "send email everyone broadcast" },
     { id: "notifications", label: "Notifications", path: "notifications", icon: LuBell },
   ] },
   { id: "ai", label: "Tenemsa AI", icon: LuSparkles, items: [

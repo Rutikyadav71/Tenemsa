@@ -27,7 +27,7 @@ export default function AddEmployee() {
     setSaving(true); setError("");
     try {
       await addEmployee({ ...v, role: (v.role || roleOptions[0]?.value || "EMPLOYEE") as Role } as EmployeeFormInput);
-      toast.success(`${v.name} was added.`);
+      toast.success(`${v.name} was added. A welcome email with a link to set a password is on its way.`);
       navigate(`${base}/employees`);
     } catch (e) { setError(errorMessage(e, "We couldn't add this person. Please try again.")); }
     finally { setSaving(false); }
@@ -35,7 +35,7 @@ export default function AddEmployee() {
 
   return (
     <div style={{ maxWidth: 680 }}>
-      <PageHeader title="Add employee" subtitle="Create an account for a new team member." />
+      <PageHeader title="Add employee" subtitle="Create an account. They get a welcome email with a link to set their own password." />
       <Card>
         <EmployeeForm mode="add" roleOptions={roleOptions} submitting={saving} error={error} onSubmit={save} onCancel={() => navigate(`${base}/employees`)}
           initial={{ empId: "", name: "", department: "", email: "", password: "", salary: "", role: roleOptions[0]?.value || "EMPLOYEE" }} />

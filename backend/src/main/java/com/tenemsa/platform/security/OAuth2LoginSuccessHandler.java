@@ -87,6 +87,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
         User user = userOpt.get();
 
+        try {
+            authService.assertWorkspaceActive(user);
+        } catch (RuntimeException suspended) {
+            redirectWithError(response, "This workspace has been suspended. Contact Tenemsa support.");
+            return;
+        }
         if (user.isFrozen()) {
             redirectWithError(response, "This account has been frozen. Contact your administrator.");
             return;

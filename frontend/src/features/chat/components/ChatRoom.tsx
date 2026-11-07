@@ -7,6 +7,10 @@ import "../chat.css";
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 const AV = ["#6366f1", "#2dd4bf", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#38bdf8", "#fb923c"];
 const getColor = (n?: string | null) => AV[(n?.charCodeAt(0) || 0) % AV.length];
+/* Initials colour: the avatar hue mixed with the text colour, so it stays readable in light and dark. */
+const softInk = (c: string) => `color-mix(in srgb, ${c} 60%, var(--text-1))`;
+/* One-line, safe text for the reply header (the header uses : and ] as separators). */
+const cleanQuote = (t: string, n = 60) => t.replace(/[\]\[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
 const getInitials = (n?: string | null) => n?.split(" ").map(x => x[0]).join("").toUpperCase().slice(0, 2) || "?";
 const fmtSz = (b?: number) => { const n = Number(b) || 0; return n < 1024 ? n + "B" : n < 1048576 ? (n / 1024).toFixed(1) + "KB" : (n / 1048576).toFixed(1) + "MB"; };
 const EMOJIS = ["😀", "😂", "😊", "😍", "🤔", "😎", "😭", "😡", "👍", "👎", "🙏", "🔥", "💯", "❤️", "✨", "🎉", "🎯", "⚡", "💡", "🚀", "😅", "🥳", "🤝", "👏", "💪", "😴", "😬", "🫡", "🙌", "🤑"];
@@ -103,7 +107,7 @@ function attOf(m: ChatMessage): AttInfo | null {
 }
 const isImageAtt = (a: AttInfo | null) => !!a && a.mime.startsWith("image/");
 /* The text of a message without its reply header */
-const plainText = (t?: string | null) => (t || "").replace(/^\[REPLY:.+?\]/s, "");
+const plainText = (t?: string | null) => (t || "").replace(/^\[REPLY:[^\]]*\]/, "");
 
 function saveAtt(a: AttInfo) {
   if (a.id) return saveAttachment(a.id, a.name);
@@ -183,26 +187,17 @@ function MsgContent({ msg, isMine, msgRefs, onOpenImage }: { msg: ChatMessage; i
   return (
     <>
       {replyFrom && (
-        <div style={{
-          background: "rgba(0,0,0,0.22)", borderLeft: `3px solid ${isMine ? "rgba(255,255,255,0.5)" : "var(--accent)"}`,
-          borderRadius: 6, padding: "5px 8px", marginBottom: 7, cursor: "pointer"
-        }}
+        <div className="msg-rq" role="button" tabIndex={0}
           onClick={() => {
             if (replyToId && msgRefs?.current) {
               const el = msgRefs.current.get(replyToId);
               el?.scrollIntoView({ behavior: "smooth", block: "center" });
-              // flash highlight
               el?.classList.add("msg-highlight");
               setTimeout(() => el?.classList.remove("msg-highlight"), 2000);
             }
           }}>
-          <div style={{
-            fontSize: 10, fontWeight: 700, marginBottom: 2,
-            color: isMine ? "rgba(255,255,255,0.85)" : "var(--accent-light)"
-          }}>{replyFrom}</div>
-          <div style={{ fontSize: 11.5, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 230 }}>
-            {replyPreview}
-          </div>
+          <div className="msg-rq-name">{replyFrom}</div>
+          <div className="msg-rq-text">{replyPreview}</div>
         </div>
       )}
       {isImg ? (
@@ -227,7 +222,7 @@ function UAvatar({ user, size = 32, onClick }: { user?: ChatUser | null; size?: 
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
-      background: `${c}22`, color: c, display: "flex", alignItems: "center", justifyContent: "center",
+      background: `${c}22`, color: softInk(c), display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.34, fontWeight: 700, fontFamily: "'Outfit',sans-serif",
       cursor: onClick ? "pointer" : "default"
     }}
@@ -249,7 +244,7 @@ function ProfilePopup({ user, onClose }: { user?: ChatUser | null; onClose: () =
       <div className="pp" onClick={e => e.stopPropagation()}>
         <div className="pp-banner" style={{ background: `linear-gradient(135deg,${c}44,${c}18)` }} />
         <div className="pp-body">
-          <div className="pp-av" style={{ background: user?.profileImageUrl ? "transparent" : `${c}22`, color: c }}>
+          <div className="pp-av" style={{ background: user?.profileImageUrl ? "transparent" : `${c}22`, color: softInk(c) }}>
             {user?.profileImageUrl
               ? <img src={user.profileImageUrl} alt={user.name}
                 style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
@@ -355,10 +350,10 @@ function MsgInfoPopup({ msg, selectedUser, currentUserId, currentUserRole, onClo
 /* Starred messages side panel — fetches from backend */
 interface StarredPanelProps {
   selectedUser?: ChatUser | null; currentUserId: number; currentUserRole: ChatRoleTag | null;
-  onClose: () => void; onScrollTo: (id: number) => void;
+  onClose: () => void; onScrollTo: (id: number) => void; onUnstar: (id: number) => void;
 }
 
-function StarredPanel({ selectedUser, currentUserId, currentUserRole, onClose, onScrollTo }: StarredPanelProps) {
+function StarredPanel({ selectedUser, currentUserId, currentUserRole, onClose, onScrollTo, onUnstar }: StarredPanelProps) {
   const [starred, setStarred] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -387,7 +382,7 @@ function StarredPanel({ selectedUser, currentUserId, currentUserRole, onClose, o
               : starred.map(m => {
                 const isMine = Number(m.senderId) === Number(currentUserId) && m.senderRole === currentUserRole;
                 const fi = parseFile(m.message);
-                const preview = m.message === "[deleted]" ? "[deleted]" : fi ? `📎 ${fi.name}` : m.message?.replace(/^\[REPLY:.+?\]/s, "").slice(0, 80) || "";
+                const preview = m.message === "[deleted]" ? "[deleted]" : fi ? `📎 ${fi.name}` : plainText(m.message).slice(0, 80);
                 const ts = m.timestamp ? new Date(m.timestamp).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
                 return (
                   <div key={m.id} onClick={() => { onScrollTo(m.id!); onClose(); }}
@@ -399,7 +394,11 @@ function StarredPanel({ selectedUser, currentUserId, currentUserRole, onClose, o
                     onMouseLeave={e => e.currentTarget.style.background = "var(--bg-surface)"}>
                     <div style={{ fontSize: 11, color: isMine ? "var(--accent-light)" : "var(--text-3)", marginBottom: 4, fontWeight: 600, display: "flex", justifyContent: "space-between" }}>
                       <span>{isMine ? "You" : selectedUser?.name}</span>
-                      <span style={{ color: "var(--text-3)", fontWeight: 400 }}>{ts}</span>
+                      <span style={{ color: "var(--text-3)", fontWeight: 400, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        {ts}
+                        <button className="star-off" title="Unstar" aria-label="Unstar message"
+                          onClick={e => { e.stopPropagation(); setStarred(p => p.filter(x => x.id !== m.id)); onUnstar(m.id!); }}>{I.starF}</button>
+                      </span>
                     </div>
                     <div style={{ fontSize: 13, color: "var(--text-1)" }}>{preview}</div>
                   </div>
@@ -505,6 +504,7 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
   const imgRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const msgRefs = useRef(new Map<number, HTMLElement>()); // id → DOM element
+  const busyRef = useRef(0); // message actions in flight
 
   const fetchHistory = useCallback(async () => {
     if (!selectedUser) return;
@@ -512,6 +512,8 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
       const res = await axiosInstance.get<ChatMessage[]>("/api/chat/history", {
         params: { id1: currentUserId, role1: currentUserRole, id2: Number(selectedUser.id), role2: selectedUser.role }
       });
+      // A star/reaction/delete is still on its way to the server: showing this older copy would undo it for a moment.
+      if (busyRef.current > 0) return;
       setMessages(res.data || []);
       await axiosInstance.put("/api/chat/read", null, {
         params: { senderId: Number(selectedUser.id), senderRole: selectedUser.role, receiverId: currentUserId, receiverRole: currentUserRole }
@@ -570,8 +572,8 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
       }
       let t = text.trim() ? text : "";
       if (replyTo) {
-        const rt = replyTo.attachmentId ? `📎 ${replyTo.attachmentName || "File"}` : (replyTo.message?.startsWith("[FILE:") ? "📎 File" : plainText(replyTo.message).slice(0, 60));
-        const rName = Number(replyTo.senderId) === Number(currentUserId) ? "You" : selectedUser.name;
+        const rt = cleanQuote(replyTo.attachmentId ? `📎 ${replyTo.attachmentName || "File"}` : (replyTo.message?.startsWith("[FILE:") ? "📎 File" : plainText(replyTo.message))) || "Message";
+        const rName = cleanQuote(Number(replyTo.senderId) === Number(currentUserId) ? "You" : selectedUser.name, 40).replace(/:/g, " ") || "User";
         // Include original message ID for scroll-to on click
         t = `[REPLY:${rName}:${rt}:${replyTo.id || ""}]${t}`;
         setReplyTo(null);
@@ -595,18 +597,29 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
 
   /* Reaction — calls backend, updates state from response */
   const handleReact = async (msgId: number | undefined, emoji: string) => {
+    busyRef.current++;
     try {
       const res = await axiosInstance.put(`/api/chat/message/${msgId}/react`, { reaction: emoji });
       setMessages(p => p.map(m => m.id === msgId ? { ...m, reaction: res.data.reaction || null } : m));
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); } finally { busyRef.current--; }
   };
 
-  /* Star — calls backend */
-  const handleStar = async (msgId?: number) => {
+  /* Star / unstar: say exactly what we want (not "toggle"), show it at once, undo if the server says no */
+  const setStar = async (msgId: number | undefined, want: boolean) => {
+    if (!msgId) return;
+    busyRef.current++;
+    setMessages(p => p.map(m => m.id === msgId ? { ...m, starred: want } : m));
     try {
-      const res = await axiosInstance.put(`/api/chat/message/${msgId}/star`);
-      setMessages(p => p.map(m => m.id === msgId ? { ...m, starred: res.data.starred } : m));
-    } catch (e) { console.error(e); }
+      const res = await axiosInstance.put(`/api/chat/message/${msgId}/star`, { starred: want });
+      setMessages(p => p.map(m => m.id === msgId ? { ...m, starred: !!res.data.starred } : m));
+    } catch (e) {
+      setMessages(p => p.map(m => m.id === msgId ? { ...m, starred: !want } : m));
+      setError(errorText(e, "Couldn't update the star. Please try again."));
+    } finally { busyRef.current--; }
+  };
+  const handleStar = (msgId?: number) => {
+    const cur = messages.find(m => m.id === msgId);
+    return setStar(msgId, !cur?.starred);
   };
 
   const handleCopy = (text?: string) => {
@@ -732,7 +745,7 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
                       className={`msg-bubble ${isMine ? "mine" : "them"}${deleted ? " msg-deleted" : ""}${isImg ? " img-bubble" : ""}${isFile ? " file-bubble" : ""}${m.starred ? " starred" : ""}`}
                       onContextMenu={e => openCtx(e, m)}>
                       {m.starred && !deleted && (
-                        <span style={{ position: "absolute", top: -8, right: 8, fontSize: 11 }}>⭐</span>
+                        <span className="msg-star" aria-label="Starred">{I.starF}</span>
                       )}
                       <MsgContent msg={m} isMine={isMine} msgRefs={msgRefs} onOpenImage={(url, name) => setLightbox({ url, name })} />
                       {showTm && (
@@ -743,7 +756,7 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
                           {isMine && !deleted && (
                             <span className="msg-ticks"
                               title={m.status === "READ" ? "Read" : "Sent"}
-                              style={{ color: m.status === "READ" ? "#53bdeb" : "rgba(255,255,255,0.55)" }}>
+                              data-read={m.status === "READ" ? "1" : "0"}>
                               {m.status === "READ" ? "✓✓" : "✓"}
                             </span>
                           )}
@@ -892,15 +905,14 @@ export default function ChatRoom({ currentUserId, currentUserRole, selectedUser,
           currentUserId={currentUserId}
           currentUserRole={currentUserRole}
           onClose={() => setShowStarred(false)}
-          onScrollTo={scrollToMsg} />
+          onScrollTo={scrollToMsg}
+          onUnstar={id => setStar(id, false)} />
       )}
 
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes slideInR{from{transform:translateX(100%)}to{transform:translateX(0)}}
         @keyframes popQ{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
-        .msg-highlight{animation:msgFlash 2s ease;}
-        @keyframes msgFlash{0%,100%{background:transparent}20%,80%{background:rgba(99,102,241,0.25)}}
       `}</style>
     </>
   );

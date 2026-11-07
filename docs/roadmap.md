@@ -24,7 +24,12 @@ Tenemsa is being built in phases, each reviewed and approved before the next sta
 | 6a | AI foundation (provider abstraction, prompts, quotas, usage log) + meeting summaries to issues (Flyway V5) | ✅ Built, awaiting first real-model test |
 | 6b | Role-aware sign-in and menus: one login for everyone, HR admin sign-in, permissions in login response, workspace by role | ✅ Built |
 | 6c | Task generator, message writer, project status and sprint retro, HR assistant, per-company AI switch, cost estimate, prompt contract tests (Flyway V6). Completes Phase 6 apart from the parked leave predictor | ✅ Built, awaiting first real-model test |
-| 7 to 10 | See "Revised roadmap: Phase 6 onward" below | Proposed |
+| 7 | Knowledge base: documents to chunks to embeddings, answers with sources (Flyway V7, pgvector) | ✅ Complete |
+| 8 | Team leave approval and notifications, documents, analytics, chat overhaul (Flyway V8–V10) | ✅ Complete |
+| 9 | UI/UX transformation: design system, one app shell, every screen rebuilt, settings, saved AI chats (V11–V12), accessibility pass | ✅ Complete |
+| — | Large-scale demo data seeder (`docs/seed-data.md`) | ✅ Complete |
+| — | Leave predictor (`ml-service`) | ⏸ Parked until requested |
+| 10+ | See "Where we are now and ideas for next phases" at the end | Not started |
 
 ## Completed
 
@@ -60,14 +65,14 @@ Originally planned as part of the Phase 9 visual rebuild, moved earlier once ong
 - Removed two stray nested `.git` directories (frontend and ml-service) that would have broken git operations at the repo root.
 - Removed a dead, unreferenced duplicate training-dataset CSV in `ml-service/`.
 
-## Next: Phase 2 — Enterprise authentication
+## Phase 2 — Enterprise authentication (history; done)
 
 - Refresh tokens + rotation.
 - Logout from one device / logout from all devices (requires token invalidation, which doesn't exist yet — JWTs are currently stateless and can't be revoked before expiry).
 - Email verification, forgot/reset password flows.
 - Google OAuth2 login, architected so GitHub/Microsoft can be added later without rework.
 
-## Planned phases (unchanged from original design unless noted)
+## Original plan for Phases 3–5 (history; all done)
 
 **Phase 3 — RBAC & backend hygiene:** dynamic permission checks differentiating HR/Manager/Employee/Intern (not just the current two-tier admin/non-admin split), global `@ControllerAdvice` exception handling, DTO/mapper pattern across all controllers (several still return entities directly), pagination/filtering/sorting, Swagger/OpenAPI.
 
@@ -75,7 +80,7 @@ Originally planned as part of the Phase 9 visual rebuild, moved earlier once ong
 
 **Phase 5 — Project management:** Jira-style projects/tasks/sprints/kanban.
 
-## Revised roadmap: Phase 6 onward (proposal, awaiting approval)
+## Revised roadmap: Phase 6 onward (history; phases 6–9 are done)
 
 Phases 0-5 are complete and stable and are not reopened. The old Phase 9 (frontend rebuild) is already done, and the old Phase 10 (DevOps) is deferred and not scheduled.
 
@@ -143,9 +148,42 @@ Upload or paste documents (pdf, docx, txt, md, csv), index them in the backgroun
 - **8d:** Chat overhaul: files sent in chat are stored in the database (no Cloudinary), shown as WhatsApp-style cards (type tile, original name, size, exact download) or image thumbnails with a preview, pending-file tray, drag and drop, paste, readable errors, read ticks that refresh.
 - **Not in Phase 8:** payroll and salary figures, object storage, scheduled reports. Next is Phase 9 (workflow automation).
 
-## Phase 9: UI/UX transformation (in progress)
+## Phase 9: UI/UX transformation (complete)
 
-- **Stage 1 (done):** design tokens with a full light/dark theme, official logo, shared component kit, readable error handling, no browser pop-ups.
-- **Stage 2 (done):** one application shell for every role: grouped sidebar, breadcrumbs, command palette, notifications and profile menu, mobile bottom bar, Access Denied page, error boundary.
-- **Stage 3 (done):** redesigned sign-in, register, workspace, password reset, verify and invite screens; one role-aware dashboard built from real data (CSV export replaces the Excel/PDF libraries).
-- **Next:** auth screens and role dashboards, core modules, Tenemsa AI screens (no provider or model names in the UI), settings, responsive and accessibility pass. See docs/frontend.md.
+- **Stage 1:** design tokens with a full light/dark theme, official logo, shared component kit, readable error handling, no browser pop-ups.
+- **Stage 2:** one application shell for every role: grouped sidebar, breadcrumbs, command palette, notifications and profile menu, mobile bottom bar, Access Denied page, error boundary.
+- **Stage 3:** redesigned sign-in, register, workspace, password reset, verify and invite screens; one role-aware dashboard built from real data.
+- **Tenemsa AI screens:** one chat for the HR assistant and document questions with saved private chats (Flyway V12), writer, task generator, project report, usage page. Provider and model names never appear in the UI.
+- **Settings:** account, appearance, notifications, security (change password, signed-in devices), workspace and AI privacy, backed by `POST /api/auth/change-password` and `GET/DELETE /api/auth/sessions`.
+- **Every remaining screen** (attendance, projects, board and backlog, profiles, team leaves, admin control, meetings, knowledge base, insights, audit) now uses the shared kit.
+- **Checks:** axe-core (WCAG A/AA) reports no violations on the checked pages in light and dark; no horizontal scroll at phone width. See `docs/frontend.md`.
+
+## Demo data seeder (complete)
+
+`DemoDataSeeder` creates many companies with realistic data in every feature area, from one command, so features can be tested at scale. Documented in `docs/seed-data.md`. Verified against PostgreSQL 16; not yet run through Maven or MySQL.
+
+## Where we are now and ideas for next phases
+
+**State:** Phases 0–9 done; about 118 backend tests; Flyway V1–V12 on PostgreSQL and MySQL; the frontend builds with the shared design system. Not yet verified end to end with a real AI key in every feature (AI is built and unit-tested with a fake provider).
+
+**First, use the seed data** and write down what breaks or feels slow (see the checklist in `docs/seed-data.md`). That list should decide the order below.
+
+Ideas, not commitments:
+- **Hardening (Phase 4f, deferred):** database-level tenant isolation (`@TenantId` or row-level security), shared rate-limit store, DTOs for Leave/Notification, pagination on every long list found during seed testing.
+- **Payroll and compensation:** payslips, salary history, tax fields (salary exists on users but there is no payroll yet).
+- **Workflow automation:** rules such as "when leave is approved, mark attendance ON_LEAVE", reminders, scheduled reports.
+- **Project membership and private projects, issue links** (Phase 5c, deferred).
+- **Billing and plans:** subscription tiers, per-company limits (the `subscription:manage` permission already exists).
+- **Platform admin (SUPER_ADMIN):** manage tenants, usage, support access.
+- **Object storage** for files instead of database storage, with virus scanning.
+- **DevOps:** Docker Compose for the whole stack, CI on every push, monitoring, backups.
+- **Leave predictor** (`ml-service`), when you decide to resume it.
+- **Quality:** frontend tests, end-to-end tests with the seed data, load tests on attendance and audit queries.
+
+## Platform console
+
+Done: separate admin app (`platform-console/`), two-administrator registration lock, authenticator 2FA, freeze/unfreeze/close/restore with audit log, company-level dashboard. Not built: announcements, plans and limits. See [platform-admin.md](platform-admin.md).
+
+## Email and onboarding (stage 1 done)
+
+New designed emails with a text version, no password in any email, set-your-password onboarding, welcome emails, password-changed notice. See [email.md](email.md). Stage 2 done: company announcements with email, Writer "Send to people", notices from the platform console, plan limits ([announcements.md](announcements.md)).

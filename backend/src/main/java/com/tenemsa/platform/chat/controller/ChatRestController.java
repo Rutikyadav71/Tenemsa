@@ -98,12 +98,13 @@ public class ChatRestController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    /** Toggle star on a message */
+    /** Star or unstar a message. Body {"starred": true|false} sets it exactly; with no body it toggles. */
     @PutMapping("/message/{id}/star")
-    public ResponseEntity<?> star(@PathVariable Long id) {
+    public ResponseEntity<?> star(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         Me me = me();
         return chatRepo.findByIdAndCompanyId(id, cid()).filter(m -> isParticipant(me, m)).map(m -> {
-            m.setStarred(!Boolean.TRUE.equals(m.getStarred()));
+            Object want = body == null ? null : body.get("starred");
+            m.setStarred(want instanceof Boolean b ? b : !Boolean.TRUE.equals(m.getStarred()));
             chatRepo.save(m);
             return ResponseEntity.ok(Map.of("id",id,"starred",m.getStarred()));
         }).orElse(ResponseEntity.notFound().build());

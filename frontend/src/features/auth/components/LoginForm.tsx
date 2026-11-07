@@ -68,7 +68,8 @@ export default function LoginForm({ kind }: { kind: "employee" | "admin" }) {
     } catch (err: unknown) {
       const raw = (err as { response?: { data?: unknown } }).response?.data;
       const text = typeof raw === "string" ? raw : (raw as { message?: string } | undefined)?.message ?? "";
-      if (text.includes("ACCOUNT_FROZEN")) setNotice({ tone: "error", text: admin ? "Your account has been frozen by the main administrator." : "Your account has been frozen. Contact your administrator." });
+      if (text.includes("WORKSPACE_SUSPENDED")) setNotice({ tone: "error", text: text.replace(/^.*WORKSPACE_SUSPENDED:\s*/s, "") || "This workspace has been suspended. Contact Tenemsa support." });
+      else if (text.includes("ACCOUNT_FROZEN")) setNotice({ tone: "error", text: admin ? "Your account has been frozen by the main administrator." : "Your account has been frozen. Contact your administrator." });
       else if (text.includes("Google")) setNotice({ tone: "error", text });
       else setNotice({ tone: "error", text: errorMessage(err, "We couldn't sign you in. Check your details and try again.") });
     } finally { setLoading(false); }

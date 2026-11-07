@@ -22,9 +22,11 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final com.tenemsa.platform.company.service.CompanyAccessGuard companyGuard;
 
-    public JwtFilter(JwtUtil jwtUtil) {
+    public JwtFilter(JwtUtil jwtUtil, com.tenemsa.platform.company.service.CompanyAccessGuard companyGuard) {
         this.jwtUtil = jwtUtil;
+        this.companyGuard = companyGuard;
     }
 
     @Override
@@ -39,7 +41,9 @@ public class JwtFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             try {
-                if (jwtUtil.isTokenValid(token)) {
+                // A frozen or closed company is treated as signed out: the request answers 401 and the
+                // refresh that follows is refused by AuthService.
+                if (jwtUtil.isTokenValid(token) && !companyGuard.isSuspended(jwtUtil.extractCompanyId(token))) {
                     String email = jwtUtil.extractEmail(token);
                     String roleClaim = jwtUtil.extractRole(token);
                     Long companyId = jwtUtil.extractCompanyId(token);
