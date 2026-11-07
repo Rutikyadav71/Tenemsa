@@ -202,3 +202,14 @@ Profile photos kept in the database when Cloudinary is not configured (or fails)
 
 ## V12: ai_conversations, ai_conversation_messages
 Saved AI chats. `ai_conversations(company_id, user_id, kind, title, created_at, updated_at)` and `ai_conversation_messages(conversation_id, role USER|ASSISTANT, content, metadata JSON text, created_at)`. Both vendors have a V12 migration.
+
+## Demo seed data
+`seed/DemoDataSeeder` writes demo companies (`slug` starting `demo-`) into every table above, using plain SQL batch inserts. Row counts, accounts and options are in [`seed-data.md`](seed-data.md). Reset deletes children before parents (`wipe()`); when a migration adds a table or required column, update the seeder and `wipe()`.
+
+## V13: platform administration
+
+`companies` gains `status` (ACTIVE, FROZEN, DELETED), `status_reason`, `status_changed_at`. New `platform_admins` (slot 1 or 2, unique, CHECK; encrypted TOTP secret, lockout fields) and `platform_audit_logs` (admin, action, company, details, IP). See [platform-admin.md](platform-admin.md).
+
+## V14: announcements and plan limits
+
+`companies` gains `plan`, `max_users`, `ai_daily_limit`. New `announcements` (company history of sent messages) and `platform_announcements` (notices from the console). See [announcements.md](announcements.md).

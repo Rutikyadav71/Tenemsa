@@ -281,3 +281,11 @@ Private to the person who had the chat; company and user are part of every looku
 | DELETE | `/api/ai/conversations?kind=…` | Clears the caller's chats of that kind, returns `{ "deleted": n }` |
 
 `POST /api/ai/hr-assistant/ask` and `POST /api/kb/ask` take an optional `conversationId` and now return `conversationId`. Without it a new chat is saved (title = first question); with it the chat continues and the model is given the last 8 turns inside a fenced, untrusted `HISTORY` block (prompts `hr-assistant.v2` / `kb-answer.v2`). A document follow-up also searches with the previous question so "and for contractors?" works. A failed AI call saves nothing. A chat holds up to 100 messages; using another person's chat, another feature's chat, or a missing one returns 404.
+
+## Platform API (`/api/platform`)
+
+Only exists when `PLATFORM_ENABLED=true`; uses its own token. Endpoint list in [platform-admin.md](platform-admin.md).
+
+## Announcements
+
+`POST /api/announcements/preview`, `POST /api/announcements`, `GET /api/announcements` (permission `announcement:send`); `GET /api/announcements/platform` (any signed-in user). See [announcements.md](announcements.md).

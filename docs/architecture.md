@@ -181,3 +181,13 @@ Flow: add document -> extract -> chunk (about 900 chars, 150 overlap) -> save PR
 ## Documents and analytics (Phase 8b, 8c)
 
 `document/`: `DocumentService` decides every read from the caller's identity and company (unreadable = 404), validates extension plus magic bytes, enforces the per-company storage limit, and can hand the file to `KnowledgeIngestionService` when "use for AI answers" is chosen. `analytics/`: `AnalyticsService` computes company or team figures (a manager's scope comes from `TeamSecurity.teamMemberEmpIds`) and a personal summary for everyone; it reads existing tables only.
+
+## Settings, sessions and demo data (Phase 9)
+
+- **Sessions:** each refresh token row is one signed-in device (`device_label` is the browser's User-Agent). `GET /api/auth/sessions` lists them, `DELETE /api/auth/sessions/{id}` signs one out, and `POST /api/auth/change-password` signs out every other device. All are scoped to the caller and audited (`PASSWORD_CHANGED`, `SESSION_REVOKED`).
+- **Saved AI chats:** `ai_conversations` and `ai_conversation_messages` (Flyway V12) are private to the user who created them; company admins cannot read them.
+- **Seeder:** `seed/DemoDataSeeder` is an `ApplicationRunner` enabled only by `tenemsa.seed.enabled=true`. It bypasses the services and writes rows directly with `JdbcTemplate`, so it must be kept in step with the schema (see `docs/seed-data.md`).
+
+## Platform console
+
+A second identity (platform administrators) and a separate client app sit beside the company system. Companies carry a status checked by `CompanyAccessGuard` on every authenticated path. See [platform-admin.md](platform-admin.md).
