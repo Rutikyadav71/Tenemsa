@@ -64,6 +64,8 @@ public enum Permission {
 
     // Phase 6a: AI. ai:use lets someone call AI features (and spend the company's quota),
     // meeting:manage:any lets someone see and delete other people's meeting summaries.
+    /** Send announcements (in-app and email) to people in your own company. */
+    ANNOUNCEMENT_SEND("announcement:send"),
     AI_USE("ai:use"),
     AI_USAGE_VIEW("ai:usage:view"),
     MEETING_MANAGE_ANY("meeting:manage:any"),

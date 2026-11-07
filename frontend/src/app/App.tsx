@@ -20,6 +20,7 @@ import MeetingsPage from "../features/meetings/pages/MeetingsPage";
 import MeetingDetailPage from "../features/meetings/pages/MeetingDetailPage";
 import AiUsagePage from "../features/ai/pages/AiUsagePage";
 import WriterPage from "../features/ai/pages/WriterPage";
+import AnnouncementsPage from "../features/announcements/pages/AnnouncementsPage";
 import AssistantPage from "../features/ai/pages/AssistantPage";
 import TeamLeavesPage from "../features/leave/pages/TeamLeavesPage";
 import DocumentsPage from "../features/documents/pages/DocumentsPage";
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="meetings/:id" element={<MeetingDetailPage />} />
             <Route path="ai-usage" element={<AiUsagePage />} />
             <Route path="writer" element={<WriterPage />} />
+            <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="assistant" element={<AssistantPage />} />
             <Route path="team-leaves" element={<TeamLeavesPage />} />
             <Route path="documents" element={<DocumentsPage />} />

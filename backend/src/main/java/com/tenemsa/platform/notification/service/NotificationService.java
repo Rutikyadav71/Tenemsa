@@ -50,6 +50,15 @@ public class NotificationService {
 
     /** Never throws: a notification problem must not undo the business action that triggered it. */
     public void send(Long companyId, Collection<Integer> recipientEmpIds, String type, String message, Long leaveId) {
+        deliver(companyId, recipientEmpIds, type, message, leaveId, true);
+    }
+
+    /** In-app notification only, no email copy (the caller sends its own email). */
+    public void sendInAppOnly(Long companyId, Collection<Integer> recipientEmpIds, String type, String message) {
+        deliver(companyId, recipientEmpIds, type, message, null, false);
+    }
+
+    private void deliver(Long companyId, Collection<Integer> recipientEmpIds, String type, String message, Long leaveId, boolean emailCopy) {
         try {
             Set<Integer> ids = new LinkedHashSet<>();
             for (Integer id : recipientEmpIds) if (id != null) ids.add(id);
@@ -68,7 +77,7 @@ public class NotificationService {
                 n.setRecipientEmpId(id);
                 n.setType(type);
                 notifications.save(n);
-                if (emailOn.getOrDefault(id, true) && person.getEmail() != null && !person.isFrozen()) {
+                if (emailCopy && emailOn.getOrDefault(id, true) && person.getEmail() != null && !person.isFrozen()) {
                     String to = person.getEmail();
                     String name = person.getName();
                     mailExecutor.execute(() -> {
