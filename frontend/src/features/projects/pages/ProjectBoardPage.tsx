@@ -167,7 +167,7 @@ export default function ProjectBoardPage() {
                   <span className="pj-title">{i.title}</span>
                   {(i.labels.length > 0 || i.storyPoints !== null) && (
                     <span className="pj-tags">
-                      {i.labels.map(l => <span key={l} className="pj-tag">{l}</span>)}
+                      {[...new Set(i.labels)].map(l => <span key={l} className="pj-tag">{l}</span>)}
                       {i.storyPoints !== null && <span className="pj-tag pt">{i.storyPoints} pt</span>}
                     </span>
                   )}

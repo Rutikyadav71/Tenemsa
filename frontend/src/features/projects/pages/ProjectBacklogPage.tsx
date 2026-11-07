@@ -65,7 +65,7 @@ export default function ProjectBacklogPage() {
       <span className="bl-key">{i.key}</span>
       <span className="bl-title">{i.title}</span>
       <span className="bl-tags">
-        {i.labels.map(l => <span key={l} className="pj-tag">{l}</span>)}
+        {[...new Set(i.labels)].map(l => <span key={l} className="pj-tag">{l}</span>)}
         {i.storyPoints !== null && <span className="pj-tag pt">{i.storyPoints} pt</span>}
       </span>
       <span className="bl-status">{pretty(i.status.replace("_", " "))}</span>
