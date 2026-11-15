@@ -70,11 +70,11 @@ public class PlatformController {
         return companies.detail(id);
     }
 
-    public record LimitsRequest(String plan, Integer maxUsers, Integer aiDailyLimit) {}
+    public record LimitsRequest(String plan, Integer maxUsers, Integer aiDailyLimit, Long aiMonthlyTokens) {}
 
     @PutMapping("/companies/{id}/limits")
     public Map<String, Object> limits(@PathVariable long id, @RequestBody LimitsRequest r, HttpServletRequest req) {
-        companies.setLimits(id, r.plan(), r.maxUsers(), r.aiDailyLimit(), me().id(), me().email(), req.getRemoteAddr());
+        companies.setLimits(id, r.plan(), r.maxUsers(), r.aiDailyLimit(), r.aiMonthlyTokens(), me().id(), me().email(), req.getRemoteAddr());
         return companies.detail(id);
     }
 

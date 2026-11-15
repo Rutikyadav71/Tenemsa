@@ -7,7 +7,7 @@ interface Detail {
   id: number; name: string; slug: string; status: "ACTIVE" | "FROZEN" | "DELETED"; statusReason: string | null; statusChangedAt: string | null; aiEnabled: boolean; createdAt: string;
   owner?: { name: string; email: string; emailVerified: boolean };
   people: { total: number; frozen: number; byRole: { role: string; count: number }[] };
-  limits: { plan: string; maxUsers: number | null; aiDailyLimit: number | null };
+  limits: { plan: string; maxUsers: number | null; aiDailyLimit: number | null; aiMonthlyTokens: number | null; effective: { maxUsers: number | null; aiMonthlyTokens: number | null } };
   usage: Record<string, number>;
   activity: { signInsLast7Days: number; failedSignInsLast7Days: number; lastSignInAt: string | null };
   history: { action: string; admin: string; details: string; at: string }[];
@@ -28,6 +28,7 @@ export default function CompanyDetail() {
   if (err && !d) return <><PageHead title="Company" /><Alert>{err}</Alert><Link to="/companies">Back to companies</Link></>;
   if (!d) return <><PageHead title="Company" /><Skeleton h={200} /></>;
   const u = d.usage;
+  const eff = d.limits.effective ?? { maxUsers: d.limits.maxUsers, aiMonthlyTokens: d.limits.aiMonthlyTokens };
   return (
     <>
       <p className="pc-crumb"><Link to="/companies">Companies</Link> / {d.name}</p>
@@ -81,7 +82,8 @@ export default function CompanyDetail() {
       </div>
 
       <div className="pc-grid">
-        <Stat label="Plan" value={d.limits.plan.charAt(0) + d.limits.plan.slice(1).toLowerCase()} sub={d.limits.maxUsers ? `${fmtNum(d.people.total)} of ${fmtNum(d.limits.maxUsers)} people` : "No people limit"} tone={d.limits.maxUsers && d.people.total >= d.limits.maxUsers ? "warning" : undefined} />
+        <Stat label="Plan" value={d.limits.plan.charAt(0) + d.limits.plan.slice(1).toLowerCase()} sub={eff.maxUsers ? `${fmtNum(d.people.total)} of ${fmtNum(eff.maxUsers)} people` : "No people limit"} tone={eff.maxUsers && d.people.total >= eff.maxUsers ? "warning" : undefined} />
+        <Stat label="AI tokens this month" value={fmtNum(u.aiTokensThisMonth)} sub={eff.aiMonthlyTokens == null ? "No monthly limit" : `of ${fmtNum(eff.aiMonthlyTokens)}`} tone={eff.aiMonthlyTokens != null && u.aiTokensThisMonth >= eff.aiMonthlyTokens ? "danger" : undefined} />
         <Stat label="AI per day" value={d.limits.aiDailyLimit == null ? "Default" : fmtNum(d.limits.aiDailyLimit)} sub="Requests for the whole company" />
         <Stat label="Projects" value={fmtNum(u.projects)} sub={`${fmtNum(u.issues)} issues`} />
         <Stat label="Leave requests" value={fmtNum(u.leaveRequests)} />
@@ -106,7 +108,7 @@ export default function CompanyDetail() {
 }
 
 function ActionModal({ act, d, onClose, onDone }: { act: Act; d: Detail; onClose: () => void; onDone: (m: string) => void }) {
-  const [plan, setPlan] = useState(d.limits.plan), [maxUsers, setMaxUsers] = useState(d.limits.maxUsers?.toString() ?? ""), [aiLimit, setAiLimit] = useState(d.limits.aiDailyLimit?.toString() ?? "");
+  const [plan, setPlan] = useState(d.limits.plan), [maxUsers, setMaxUsers] = useState(d.limits.maxUsers?.toString() ?? ""), [aiLimit, setAiLimit] = useState(d.limits.aiDailyLimit?.toString() ?? ""), [monthly, setMonthly] = useState(d.limits.aiMonthlyTokens?.toString() ?? "");
   const [reason, setReason] = useState(""), [confirm, setConfirm] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null);
   const base = `/api/platform/companies/${d.id}`;
   const cfg = {
@@ -115,7 +117,7 @@ function ActionModal({ act, d, onClose, onDone }: { act: Act; d: Detail; onClose
     close: { title: "Close company", text: `${d.name} is closed: nobody can sign in. Nothing is deleted from the database and you can restore it later.`, label: "Close company", danger: true, needReason: true, run: () => api(`${base}/close`, { method: "POST", body: { reason, confirm } }), done: "Company closed." },
     restore: { title: "Restore company", text: `${d.name} becomes active again.`, label: "Restore", danger: false, needReason: false, run: () => api(`${base}/restore`, { method: "POST" }), done: "Company restored." },
     ai: { title: d.aiEnabled ? "Switch AI off" : "Switch AI on", text: d.aiEnabled ? "Tenemsa AI stops working for this company." : "Tenemsa AI works again for this company.", label: d.aiEnabled ? "Switch off" : "Switch on", danger: d.aiEnabled, needReason: false, run: () => api(`${base}/ai`, { method: "PUT", body: { enabled: !d.aiEnabled } }), done: "AI setting changed." },
-    limits: { title: "Plan and limits", text: `Sets what ${d.name} may use. Leave a limit empty for no limit (or the default for AI).`, label: "Save", danger: false, needReason: false, run: () => api(`${base}/limits`, { method: "PUT", body: { plan, maxUsers: maxUsers === "" ? null : Number(maxUsers), aiDailyLimit: aiLimit === "" ? null : Number(aiLimit) } }), done: "Plan and limits saved." },
+    limits: { title: "Plan and limits", text: `Sets what ${d.name} may use. Leave a box empty to use the plan's own value (or the default for AI per day). Anything you type here overrides the plan for this company only.`, label: "Save", danger: false, needReason: false, run: () => api(`${base}/limits`, { method: "PUT", body: { plan, maxUsers: maxUsers === "" ? null : Number(maxUsers), aiDailyLimit: aiLimit === "" ? null : Number(aiLimit), aiMonthlyTokens: monthly === "" ? null : Number(monthly) } }), done: "Plan and limits saved." },
     verify: { title: "Resend owner verification", text: `Sends the verification email again to ${d.owner?.email}.`, label: "Send email", danger: false, needReason: false, run: () => api(`${base}/resend-owner-verification`, { method: "POST" }), done: "Verification email sent." },
   }[act];
   const blocked = (cfg.needReason && reason.trim().length < 5) || (act === "close" && confirm !== d.slug);
@@ -136,7 +138,8 @@ function ActionModal({ act, d, onClose, onDone }: { act: Act; d: Detail; onClose
       {act === "limits" && (
         <div style={{ display: "grid", gap: 12 }}>
           <Field label="Plan"><Select value={plan} onChange={e => setPlan(e.target.value)}><option value="FREE">Free</option><option value="STARTER">Starter</option><option value="BUSINESS">Business</option><option value="ENTERPRISE">Enterprise</option></Select></Field>
-          <Field label="Most people allowed" hint={`Now ${d.people.total}. People already in are never removed; new ones are refused at the limit.`}><Input type="number" min={1} value={maxUsers} onChange={e => setMaxUsers(e.target.value)} placeholder="No limit" /></Field>
+          <Field label="Most people allowed" hint={`Empty uses the plan. Now ${d.people.total}. People already in are never removed; new ones are refused at the limit.`}><Input type="number" min={1} value={maxUsers} onChange={e => setMaxUsers(e.target.value)} placeholder="Plan default" /></Field>
+          <Field label="AI tokens per month" hint="Overrides the plan's allowance for this company. Empty uses the plan."><Input type="number" min={0} value={monthly} onChange={e => setMonthly(e.target.value)} placeholder="Plan default" /></Field>
           <Field label="AI requests per day" hint="Whole company. Empty uses the platform default."><Input type="number" min={0} value={aiLimit} onChange={e => setAiLimit(e.target.value)} placeholder="Default" /></Field>
         </div>
       )}
