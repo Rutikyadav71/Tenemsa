@@ -19,6 +19,8 @@ public enum Permission {
     // Phase 4c: read the company audit trail (Owner and Admin).
     AUDIT_VIEW("audit:view"),
     SUBSCRIPTION_MANAGE("subscription:manage"),
+    // Phase 10: see the plan, usage and invoices (Owner and Admin). Changing the plan needs subscription:manage (Owner).
+    BILLING_VIEW("billing:view"),
 
     // user:create is intentionally coarse-grained here — WHICH roles a
     // caller may assign is a separate question, answered by

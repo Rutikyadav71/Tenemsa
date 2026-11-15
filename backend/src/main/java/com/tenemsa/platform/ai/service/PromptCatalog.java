@@ -25,6 +25,7 @@ public class PromptCatalog {
     public static final String PROJECT_REPORT = "project-report";
     public static final String HR_ASSISTANT = "hr-assistant";
     public static final String KB_ANSWER = "kb-answer";
+    public static final String APPS_ASSISTANT = "apps-assistant";
     /** Current version of each of the four prompts above (all v1 so far). */
     public static final int V1 = 1;
     /** v2 of hr-assistant and kb-answer: adds the optional HISTORY block so follow-up questions work in a saved chat. */

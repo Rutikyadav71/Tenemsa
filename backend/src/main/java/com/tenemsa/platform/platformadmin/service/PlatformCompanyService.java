@@ -2,6 +2,7 @@ package com.tenemsa.platform.platformadmin.service;
 
 import com.tenemsa.platform.auth.service.AuthService;
 import com.tenemsa.platform.company.service.CompanyAccessGuard;
+import com.tenemsa.platform.company.service.CompanyLimits;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -22,9 +23,13 @@ public class PlatformCompanyService {
     private final CompanyAccessGuard guard;
     private final PlatformAuditService audit;
     private final AuthService authService;
+    private final CompanyLimits companyLimits;
+    private final com.tenemsa.platform.billing.service.AiBudget aiBudget;
 
-    public PlatformCompanyService(JdbcTemplate jdbc, CompanyAccessGuard guard, PlatformAuditService audit, AuthService authService) {
+    public PlatformCompanyService(JdbcTemplate jdbc, CompanyAccessGuard guard, PlatformAuditService audit, AuthService authService,
+                                  CompanyLimits companyLimits, com.tenemsa.platform.billing.service.AiBudget aiBudget) {
         this.jdbc = jdbc; this.guard = guard; this.audit = audit; this.authService = authService;
+        this.companyLimits = companyLimits; this.aiBudget = aiBudget;
     }
 
     private long count(String sql, Object... a) {
@@ -124,7 +129,7 @@ public class PlatformCompanyService {
 
     public Map<String, Object> detail(long id) {
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, name, slug, status, status_reason, status_changed_at, ai_enabled, created_at, plan, max_users, ai_daily_limit FROM companies WHERE id = ?", id);
+                "SELECT id, name, slug, status, status_reason, status_changed_at, ai_enabled, created_at, plan, max_users, ai_daily_limit, ai_monthly_tokens FROM companies WHERE id = ?", id);
         if (rows.isEmpty()) throw new PlatformException(404, "Company not found.");
         Map<String, Object> c = rows.get(0);
         LocalDateTime d30 = LocalDateTime.now().minusDays(30);
@@ -133,7 +138,11 @@ public class PlatformCompanyService {
         m.put("statusReason", c.get("status_reason")); m.put("statusChangedAt", iso(c.get("status_changed_at")));
         m.put("aiEnabled", c.get("ai_enabled")); m.put("createdAt", iso(c.get("created_at")));
         Map<String, Object> lim = new LinkedHashMap<>();
-        lim.put("plan", c.get("plan")); lim.put("maxUsers", c.get("max_users")); lim.put("aiDailyLimit", c.get("ai_daily_limit"));
+        lim.put("plan", c.get("plan")); lim.put("maxUsers", c.get("max_users")); lim.put("aiDailyLimit", c.get("ai_daily_limit")); lim.put("aiMonthlyTokens", c.get("ai_monthly_tokens"));
+        CompanyLimits.Limits eff = companyLimits.of(id);
+        Map<String, Object> effective = new LinkedHashMap<>();
+        effective.put("maxUsers", eff.maxUsers()); effective.put("aiMonthlyTokens", eff.monthlyTokens());
+        lim.put("effective", effective);
         m.put("limits", lim);
 
         List<Map<String, Object>> owners = jdbc.queryForList(
@@ -162,6 +171,7 @@ public class PlatformCompanyService {
         usage.put("knowledgeDocuments", count("SELECT COUNT(*) FROM kb_documents WHERE company_id = ?", id));
         usage.put("storageBytes", count("SELECT COALESCE(SUM(size_bytes),0) FROM documents WHERE company_id = ?", id)
                 + count("SELECT COALESCE(SUM(size_bytes),0) FROM chat_attachments WHERE company_id = ?", id));
+        usage.put("aiTokensThisMonth", aiBudget.tokensUsedThisMonth(id));
         usage.put("aiRequestsLast30Days", count("SELECT COUNT(*) FROM ai_request_logs WHERE company_id = ? AND created_at >= ?", id, d30));
         usage.put("aiFailedLast30Days", count("SELECT COUNT(*) FROM ai_request_logs WHERE company_id = ? AND status <> 'SUCCESS' AND created_at >= ?", id, d30));
         usage.put("aiInputTokensLast30Days", count("SELECT COALESCE(SUM(input_tokens),0) FROM ai_request_logs WHERE company_id = ? AND created_at >= ?", id, d30));
@@ -251,15 +261,19 @@ public class PlatformCompanyService {
 
     /** Plan label and limits. A null limit means unlimited. */
     @Transactional
-    public void setLimits(long id, String plan, Integer maxUsers, Integer aiDailyLimit, Long adminId, String adminEmail, String ip) {
+    public void setLimits(long id, String plan, Integer maxUsers, Integer aiDailyLimit, Long aiMonthlyTokens, Long adminId, String adminEmail, String ip) {
         Map<String, Object> c = basic(id);
         String p = plan == null ? "FREE" : plan.trim().toUpperCase();
-        if (!java.util.Set.of("FREE", "STARTER", "BUSINESS", "ENTERPRISE").contains(p)) throw new PlatformException(400, "Unknown plan.");
+        boolean known = count("SELECT COUNT(*) FROM plans") > 0 ? count("SELECT COUNT(*) FROM plans WHERE code = ?", p) > 0
+                : java.util.Set.of("FREE", "STARTER", "BUSINESS", "ENTERPRISE").contains(p);
+        if (!known) throw new PlatformException(400, "Unknown plan.");
         if (maxUsers != null && (maxUsers < 1 || maxUsers > 100000)) throw new PlatformException(400, "The people limit must be between 1 and 100,000, or empty for no limit.");
         if (aiDailyLimit != null && (aiDailyLimit < 0 || aiDailyLimit > 1000000)) throw new PlatformException(400, "The AI limit must be 0 or more, or empty for the default.");
-        jdbc.update("UPDATE companies SET plan = ?, max_users = ?, ai_daily_limit = ? WHERE id = ?", p, maxUsers, aiDailyLimit, id);
+        if (aiMonthlyTokens != null && (aiMonthlyTokens < 0 || aiMonthlyTokens > 1_000_000_000_000L)) throw new PlatformException(400, "The monthly AI tokens must be 0 or more, or empty to use the plan's allowance.");
+        jdbc.update("UPDATE companies SET plan = ?, max_users = ?, ai_daily_limit = ?, ai_monthly_tokens = ? WHERE id = ?", p, maxUsers, aiDailyLimit, aiMonthlyTokens, id);
         audit.record(adminId, adminEmail, "COMPANY_LIMITS_SET", id, (String) c.get("name"),
-                "Plan " + p + ", people limit " + (maxUsers == null ? "none" : maxUsers) + ", AI per day " + (aiDailyLimit == null ? "default" : aiDailyLimit), ip);
+                "Plan " + p + ", people limit " + (maxUsers == null ? "none" : maxUsers) + ", AI per day " + (aiDailyLimit == null ? "default" : aiDailyLimit)
+                        + ", AI tokens per month " + (aiMonthlyTokens == null ? "plan default" : aiMonthlyTokens), ip);
     }
 
     @Transactional

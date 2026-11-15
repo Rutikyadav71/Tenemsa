@@ -72,6 +72,9 @@ public class AiGateway {
     @org.springframework.beans.factory.annotation.Autowired
     private com.tenemsa.platform.company.service.CompanyLimits companyLimits;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.tenemsa.platform.billing.service.AiBudget aiBudget;
+
     public AiGateway(AiClient client, AiProperties props, AiRequestLogRepository logs, UserRepository users,
                      CompanyRepository companies, AuthContext authContext, Validator validator, ExecutorService aiExecutor,
                      PlatformTransactionManager txManager) {
@@ -153,8 +156,10 @@ public class AiGateway {
         long perCompany = logs.countChatByCompany(companyId, LocalDateTime.now().minusHours(24));
         Integer override = companyLimits.of(companyId).aiDailyLimit();   // set per company from the platform console
         long dailyLimit = override != null ? override : props.getPerCompanyPerDay();
-        String message = null;
-        if (perUser >= props.getPerUserPerHour()) {
+        String message = aiBudget.exceededMessage(companyId);   // monthly token budget from the company's plan
+        if (message != null) {
+            // fall through to the refusal below
+        } else if (perUser >= props.getPerUserPerHour()) {
             message = "You have reached the limit of " + props.getPerUserPerHour() + " AI requests per hour. Try again later.";
         } else if (perCompany >= dailyLimit) {
             message = "Your company has reached its daily limit of " + dailyLimit + " AI requests.";

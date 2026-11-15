@@ -289,3 +289,15 @@ Only exists when `PLATFORM_ENABLED=true`; uses its own token. Endpoint list in [
 ## Announcements
 
 `POST /api/announcements/preview`, `POST /api/announcements`, `GET /api/announcements` (permission `announcement:send`); `GET /api/announcements/platform` (any signed-in user). See [announcements.md](announcements.md).
+
+## Billing (Phase 10a)
+
+See [billing.md](billing.md#api).
+
+## Connected apps (Phase 10b)
+
+See [connections.md](connections.md#api).
+
+## Ask my apps (Phase 10c)
+
+`POST /api/ai/apps/ask`. See [connections.md](connections.md#ask-my-apps-phase-10c).

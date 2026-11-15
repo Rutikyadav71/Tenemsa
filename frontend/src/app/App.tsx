@@ -20,6 +20,10 @@ import MeetingsPage from "../features/meetings/pages/MeetingsPage";
 import MeetingDetailPage from "../features/meetings/pages/MeetingDetailPage";
 import AiUsagePage from "../features/ai/pages/AiUsagePage";
 import WriterPage from "../features/ai/pages/WriterPage";
+import AppsAssistantPage from "../features/connections/pages/AppsAssistantPage";
+import ConnectionsPage from "../features/connections/pages/ConnectionsPage";
+import ConnectionsDone from "../features/connections/pages/ConnectionsDone";
+import BillingPage from "../features/billing/pages/BillingPage";
 import AnnouncementsPage from "../features/announcements/pages/AnnouncementsPage";
 import AssistantPage from "../features/ai/pages/AssistantPage";
 import TeamLeavesPage from "../features/leave/pages/TeamLeavesPage";
@@ -70,6 +74,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/connections/done" element={<ConnectionsDone />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -106,9 +111,12 @@ export default function App() {
             <Route path="ai-usage" element={<AiUsagePage />} />
             <Route path="writer" element={<WriterPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
+            <Route path="billing" element={<BillingPage />} />
             <Route path="assistant" element={<AssistantPage />} />
             <Route path="team-leaves" element={<TeamLeavesPage />} />
             <Route path="documents" element={<DocumentsPage />} />
+            <Route path="connections" element={<ConnectionsPage />} />
+            <Route path="ask-apps" element={<AppsAssistantPage />} />
             <Route path="insights" element={<AnalyticsPage />} />
             <Route path="knowledge" element={<KnowledgePage />} />
             <Route path="ask-docs" element={<AskKnowledgePage />} />
@@ -135,6 +143,8 @@ export default function App() {
             <Route path="assistant" element={<AssistantPage />} />
             <Route path="team-leaves" element={<TeamLeavesPage />} />
             <Route path="documents" element={<DocumentsPage />} />
+            <Route path="connections" element={<ConnectionsPage />} />
+            <Route path="ask-apps" element={<AppsAssistantPage />} />
             <Route path="insights" element={<AnalyticsPage />} />
             <Route path="knowledge" element={<KnowledgePage />} />
             <Route path="ask-docs" element={<AskKnowledgePage />} />

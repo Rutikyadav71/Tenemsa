@@ -48,6 +48,11 @@ public class Company {
     @Column(name = "ai_daily_limit")
     private Integer aiDailyLimit;
 
+    @Column(name = "ai_monthly_tokens")
+    private Long aiMonthlyTokens;
+
+    public Long getAiMonthlyTokens() { return aiMonthlyTokens; }
+    public void setAiMonthlyTokens(Long aiMonthlyTokens) { this.aiMonthlyTokens = aiMonthlyTokens; }
     public String getPlan() { return plan; }
     public void setPlan(String plan) { this.plan = plan; }
     public Integer getMaxUsers() { return maxUsers; }

@@ -8,5 +8,6 @@ public enum AiFeature {
     PROJECT_REPORT,
     HR_ASSISTANT,
     KB_EMBEDDING,
-    KB_ANSWER
+    KB_ANSWER,
+    CONNECTED_APPS
 }

@@ -549,7 +549,7 @@ export interface MySummary {
 }
 
 // ---- Saved AI chats (Phase 9) ----
-export type AiChatKind = "HR_ASSISTANT" | "KB_ASK";
+export type AiChatKind = "HR_ASSISTANT" | "KB_ASK" | "CONNECTED_APPS";
 export interface AiChatSummary { id: number; kind: AiChatKind; title: string; updatedAt: string; }
 export interface AiChatMessage { id: number; role: "USER" | "ASSISTANT"; content: string; details: unknown; createdAt: string; }
 export interface AiChatDetail extends AiChatSummary { messages: AiChatMessage[]; }

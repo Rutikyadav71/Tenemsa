@@ -39,7 +39,7 @@ public final class RolePermissionRegistry {
                 USER_CREATE, USER_UPDATE, USER_FREEZE, USER_VIEW_ANY, // creation target restricted to Manager only — enforced by RoleAssignmentRegistry, not here
                 DEPARTMENT_MANAGE, TEAM_MANAGE_ANY,
                 COMPANY_MANAGE, // spec: "Manage company settings (except subscription)"
-        AUDIT_VIEW,
+        AUDIT_VIEW, BILLING_VIEW,
                 REPORT_VIEW_COMPANY,
                 PROJECT_VIEW, PROJECT_MANAGE, ISSUE_CREATE, ISSUE_MANAGE_ANY,
                 AI_USE, AI_USAGE_VIEW, MEETING_MANAGE_ANY, KB_MANAGE, KB_READ_MANAGEMENT, ANNOUNCEMENT_SEND,

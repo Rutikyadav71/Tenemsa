@@ -39,6 +39,11 @@ export async function askHrAssistant(question: string, conversationId: number | 
   return (await axiosInstance.post<HrAnswer>("/api/ai/hr-assistant/ask", { question, conversationId }, SLOW)).data;
 }
 
+export interface AppsAnswer { answer: string; appsRead: string[]; unavailable: string[]; model: string; promptVersion: string; conversationId: number | null }
+export async function askMyApps(question: string, conversationId: number | null = null): Promise<AppsAnswer> {
+  return (await axiosInstance.post<AppsAnswer>("/api/ai/apps/ask", { question, conversationId }, SLOW)).data;
+}
+
 /** One place that turns any AI failure into a sentence a person can act on. */
 export function aiErrorMessage(err: any, fallback: string): string {
   if (err?.code === "ECONNABORTED") return "The AI took too long. Please try again.";

@@ -4,7 +4,7 @@ import { api, errText, fmtDate, type Page } from "../api/client";
 import { Alert, Badge, PageHead, Pager, Select, Skeleton } from "../components/ui";
 
 interface Row { id: number; createdAt: string; admin: string | null; action: string; companyId: number | null; companyName: string | null; details: string | null; ipAddress: string | null }
-const ACTIONS = ["LOGIN", "LOGIN_FAILED", "ACCOUNT_LOCKED", "REGISTERED", "REGISTER_REFUSED", "TWO_FACTOR_ENABLED", "COMPANY_FROZEN", "COMPANY_UNFROZEN", "COMPANY_CLOSED", "COMPANY_RESTORED", "COMPANY_AI_SET", "COMPANY_LIMITS_SET", "ANNOUNCEMENT_SENT", "ANNOUNCEMENT_WITHDRAWN", "OWNER_VERIFICATION_SENT"];
+const ACTIONS = ["LOGIN", "LOGIN_FAILED", "ACCOUNT_LOCKED", "REGISTERED", "REGISTER_REFUSED", "TWO_FACTOR_ENABLED", "COMPANY_FROZEN", "COMPANY_UNFROZEN", "COMPANY_CLOSED", "COMPANY_RESTORED", "COMPANY_AI_SET", "COMPANY_LIMITS_SET", "PLAN_UPDATED", "RAZORPAY_PLAN_CREATED", "ANNOUNCEMENT_SENT", "ANNOUNCEMENT_WITHDRAWN", "OWNER_VERIFICATION_SENT"];
 const tone = (a: string) => (a.includes("FAILED") || a.includes("LOCKED") || a.includes("REFUSED") || a === "COMPANY_CLOSED" ? "danger" : a === "COMPANY_FROZEN" ? "warning" : a.startsWith("COMPANY") ? "accent" : "neutral") as "danger" | "warning" | "accent" | "neutral";
 
 export default function Audit() {

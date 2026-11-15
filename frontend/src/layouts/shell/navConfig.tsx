@@ -2,7 +2,7 @@ import type { IconType } from "react-icons";
 import {
   LuBell, LuBookOpen, LuBot, LuBuilding2, LuCalendarCheck, LuCalendarDays, LuChartColumn, LuClipboardCheck, LuFileText,
   LuFolderKanban, LuHistory, LuLayoutDashboard, LuMail, LuMessageSquare, LuPenLine, LuShieldCheck, LuSparkles,
-  LuMegaphone, LuUserPlus, LuUsers, LuUsersRound, LuVideo, LuGauge, LuLibrary,
+  LuMegaphone, LuCreditCard, LuPlug, LuUserPlus, LuUsers, LuUsersRound, LuVideo, LuGauge, LuLibrary,
 } from "react-icons/lu";
 import { can } from "../../shared/lib/roles";
 import type { Workspace } from "../../shared/lib/roles";
@@ -61,12 +61,14 @@ export const NAV_GROUPS: NavGroup[] = [
   ] },
   { id: "ai", label: "Tenemsa AI", icon: LuSparkles, items: [
     { id: "assistant", label: "AI Assistant", path: "assistant", icon: LuBot, perms: ["ai:assistant:self"], keywords: "hr assistant ask" },
+    { id: "ask-apps", label: "Ask my apps", path: "ask-apps", icon: LuPlug, perms: ["ai:assistant:self"], keywords: "calendar github drive connected question" },
     { id: "ask-docs", label: "Ask documents", path: "ask-docs", icon: LuBookOpen, perms: ["kb:ask"], keywords: "knowledge search question" },
     { id: "writer", label: "AI Writer", path: "writer", icon: LuPenLine, perms: ["ai:use"], keywords: "draft message" },
     { id: "knowledge", label: "Knowledge base", path: "knowledge", icon: LuLibrary, perms: ["kb:manage"], keywords: "index documents" },
     { id: "ai-usage", label: "AI usage", path: "ai-usage", icon: LuGauge, perms: ["ai:usage:view"], workspaces: ["admin"], keywords: "cost quota" },
   ] },
   { id: "resources", label: "Resources", icon: LuFileText, items: [
+    { id: "connections", label: "Connected apps", path: "connections", icon: LuPlug, keywords: "github google calendar drive integrations" },
     { id: "documents", label: "Documents", path: "documents", icon: LuFileText, perms: ["document:view"], keywords: "files policies" },
   ] },
   { id: "analytics", label: "Analytics", icon: LuChartColumn, items: [
@@ -74,6 +76,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { id: "audit", label: "Audit log", path: "audit", icon: LuHistory, perms: ["audit:view"], workspaces: ["admin"], keywords: "activity history" },
   ] },
   { id: "admin", label: "Administration", icon: LuBuilding2, items: [
+    { id: "billing", label: "Plan & billing", path: "billing", icon: LuCreditCard, perms: ["billing:view"], workspaces: ["admin"], keywords: "subscription payment razorpay upgrade tokens" },
     { id: "company", label: "Company settings", path: "company", icon: LuBuilding2, perms: ["company:manage"], workspaces: ["admin"], keywords: "workspace ai switch" },
   ] },
 ];

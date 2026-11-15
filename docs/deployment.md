@@ -115,3 +115,11 @@ Uploaded files are stored in the database (`document_files`). Limit per company:
 ## Platform console
 
 Not deployed with the site. Backend switch `PLATFORM_ENABLED` (default false); set `PLATFORM_JWT_SECRET`, `PLATFORM_SETUP_KEY` (remove after both admins register) and add `http://localhost:5174` to `CORS_ALLOWED_ORIGINS` to use it locally. Full steps in [platform-admin.md](platform-admin.md).
+
+## Billing
+
+Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and (for renewals) `RAZORPAY_WEBHOOK_SECRET`; register `https://YOUR-BACKEND/api/billing/webhook/razorpay` in Razorpay. See [billing.md](billing.md).
+
+## Connected apps
+
+Set `CONNECTIONS_SECRET`, `BACKEND_URL` and the GitHub/Google client ids and secrets, and register `BACKEND_URL/api/connections/callback/<app>` with each provider. See [connections.md](connections.md).

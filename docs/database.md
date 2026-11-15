@@ -213,3 +213,11 @@ Saved AI chats. `ai_conversations(company_id, user_id, kind, title, created_at, 
 ## V14: announcements and plan limits
 
 `companies` gains `plan`, `max_users`, `ai_daily_limit`. New `announcements` (company history of sent messages) and `platform_announcements` (notices from the console). See [announcements.md](announcements.md).
+
+## V15: billing
+
+`companies.ai_monthly_tokens` (override), `plans` (code, price_paise, max_users, monthly_ai_tokens, max_connections, contact_only, razorpay_plan_id), `subscriptions` (mirror of Razorpay subscription state), `billing_events` (one row per webhook; unique Razorpay event id).
+
+## V16: connected apps
+
+`company_apps` (which apps a company allows; off by default) and `connections` (one row per person per app; tokens encrypted; unique on company, user, provider).
