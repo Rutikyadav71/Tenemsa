@@ -36,6 +36,9 @@ public class EmbeddingGateway {
     private final CompanyRepository companies;
     private final TransactionTemplate requiresNew;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.tenemsa.platform.billing.service.AiBudget aiBudget;
+
     public EmbeddingGateway(EmbeddingClient client, KbProperties props, AiRequestLogRepository logs,
                             CompanyRepository companies, PlatformTransactionManager txManager) {
         this.client = client;
@@ -63,6 +66,11 @@ public class EmbeddingGateway {
         int batchSize = Math.max(1, props.getEmbedBatchSize());
         for (int from = 0; from < texts.size(); from += batchSize) {
             List<String> batch = texts.subList(from, Math.min(texts.size(), from + batchSize));
+            String budget = aiBudget.exceededMessage(companyId);
+            if (budget != null) {
+                record(companyId, empId, AiRequestStatus.RATE_LIMITED, 0, 0, "QUOTA");
+                throw new AiLimitExceededException(budget);
+            }
             long used = logs.countEmbeddingsByCompany(companyId, LocalDateTime.now().minusHours(24));
             if (used >= props.getEmbedPerCompanyPerDay()) {
                 record(companyId, empId, AiRequestStatus.RATE_LIMITED, 0, 0, "QUOTA");

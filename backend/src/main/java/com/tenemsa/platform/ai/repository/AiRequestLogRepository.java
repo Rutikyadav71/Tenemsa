@@ -30,6 +30,11 @@ public interface AiRequestLogRepository extends JpaRepository<AiRequestLog, Long
             + "and l.status <> 'RATE_LIMITED' and l.feature = 'KB_EMBEDDING'")
     long countEmbeddingsByCompany(@Param("companyId") Long companyId, @Param("after") LocalDateTime after);
 
+    /** Input plus output tokens the company has used since a moment, ignoring calls that were refused. */
+    @Query("select coalesce(sum(coalesce(l.inputTokens,0) + coalesce(l.outputTokens,0)), 0) from AiRequestLog l "
+            + "where l.companyId = :companyId and l.createdAt >= :since and l.status <> 'RATE_LIMITED'")
+    long sumTokensSince(@Param("companyId") Long companyId, @Param("since") LocalDateTime since);
+
     @Query("select l from AiRequestLog l where l.companyId = :companyId and l.createdAt >= :since order by l.createdAt desc")
     List<AiRequestLog> findSince(@Param("companyId") Long companyId, @Param("since") LocalDateTime since);
 }

@@ -14,7 +14,8 @@ public class CompanyLimits {
 
     private static final Logger log = LoggerFactory.getLogger(CompanyLimits.class);
 
-    public record Limits(String plan, Integer maxUsers, Integer aiDailyLimit) {}
+    /** Effective limits: a company's own override if set, otherwise the plan's value. null = unlimited. */
+    public record Limits(String plan, Integer maxUsers, Integer aiDailyLimit, Long monthlyTokens, Integer maxConnections) {}
 
     private final JdbcTemplate jdbc;
 
@@ -22,13 +23,17 @@ public class CompanyLimits {
 
     public Limits of(Long companyId) {
         try {
-            List<Map<String, Object>> rows = jdbc.queryForList("SELECT plan, max_users, ai_daily_limit FROM companies WHERE id = ?", companyId);
-            if (rows.isEmpty()) return new Limits("FREE", null, null);
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                    "SELECT c.plan AS plan, c.max_users AS cu, p.max_users AS pu, c.ai_daily_limit AS ad, c.ai_monthly_tokens AS ct, "
+                  + "p.monthly_ai_tokens AS pt, p.max_connections AS pc FROM companies c LEFT JOIN plans p ON p.code = c.plan WHERE c.id = ?", companyId);
+            if (rows.isEmpty()) return new Limits("FREE", null, null, null, null);
             Map<String, Object> r = rows.get(0);
-            return new Limits(String.valueOf(r.get("plan")), num(r.get("max_users")), num(r.get("ai_daily_limit")));
+            Integer users = r.get("cu") != null ? num(r.get("cu")) : num(r.get("pu"));
+            Long tokens = r.get("ct") != null ? lng(r.get("ct")) : lng(r.get("pt"));
+            return new Limits(String.valueOf(r.get("plan")), users, num(r.get("ad")), tokens, num(r.get("pc")));
         } catch (Exception e) {
             log.warn("Could not read plan limits for company {}: {}", companyId, e.toString());
-            return new Limits("FREE", null, null);
+            return new Limits("FREE", null, null, null, null);
         }
     }
 
@@ -46,4 +51,5 @@ public class CompanyLimits {
     }
 
     private static Integer num(Object o) { return o instanceof Number n ? n.intValue() : null; }
+    private static Long lng(Object o) { return o instanceof Number n ? n.longValue() : null; }
 }
