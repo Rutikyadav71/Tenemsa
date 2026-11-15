@@ -332,7 +332,7 @@ function AiSection({ workspace }: { workspace: Workspace }) {
     finally { setBusy(null); }
   };
 
-  const clear = async (kind: "HR_ASSISTANT" | "KB_ASK", label: string) => {
+  const clear = async (kind: "HR_ASSISTANT" | "KB_ASK" | "CONNECTED_APPS", label: string) => {
     if (!(await confirmAction({ title: `Delete your ${label} chats?`, message: "Your saved conversations are removed for good. Other people's chats are not affected.", confirmLabel: "Delete chats" }))) return;
     setBusy(kind);
     try { await deleteAllChats(kind); toast.success("Your saved chats were deleted."); }
@@ -366,6 +366,10 @@ function AiSection({ workspace }: { workspace: Workspace }) {
         <div className="st-row">
           <div><b>Ask documents chats</b><small>Delete every saved conversation about company documents.</small></div>
           <Button variant="secondary" size="sm" loading={busy === "KB_ASK"} onClick={() => clear("KB_ASK", "Ask documents")}>Delete all</Button>
+        </div>
+        <div className="st-row">
+          <div><b>Ask my apps chats</b><small>Delete every saved conversation about your connected apps. The data read from the apps is never saved, only your questions and the answers.</small></div>
+          <Button variant="secondary" size="sm" loading={busy === "CONNECTED_APPS"} onClick={() => clear("CONNECTED_APPS", "Ask my apps")}>Delete all</Button>
         </div>
       </Card>
     </div>

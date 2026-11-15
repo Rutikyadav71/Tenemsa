@@ -1,0 +1,11 @@
+.cn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;margin-top:16px;align-items:start;}
+.cn-app{border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:grid;gap:10px;}
+.cn-app h3{margin:0;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.cn-app p{margin:0;font-size:13.5px;color:var(--text-2);}
+.cn-app small{color:var(--text-3);font-size:12.5px;}
+.cn-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.cn-items{margin:0;padding:0;list-style:none;display:grid;gap:6px;border-top:1px solid var(--border);padding-top:10px;}
+.cn-items li{font-size:13.5px;color:var(--text-1);display:grid;}
+.cn-items li span{font-size:12.5px;color:var(--text-3);overflow-wrap:anywhere;}
+.cn-items a{color:var(--accent);text-decoration:none;overflow-wrap:anywhere;}
+.cn-switch{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--text-2);cursor:pointer;}
