@@ -187,3 +187,9 @@ Done: separate admin app (`platform-console/`), two-administrator registration l
 ## Email and onboarding (stage 1 done)
 
 New designed emails with a text version, no password in any email, set-your-password onboarding, welcome emails, password-changed notice. See [email.md](email.md). Stage 2 done: company announcements with email, Writer "Send to people", notices from the platform console, plan limits ([announcements.md](announcements.md)).
+
+## Phase 10
+
+- 10a: plans, monthly AI token budget, Razorpay subscriptions, billing page, console Plans. See [billing.md](billing.md).
+- 10b: connected apps (OAuth, read only): GitHub, Google Calendar, Google Drive. See [connections.md](connections.md).
+- 10c: Ask my apps, a saved AI chat that answers from the person's connected apps (read only, metered). See [connections.md](connections.md#ask-my-apps-phase-10c).

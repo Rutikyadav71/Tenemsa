@@ -82,3 +82,7 @@ Announcements to all companies, plans and limits, billing. Impersonation is inte
 The console now has an **Announcements** page (notices to all or chosen companies, optional email to owners and admins) and a **Plan and limits** action on each company (plan label, most people, AI requests per day). Details in [announcements.md](announcements.md). Audit actions added: `ANNOUNCEMENT_SENT`, `ANNOUNCEMENT_WITHDRAWN`, `COMPANY_LIMITS_SET`.
 
 API additions: `GET/POST /api/platform/announcements`, `POST /api/platform/announcements/{id}/withdraw`, `PUT /api/platform/companies/{id}/limits`.
+
+## Plans (Phase 10a)
+
+The **Plans** page edits prices and limits and creates the matching Razorpay plan. A company's page has a monthly AI token override and shows this month's usage. See [billing.md](billing.md).
