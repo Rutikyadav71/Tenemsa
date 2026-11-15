@@ -88,6 +88,8 @@ public class SecurityConfig {
                     "/ws/**",
                     "/api/health",
                     "/api/platform/auth/**",
+                    "/api/billing/webhook/**",
+                    "/api/connections/callback/**",
                     "/api/public/avatars/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
