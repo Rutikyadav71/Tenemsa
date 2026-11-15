@@ -30,6 +30,7 @@ public class AiConversationService {
 
     public static final String HR = "HR_ASSISTANT";
     public static final String KB = "KB_ASK";
+    public static final String APPS = "CONNECTED_APPS";
 
     static final int MAX_CHATS_PER_KIND = 50;
     static final int MAX_MESSAGES = 100;
@@ -65,7 +66,7 @@ public class AiConversationService {
     }
 
     private void requireKind(String kind) {
-        String needed = HR.equals(kind) ? "ai:assistant:self" : KB.equals(kind) ? "kb:ask" : null;
+        String needed = HR.equals(kind) || APPS.equals(kind) ? "ai:assistant:self" : KB.equals(kind) ? "kb:ask" : null;
         if (needed == null) throw new IllegalArgumentException("Unknown chat type.");
         if (!authContext.hasAuthority(needed)) throw new AccessDeniedException("You can't use this feature.");
     }
