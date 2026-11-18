@@ -20,14 +20,20 @@ public class GoogleCalendarProvider extends GoogleProvider {
     @Override protected String scope() { return "https://www.googleapis.com/auth/calendar.readonly"; }
 
     @Override
-    public List<Item> context(String token) {
-        String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=25&singleEvents=true&orderBy=startTime&timeMin=" + enc(Instant.now().toString());
+    public List<Item> context(String token) { return context(token, QueryHints.NONE); }
+
+    @Override
+    public List<Item> context(String token, QueryHints hints) {
+        String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=" + (hints.isEmpty() ? 25 : 40) + "&singleEvents=true&orderBy=startTime&timeMin="
+                + enc((hints.from() != null ? hints.from() : Instant.now()).toString())
+                + (hints.to() != null ? "&timeMax=" + enc(hints.to().toString()) : "")
+                + (hints.firstTerm() != null ? "&q=" + enc(hints.firstTerm()) : "");
         List<Item> out = new ArrayList<>();
         for (JsonNode e : http.get(url, token).path("items")) {
             String start = e.path("start").path("dateTime").asText(e.path("start").path("date").asText(""));
             String end = e.path("end").path("dateTime").asText(e.path("end").path("date").asText(""));
             String where = e.path("location").asText("");
-            out.add(new Item(e.path("summary").asText("(no title)"), "from " + start + " to " + end + (where.isBlank() ? "" : ", at " + where), ""));
+            out.add(new Item(e.path("summary").asText("(no title)"), "from " + start + " to " + end + (where.isBlank() ? "" : ", at " + where), e.path("htmlLink").asText("")));
         }
         return out;
     }

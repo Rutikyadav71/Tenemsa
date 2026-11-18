@@ -39,7 +39,11 @@ export async function askHrAssistant(question: string, conversationId: number | 
   return (await axiosInstance.post<HrAnswer>("/api/ai/hr-assistant/ask", { question, conversationId }, SLOW)).data;
 }
 
-export interface AppsAnswer { answer: string; appsRead: string[]; unavailable: string[]; model: string; promptVersion: string; conversationId: number | null }
+export interface AppLink { app: string; title: string; url: string }
+export interface AppsAnswer { answer: string; appsRead: string[]; unavailable: string[]; model: string; promptVersion: string; conversationId: number | null; links: AppLink[]; range: string }
+export async function getAppsBrief(refresh = false): Promise<AppsAnswer> {
+  return (await axiosInstance.get<AppsAnswer>("/api/ai/apps/brief", { ...SLOW, params: { refresh } })).data;
+}
 export async function askMyApps(question: string, conversationId: number | null = null): Promise<AppsAnswer> {
   return (await axiosInstance.post<AppsAnswer>("/api/ai/apps/ask", { question, conversationId }, SLOW)).data;
 }

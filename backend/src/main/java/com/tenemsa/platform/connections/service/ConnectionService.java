@@ -6,6 +6,7 @@ import com.tenemsa.platform.company.service.CompanyLimits;
 import com.tenemsa.platform.connections.model.CompanyApp;
 import com.tenemsa.platform.connections.model.Connection;
 import com.tenemsa.platform.connections.provider.ConnectorProvider;
+import com.tenemsa.platform.connections.provider.QueryHints;
 import com.tenemsa.platform.connections.repository.CompanyAppRepository;
 import com.tenemsa.platform.connections.repository.ConnectionRepository;
 import com.tenemsa.platform.employee.model.User;
@@ -114,7 +115,7 @@ public class ConnectionService {
         String nonce = Long.toHexString(random.nextLong());
         long expires = System.currentTimeMillis() + STATE_MINUTES * 60_000L;
         String state = crypto.sign(companyId + "|" + userId + "|" + p.code() + "|" + expires + "|" + nonce);
-        return p.authorizeUrl(redirectUri(p.code()), state);
+        return p.authorizeUrl(redirectUri(p.code()), state, crypto.pkceChallenge(crypto.pkceVerifier(state)));
     }
 
     private String redirectUri(String code) { return backendUrl.replaceAll("/+$", "") + "/api/connections/callback/" + code; }
@@ -141,7 +142,7 @@ public class ConnectionService {
             if (!enabled(companyId, p.code())) return back + "&status=off";
             assertRoom(companyId, userId, p.code());
 
-            ConnectorProvider.Tokens t = p.exchange(authCode, redirectUri(p.code()));
+            ConnectorProvider.Tokens t = p.exchange(authCode, redirectUri(p.code()), crypto.pkceVerifier(state));
             String label = null;
             try { label = p.accountLabel(t.accessToken()); } catch (RuntimeException e) { log.warn("Could not read the account name from {}: {}", p.code(), e.getMessage()); }
 
@@ -189,15 +190,17 @@ public class ConnectionService {
     }
 
     /** Fetches recent items for a connection to show the person. */
-    public List<ConnectorProvider.Item> fetch(Connection c, ConnectorProvider p) { return fetch(c, p, false); }
+    public List<ConnectorProvider.Item> fetch(Connection c, ConnectorProvider p) { return fetch(c, p, false, QueryHints.NONE); }
 
     /** Fetches the richer data Tenemsa AI answers from. */
-    public List<ConnectorProvider.Item> fetchForAi(Connection c, ConnectorProvider p) { return fetch(c, p, true); }
+    public List<ConnectorProvider.Item> fetchForAi(Connection c, ConnectorProvider p) { return fetch(c, p, true, QueryHints.NONE); }
+    /** Same, fetching the slice of the app the question is about. */
+    public List<ConnectorProvider.Item> fetchForAi(Connection c, ConnectorProvider p, QueryHints hints) { return fetch(c, p, true, hints); }
 
-    private List<ConnectorProvider.Item> fetch(Connection c, ConnectorProvider p, boolean forAi) {
+    private List<ConnectorProvider.Item> fetch(Connection c, ConnectorProvider p, boolean forAi, QueryHints hints) {
         try {
             String token = accessToken(c, p);
-            List<ConnectorProvider.Item> items = forAi ? p.context(token) : p.preview(token);
+            List<ConnectorProvider.Item> items = forAi ? p.context(token, hints) : p.preview(token);
             c.setLastUsedAt(LocalDateTime.now());
             connections.save(c);
             return items;
@@ -220,7 +223,37 @@ public class ConnectionService {
             c.setExpiresAt(t.expiresInSeconds() == null ? null : LocalDateTime.now().plusSeconds(t.expiresInSeconds()));
             connections.save(c);
         }
-        return crypto.decrypt(c.getAccessTokenEnc());
+        String token = crypto.decrypt(c.getAccessTokenEnc());
+        rotateKeys(c, token);
+        return token;
+    }
+
+    /** Re-saves tokens under the current secret after the secret was changed, the next time they are used. */
+    private void rotateKeys(Connection c, String accessToken) {
+        boolean access = crypto.needsRotation(c.getAccessTokenEnc());
+        boolean refresh = c.getRefreshTokenEnc() != null && crypto.needsRotation(c.getRefreshTokenEnc());
+        if (!access && !refresh) return;
+        try {
+            if (access) c.setAccessTokenEnc(crypto.encrypt(accessToken));
+            if (refresh) c.setRefreshTokenEnc(crypto.encrypt(crypto.decrypt(c.getRefreshTokenEnc())));
+            connections.save(c);
+        } catch (RuntimeException e) { log.warn("Could not re-encrypt a saved sign-in: {}", e.getMessage()); }
+    }
+
+    /** Removes a person's saved sign-ins, for example when they leave the company. Tells the app to forget the token when it can. */
+    @Transactional
+    public void removeAllForUser(Long companyId, Long userId) {
+        for (Connection c : connections.findByCompanyIdAndUserId(companyId, userId)) {
+            ConnectorProvider p = providers.get(c.getProvider());
+            if (p != null) { try { p.revoke(crypto.decrypt(c.getAccessTokenEnc())); } catch (RuntimeException ignored) { /* best effort */ } }
+            connections.delete(c);
+        }
+    }
+
+    /** Removes every saved sign-in of a company (used when it is closed). Nothing is sent to the apps. */
+    @Transactional
+    public void removeAllForCompany(Long companyId) {
+        connections.deleteByCompanyId(companyId);
     }
 
     private void markReconnect(Connection c) { c.setStatus("NEEDS_RECONNECT"); connections.save(c); }
