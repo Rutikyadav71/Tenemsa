@@ -25,11 +25,13 @@ public class PlatformCompanyService {
     private final AuthService authService;
     private final CompanyLimits companyLimits;
     private final com.tenemsa.platform.billing.service.AiBudget aiBudget;
+    private final com.tenemsa.platform.connections.service.ConnectionService connectionService;
 
     public PlatformCompanyService(JdbcTemplate jdbc, CompanyAccessGuard guard, PlatformAuditService audit, AuthService authService,
-                                  CompanyLimits companyLimits, com.tenemsa.platform.billing.service.AiBudget aiBudget) {
+                                  CompanyLimits companyLimits, com.tenemsa.platform.billing.service.AiBudget aiBudget,
+                                  com.tenemsa.platform.connections.service.ConnectionService connectionService) {
         this.jdbc = jdbc; this.guard = guard; this.audit = audit; this.authService = authService;
-        this.companyLimits = companyLimits; this.aiBudget = aiBudget;
+        this.companyLimits = companyLimits; this.aiBudget = aiBudget; this.connectionService = connectionService;
     }
 
     private long count(String sql, Object... a) {
@@ -248,6 +250,7 @@ public class PlatformCompanyService {
         if ("DELETED".equals(c.get("status"))) throw new PlatformException(400, "That company is already closed.");
         setStatus(id, "DELETED", r);
         signEveryoneOut(id);
+        connectionService.removeAllForCompany(id);   // saved app sign-ins are removed when a company closes
         audit.record(adminId, adminEmail, "COMPANY_CLOSED", id, (String) c.get("name"), r, ip);
     }
 

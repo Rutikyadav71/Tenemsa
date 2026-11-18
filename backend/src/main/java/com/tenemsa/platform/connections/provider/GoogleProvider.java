@@ -23,16 +23,16 @@ public abstract class GoogleProvider implements ConnectorProvider {
     @Override public boolean configured() { return !clientId.isBlank() && !clientSecret.isBlank(); }
 
     @Override
-    public String authorizeUrl(String redirectUri, String state) {
+    public String authorizeUrl(String redirectUri, String state, String pkceChallenge) {
         return "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" + enc(clientId)
                 + "&redirect_uri=" + enc(redirectUri) + "&scope=" + enc("openid email " + scope())
-                + "&access_type=offline&prompt=consent&state=" + enc(state);
+                + "&access_type=offline&prompt=consent&code_challenge=" + enc(pkceChallenge) + "&code_challenge_method=S256&state=" + enc(state);
     }
 
     @Override
-    public Tokens exchange(String code, String redirectUri) {
+    public Tokens exchange(String code, String redirectUri, String pkceVerifier) {
         JsonNode n = http.postForm("https://oauth2.googleapis.com/token", Map.of("code", code, "client_id", clientId,
-                "client_secret", clientSecret, "redirect_uri", redirectUri, "grant_type", "authorization_code"));
+                "client_secret", clientSecret, "redirect_uri", redirectUri, "grant_type", "authorization_code", "code_verifier", pkceVerifier));
         return parse(n, null);
     }
 

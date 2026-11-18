@@ -232,6 +232,14 @@ public final class MailTemplates {
             .footer("You received this because you manage a workspace on Tenemsa. This notice comes from the Tenemsa team.").build();
     }
 
+    /** A plain billing message: a heading, a paragraph or two, and an optional table of facts. */
+    public static Mail billing(String name, String subject, String heading, String message, String[][] rows, String openUrl) {
+        Builder b = b(subject, heading, heading).p("Hi **" + first(name) + "**,").p(message);
+        if (rows != null && rows.length > 0) b.details(rows);
+        return b.button("Open Plan & billing", openUrl)
+            .footer("You received this because you are an owner of this workspace on Tenemsa. This is a payment receipt or notice, not a tax invoice.").build();
+    }
+
     private static String first(String name) { return name == null || name.isBlank() ? "there" : name.trim(); }
 
     static String nice(String role) {

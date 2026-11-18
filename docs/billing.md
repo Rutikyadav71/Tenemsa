@@ -27,6 +27,11 @@ Because step 4 works without a webhook, **you do not need a public URL to test**
 
 Going live later means complete Razorpay KYC, switch to live keys and register the webhook. Razorpay charges a fee per successful payment (check their current pricing); there is no monthly fee for the Subscriptions product in test mode.
 
+## Safety nets
+
+- **Daily reconcile (03:05):** asks Razorpay for the real state of every live subscription and corrects ours, so a missed or out-of-order webhook never leaves a company on the wrong plan. A failed lookup changes nothing and is retried the next day.
+- **Rate limits** (per IP): 10 checkouts per 10 minutes; the webhook allows 600 per minute.
+
 ## Who can do what
 
 | Action | Who |
@@ -37,9 +42,9 @@ Going live later means complete Razorpay KYC, switch to live keys and register t
 
 ## Limits and known simplifications
 
-- A plan change means cancelling first and subscribing to the new plan after the period ends; there is no mid-cycle upgrade or proration yet.
+- Plan changes always take effect at the next renewal (see Stage 2 below); there is no mid-cycle upgrade or proration.
 - Companies on Free with more than 10 people can no longer add people (the Free limit is 10). Raise it in **Plans** or per company.
-- Prices are in rupees (INR) only. No GST invoices are generated; Razorpay sends its own receipts.
+- Prices are in rupees (INR) only. The receipt Tenemsa shows and emails is proof of payment, not a GST tax invoice.
 - Existing subscribers keep the price they signed up at when a plan's price changes.
 - Backend Java and tests for this phase were written without a Maven run; run `mvn test` once.
 
@@ -49,3 +54,15 @@ Going live later means complete Razorpay KYC, switch to live keys and register t
 - `POST /api/billing/checkout` `{plan}`; `POST /api/billing/verify`; `POST /api/billing/cancel`.
 - `POST /api/billing/webhook/razorpay` (public, signed).
 - Console: `GET /api/platform/billing`, `PUT /api/platform/billing/plans/{code}`, `POST /api/platform/billing/plans/{code}/razorpay`; company limits accept `aiMonthlyTokens`.
+
+## Stage 2: billing completeness
+
+- **Free trial.** A plan with `trial_days` above 0 (Starter and Business: 14) starts with a trial on the company's first subscription. Checkout creates the Razorpay subscription with `start_at` set to the end of the trial, so the card is checked now and charged then. The plan works during the trial; the subscription shows as `AUTHENTICATED` with `trial = true` until the first charge arrives. One trial per company. Edit the days per plan in the console. *Using `start_at` for a trial is how Razorpay's docs describe delayed first charges, but it was not tested against Razorpay here; try it once in test mode.*
+- **Plan change at renewal.** Owners pick another paid plan and Tenemsa calls Razorpay's update-subscription API with `schedule_change_at = cycle_end`. The new plan is stored as `pending_plan_code` and applied when Razorpay reports the new `plan_id` (webhook or the daily reconcile). Razorpay does not allow changes on UPI or eMandate subscriptions, and does not document proration, so there is no mid-cycle change. If Razorpay refuses, the owner sees its message.
+- **Token top-ups.** One-off packs (Small, Medium, Large; prices are placeholders, edit `topup_packs`) are paid through Razorpay Orders. The browser verifies `HMAC(order_id|payment_id)`; the `order.paid` webhook is a backup, and a paid top-up is counted once. Bought tokens add to the budget for the calendar month of purchase only, and do not carry over. Not offered when the plan has no token limit.
+- **Emails to owners:** payment received, payment failed, subscription cancelled, and AI allowance at 80% and 100% (checked every 30 minutes, once per month per level, recorded as `alert:{level}:{company}:{yyyy-MM}` in `billing_events`).
+- **Usage breakdown:** `GET /api/billing/usage` gives this month's tokens by feature, by person (top 15) and by day; the page can download it as CSV.
+- **Billing details:** legal name, optional GSTIN (format-checked, not verified with the government), address and billing email, at `GET/PUT /api/billing/details`. The printable receipt list is proof of payment, not a tax invoice.
+- **Console:** **Revenue** page with monthly recurring revenue (trials not counted), money collected this month, subscribers per plan and recent payments. Edit trial days in **Plans**.
+
+New endpoints: `POST /api/billing/plan-change`, `POST /api/billing/topup/checkout`, `POST /api/billing/topup/verify`, `GET|PUT /api/billing/details`, `GET /api/billing/usage`, console `GET /api/platform/billing/revenue`. Migration: `V17__billing_depth` (PostgreSQL applied on 16; MySQL syntax-parsed only).

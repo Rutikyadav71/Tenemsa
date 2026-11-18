@@ -9,6 +9,7 @@ import Companies from "./pages/Companies";
 import CompanyDetail from "./pages/CompanyDetail";
 import Announcements from "./pages/Announcements";
 import Plans from "./pages/Plans";
+import Revenue from "./pages/Revenue";
 import Audit from "./pages/Audit";
 import Admins from "./pages/Admins";
 import System from "./pages/System";
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="companies/:id" element={<CompanyDetail />} />
         <Route path="announcements" element={<Announcements />} />
         <Route path="plans" element={<Plans />} />
+        <Route path="revenue" element={<Revenue />} />
         <Route path="audit" element={<Audit />} />
         <Route path="admins" element={<Admins />} />
         <Route path="system" element={<System />} />

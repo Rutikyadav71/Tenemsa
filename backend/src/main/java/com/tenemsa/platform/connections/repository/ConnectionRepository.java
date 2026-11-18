@@ -12,4 +12,6 @@ public interface ConnectionRepository extends JpaRepository<Connection, Long> {
     long countByCompanyId(Long companyId);
     long countByCompanyIdAndProvider(Long companyId, String provider);
     void deleteByCompanyIdAndProvider(Long companyId, String provider);
+    void deleteByCompanyId(Long companyId);
+    List<Connection> findByCompanyId(Long companyId);
 }

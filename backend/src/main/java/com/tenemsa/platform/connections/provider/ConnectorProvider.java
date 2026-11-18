@@ -19,8 +19,9 @@ public interface ConnectorProvider {
     String access();
     /** True when the server has the app's client id and secret. */
     boolean configured();
-    String authorizeUrl(String redirectUri, String state);
-    Tokens exchange(String code, String redirectUri);
+    /** {@code pkceChallenge} is the S256 challenge for apps that support PKCE; others ignore it. */
+    String authorizeUrl(String redirectUri, String state, String pkceChallenge);
+    Tokens exchange(String code, String redirectUri, String pkceVerifier);
     /** Returns new tokens, or null when this app does not use refresh tokens. */
     default Tokens refresh(String refreshToken) { return null; }
     String accountLabel(String accessToken);
@@ -28,6 +29,8 @@ public interface ConnectorProvider {
     List<Item> preview(String accessToken);
     /** More detail for Tenemsa AI to answer from. Defaults to the preview. */
     default List<Item> context(String accessToken) { return preview(accessToken); }
+    /** Like {@link #context(String)} but fetches the slice the question is about (a time window, search words). */
+    default List<Item> context(String accessToken, QueryHints hints) { return context(accessToken); }
     /** Best effort: tell the app the token is no longer wanted. */
     default void revoke(String token) {}
 
