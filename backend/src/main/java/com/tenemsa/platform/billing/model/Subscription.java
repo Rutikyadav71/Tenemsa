@@ -17,6 +17,9 @@ public class Subscription {
     @Column(name = "current_end") private LocalDateTime currentEnd;
     @Column(name = "paid_count", nullable = false) private int paidCount;
     @Column(name = "cancel_at_period_end", nullable = false) private boolean cancelAtPeriodEnd;
+    /** A plan change waiting for the next renewal. */
+    @Column(name = "pending_plan_code", length = 30) private String pendingPlanCode;
+    @Column(nullable = false) private boolean trial;
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt = LocalDateTime.now();
     @Column(name = "updated_at", nullable = false) private LocalDateTime updatedAt = LocalDateTime.now();
 
@@ -29,6 +32,8 @@ public class Subscription {
     public LocalDateTime getCurrentEnd() { return currentEnd; } public void setCurrentEnd(LocalDateTime v) { currentEnd = v; }
     public int getPaidCount() { return paidCount; } public void setPaidCount(int v) { paidCount = v; }
     public boolean isCancelAtPeriodEnd() { return cancelAtPeriodEnd; } public void setCancelAtPeriodEnd(boolean v) { cancelAtPeriodEnd = v; }
+    public String getPendingPlanCode() { return pendingPlanCode; } public void setPendingPlanCode(String v) { pendingPlanCode = v; }
+    public boolean isTrial() { return trial; } public void setTrial(boolean v) { trial = v; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

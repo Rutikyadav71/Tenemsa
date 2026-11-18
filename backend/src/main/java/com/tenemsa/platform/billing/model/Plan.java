@@ -15,6 +15,7 @@ public class Plan {
     @Column(name = "max_connections") private Integer maxConnections;
     @Column(name = "contact_only", nullable = false) private boolean contactOnly;
     @Column(name = "razorpay_plan_id", length = 60) private String razorpayPlanId;
+    @Column(name = "trial_days", nullable = false) private int trialDays;
     @Column(name = "sort_order", nullable = false) private int sortOrder;
     @Column(nullable = false) private boolean active = true;
 
@@ -27,6 +28,7 @@ public class Plan {
     public Integer getMaxConnections() { return maxConnections; } public void setMaxConnections(Integer v) { maxConnections = v; }
     public boolean isContactOnly() { return contactOnly; } public void setContactOnly(boolean v) { contactOnly = v; }
     public String getRazorpayPlanId() { return razorpayPlanId; } public void setRazorpayPlanId(String v) { razorpayPlanId = v; }
+    public int getTrialDays() { return trialDays; } public void setTrialDays(int v) { trialDays = v; }
     public int getSortOrder() { return sortOrder; } public void setSortOrder(int v) { sortOrder = v; }
     public boolean isActive() { return active; } public void setActive(boolean v) { active = v; }
 }

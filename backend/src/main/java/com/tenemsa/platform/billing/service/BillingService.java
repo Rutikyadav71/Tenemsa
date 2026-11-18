@@ -46,13 +46,16 @@ public class BillingService {
     private final RazorpayApi razorpay;
     private final CompanyLimits limits;
     private final AiBudget budget;
+    private final BillingNotifier notifier;
+    private final BillingExtrasService extras;
     private final JdbcTemplate jdbc;
     private final ObjectMapper json = new ObjectMapper();
 
     public BillingService(PlanRepository plans, SubscriptionRepository subs, BillingEventRepository events,
-                          RazorpayApi razorpay, CompanyLimits limits, AiBudget budget, JdbcTemplate jdbc) {
+                          RazorpayApi razorpay, CompanyLimits limits, AiBudget budget, BillingNotifier notifier,
+                          BillingExtrasService extras, JdbcTemplate jdbc) {
         this.plans = plans; this.subs = subs; this.events = events; this.razorpay = razorpay;
-        this.limits = limits; this.budget = budget; this.jdbc = jdbc;
+        this.limits = limits; this.budget = budget; this.notifier = notifier; this.extras = extras; this.jdbc = jdbc;
     }
 
     // ------------------------------------------------------------------ read
@@ -68,13 +71,17 @@ public class BillingService {
         usage.put("people", limits.userCount(companyId));
         usage.put("maxPeople", lim.maxUsers());
         usage.put("aiTokensUsed", used);
-        usage.put("aiTokenBudget", lim.monthlyTokens());
+        usage.put("aiTokenBudget", budget.budget(companyId));
+        usage.put("aiTopupTokens", budget.topupTokens(companyId));
         usage.put("aiResetsOn", AiBudget.nextReset().toString());
         m.put("usage", usage);
 
         List<Map<String, Object>> list = new ArrayList<>();
         for (Plan p : plans.findAllByOrderBySortOrderAsc()) if (p.isActive()) list.add(planView(p));
         m.put("plans", list);
+        m.put("trialEligible", trialEligible(companyId));
+        m.put("topupPacks", extras.packs());
+        m.put("topups", extras.recentTopups(companyId));
 
         Subscription sub = subs.findByCompanyIdOrderByCreatedAtDesc(companyId).stream()
                 .filter(s -> LIVE.contains(s.getStatus()) || "CANCELLED".equals(s.getStatus()) && s.getCurrentEnd() != null && s.getCurrentEnd().isAfter(LocalDateTime.now()))
@@ -84,6 +91,8 @@ public class BillingService {
             s.put("planCode", sub.getPlanCode()); s.put("status", sub.getStatus());
             s.put("renewsOn", sub.getCurrentEnd() == null ? null : sub.getCurrentEnd().toLocalDate().toString());
             s.put("cancelAtPeriodEnd", sub.isCancelAtPeriodEnd() || "CANCELLED".equals(sub.getStatus()));
+            s.put("trial", sub.isTrial());
+            s.put("pendingPlanCode", sub.getPendingPlanCode());
             m.put("subscription", s);
         } else {
             m.put("subscription", null);
@@ -108,6 +117,7 @@ public class BillingService {
         v.put("pricePaise", p.getPricePaise()); v.put("maxUsers", p.getMaxUsers());
         v.put("monthlyAiTokens", p.getMonthlyAiTokens()); v.put("maxConnections", p.getMaxConnections());
         v.put("contactOnly", p.isContactOnly());
+        v.put("trialDays", p.getTrialDays());
         return v;
     }
 
@@ -128,12 +138,17 @@ public class BillingService {
             plan.setRazorpayPlanId(razorpay.createPlan(plan.getName(), plan.getDescription(), plan.getPricePaise()));
             plans.save(plan);
         }
+        // One free trial per company: the card is checked now and the first charge is made when the trial ends.
+        boolean trial = plan.getTrialDays() > 0 && trialEligible(companyId);
+        Long startAt = trial ? Instant.now().plusSeconds(plan.getTrialDays() * 86_400L).getEpochSecond() : null;
         Map<String, Object> created = razorpay.createSubscription(plan.getRazorpayPlanId(),
-                Map.of("company_id", String.valueOf(companyId), "plan_code", plan.getCode()));
+                Map.of("company_id", String.valueOf(companyId), "plan_code", plan.getCode()), startAt);
         Subscription s = new Subscription();
         s.setCompanyId(companyId);
         s.setPlanCode(plan.getCode());
         s.setRazorpaySubscriptionId(String.valueOf(created.get("id")));
+        s.setTrial(trial);
+        if (trial) s.setCurrentEnd(fromEpoch(startAt));
         subs.save(s);
 
         Map<String, Object> out = new LinkedHashMap<>();
@@ -141,6 +156,7 @@ public class BillingService {
         out.put("subscriptionId", s.getRazorpaySubscriptionId());
         out.put("planName", plan.getName());
         out.put("amountPaise", plan.getPricePaise());
+        out.put("trialDays", trial ? plan.getTrialDays() : 0);
         return out;
     }
 
@@ -160,10 +176,14 @@ public class BillingService {
             throw new BillingException(400, "The payment could not be verified.");
         }
         if ("CREATED".equals(s.getStatus()) || "AUTHENTICATED".equals(s.getStatus())) {
-            s.setStatus("ACTIVE");
             s.setCurrentStart(LocalDateTime.now());
-            s.setCurrentEnd(LocalDateTime.now().plusMonths(1));
-            s.setPaidCount(Math.max(1, s.getPaidCount()));
+            if (s.isTrial()) {
+                s.setStatus("AUTHENTICATED");   // card accepted; nothing is charged until the trial ends (currentEnd)
+            } else {
+                s.setStatus("ACTIVE");
+                s.setCurrentEnd(LocalDateTime.now().plusMonths(1));
+                s.setPaidCount(Math.max(1, s.getPaidCount()));
+            }
             subs.save(s);
             applyPlan(companyId, s.getPlanCode());
             String eid = "verify:" + paymentId;
@@ -184,6 +204,7 @@ public class BillingService {
                 .orElseThrow(() -> new BillingException(404, "You do not have an active subscription."));
         razorpay.cancelSubscription(s.getRazorpaySubscriptionId(), true);
         s.setCancelAtPeriodEnd(true);
+        s.setPendingPlanCode(null);
         subs.save(s);
     }
 
@@ -199,6 +220,14 @@ public class BillingService {
         try {
             JsonNode root = json.readTree(rawBody);
             String type = root.path("event").asText("");
+            if ("order.paid".equals(type)) {   // a token top-up was paid; the browser may not have told us
+                extras.markPaidFromWebhook(root.path("payload").path("order").path("entity").path("id").asText(""),
+                        root.path("payload").path("payment").path("entity").path("id").asText(null));
+                BillingEvent o = new BillingEvent();
+                o.setRazorpayEventId(id); o.setEventType(type);
+                events.save(o);
+                return true;
+            }
             JsonNode sn = root.path("payload").path("subscription").path("entity");
             JsonNode pn = root.path("payload").path("payment").path("entity");
             Subscription s = subs.findByRazorpaySubscriptionId(sn.path("id").asText("")).orElse(null);
@@ -219,20 +248,118 @@ public class BillingService {
             if (sn.has("paid_count")) s.setPaidCount(sn.path("paid_count").asInt());
             switch (type) {
                 case "subscription.authenticated" -> { if ("CREATED".equals(s.getStatus())) s.setStatus("AUTHENTICATED"); }
-                case "subscription.activated", "subscription.charged" -> { s.setStatus("ACTIVE"); applyPlan(s.getCompanyId(), s.getPlanCode()); }
+                case "subscription.activated", "subscription.charged" -> { s.setStatus("ACTIVE"); s.setTrial(false); applyPlan(s.getCompanyId(), s.getPlanCode()); }
                 case "subscription.pending" -> s.setStatus("PENDING");
                 case "subscription.halted" -> s.setStatus("HALTED");
                 case "subscription.cancelled" -> s.setStatus("CANCELLED");
                 case "subscription.completed" -> s.setStatus("COMPLETED");
                 default -> { /* other events are recorded only */ }
             }
+            maybeSwitchPlan(s, sn.path("plan_id").asText(""));
             subs.save(s);
+            sendSubscriptionEmail(type, s, pn);
         } catch (BillingException e) {
             throw e;
         } catch (Exception e) {
             log.warn("Could not process a Razorpay webhook: {}", e.toString());
         }
         return true;
+    }
+
+    // ------------------------------------------------------------------ trial, plan change, emails
+
+    /** A company gets one free trial: only if it never had a subscription that got past checkout. */
+    boolean trialEligible(Long companyId) {
+        return subs.findByCompanyIdOrderByCreatedAtDesc(companyId).stream().allMatch(x -> "CREATED".equals(x.getStatus()));
+    }
+
+    /**
+     * Moves the company to another paid plan at the end of the current period. Razorpay cannot change a UPI or
+     * eMandate subscription and its documentation does not describe proration, so the change always waits for renewal.
+     */
+    @Transactional
+    public void changePlan(Long companyId, String planCode) {
+        Subscription s = subs.findByCompanyIdOrderByCreatedAtDesc(companyId).stream()
+                .filter(x -> "ACTIVE".equals(x.getStatus()) || "AUTHENTICATED".equals(x.getStatus())).findFirst()
+                .orElseThrow(() -> new BillingException(404, "You do not have an active subscription to change."));
+        if (s.isCancelAtPeriodEnd()) throw new BillingException(409, "Your subscription is set to end. Subscribe again once it has ended.");
+        Plan plan = plans.findById(planCode == null ? "" : planCode.trim().toUpperCase())
+                .filter(Plan::isActive).orElseThrow(() -> new BillingException(404, "That plan does not exist."));
+        if (plan.isContactOnly() || plan.getPricePaise() <= 0) throw new BillingException(400, "You can only switch to another paid plan here.");
+        if (plan.getCode().equals(s.getPlanCode())) throw new BillingException(400, "You are already on that plan.");
+        if (plan.getRazorpayPlanId() == null || plan.getRazorpayPlanId().isBlank()) {
+            plan.setRazorpayPlanId(razorpay.createPlan(plan.getName(), plan.getDescription(), plan.getPricePaise()));
+            plans.save(plan);
+        }
+        razorpay.updateSubscription(s.getRazorpaySubscriptionId(), plan.getRazorpayPlanId(), true);
+        s.setPendingPlanCode(plan.getCode());
+        subs.save(s);
+    }
+
+    /** When Razorpay reports the plan it now bills and it is the one we scheduled, switch the company to it. */
+    private void maybeSwitchPlan(Subscription s, String razorpayPlanId) {
+        if (s.getPendingPlanCode() == null || razorpayPlanId == null || razorpayPlanId.isBlank()) return;
+        plans.findById(s.getPendingPlanCode()).ifPresent(p -> {
+            if (razorpayPlanId.equals(p.getRazorpayPlanId())) {
+                s.setPlanCode(p.getCode());
+                s.setPendingPlanCode(null);
+                applyPlan(s.getCompanyId(), p.getCode());
+            }
+        });
+    }
+
+    private void sendSubscriptionEmail(String type, Subscription s, JsonNode payment) {
+        String plan = plans.findById(s.getPlanCode()).map(Plan::getName).orElse(s.getPlanCode());
+        switch (type) {
+            case "subscription.charged" -> {
+                long amount = payment.path("amount").asLong(0);
+                notifier.notifyOwners(s.getCompanyId(), "Payment received", "Payment received",
+                        "Thank you. We received your payment for the " + plan + " plan. This is a receipt, not a tax invoice.",
+                        new String[][]{{"Plan", plan}, {"Amount", amount > 0 ? "Rs " + String.format("%.2f", amount / 100.0) : "-"},
+                                {"Payment id", payment.path("id").asText("-")},
+                                {"Next renewal", s.getCurrentEnd() == null ? "-" : s.getCurrentEnd().toLocalDate().toString()}});
+            }
+            case "subscription.pending", "subscription.halted" -> notifier.notifyOwners(s.getCompanyId(), "A payment for your plan failed", "Payment failed",
+                    "We could not collect the payment for your " + plan + " plan. Please make sure the card or account can pay. If it keeps failing, your company moves to the Free plan after a few days.",
+                    new String[][]{{"Plan", plan}});
+            case "subscription.cancelled" -> notifier.notifyOwners(s.getCompanyId(), "Your subscription was cancelled", "Subscription cancelled",
+                    "Your " + plan + " plan stays active until the end of the period you paid for, then your company moves to the Free plan.",
+                    new String[][]{{"Plan", plan}, {"Active until", s.getCurrentEnd() == null ? "-" : s.getCurrentEnd().toLocalDate().toString()}});
+            default -> { /* other events send no email */ }
+        }
+    }
+
+    // ------------------------------------------------------------------ reconcile
+
+    /**
+     * Daily safety net: asks Razorpay for the real state of every subscription we think is live (or recently ended),
+     * so a webhook that was missed or arrived out of order never leaves a company on the wrong plan.
+     * @return how many subscriptions were corrected
+     */
+    @Transactional
+    public int reconcile() {
+        if (!razorpay.isConfigured()) return 0;
+        int changed = 0;
+        for (Subscription s : subs.findByStatusIn(List.of("AUTHENTICATED", "ACTIVE", "PENDING", "HALTED", "CANCELLED"))) {
+            Map<String, Object> r;
+            try { r = razorpay.fetchSubscription(s.getRazorpaySubscriptionId()); }
+            catch (BillingException e) { continue; }          // try again tomorrow; never guess
+            String theirs = String.valueOf(r.get("status")).toUpperCase();
+            boolean touched = false;
+            if (Set.of("AUTHENTICATED", "ACTIVE", "PENDING", "HALTED", "CANCELLED", "COMPLETED", "EXPIRED").contains(theirs) && !theirs.equals(s.getStatus())) {
+                s.setStatus(theirs); touched = true;
+            }
+            if (r.get("current_start") instanceof Number n) s.setCurrentStart(fromEpoch(n.longValue()));
+            if (r.get("current_end") instanceof Number n) { LocalDateTime e = fromEpoch(n.longValue()); if (!e.equals(s.getCurrentEnd())) touched = true; s.setCurrentEnd(e); }
+            if (r.get("paid_count") instanceof Number n) s.setPaidCount(n.intValue());
+            if ("ACTIVE".equals(s.getStatus())) {
+                maybeSwitchPlan(s, String.valueOf(r.getOrDefault("plan_id", "")));
+                applyPlan(s.getCompanyId(), s.getPlanCode());
+            }
+            subs.save(s);
+            if (touched) changed++;
+        }
+        return changed;
     }
 
     // ------------------------------------------------------------------ plan changes
