@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
         "connections.secret=0123456789abcdef0123456789abcdef-test",
         "connections.github.client-id=gh-client", "connections.github.client-secret=gh-secret",
         "connections.google.client-id=g-client", "connections.google.client-secret=g-secret",
+        "connections.microsoft.client-id=ms-client", "connections.microsoft.client-secret=ms-secret",
         "app.backend-url=http://localhost:8080", "app.frontend-url=http://localhost:5173"})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -111,7 +112,7 @@ class ConnectionsTest {
         Co c = company();
         JsonNode l = json.readTree(call(get("/api/connections"), c.ownerToken(), null).getContentAsString());
         assertThat(l.get("ready").asBoolean()).isTrue();
-        assertThat(l.get("apps")).hasSize(3);
+        assertThat(l.get("apps")).hasSize(5);
         assertThat(l.get("apps").get(0).get("enabled").asBoolean()).isFalse();
         assertThat(call(post("/api/connections/github/authorize"), c.ownerToken(), null).getStatus()).isEqualTo(403);
 
@@ -192,6 +193,74 @@ class ConnectionsTest {
         JsonNode l = json.readTree(call(get("/api/connections"), b.ownerToken(), null).getContentAsString());
         assertThat(l.get("apps").get(0).get("connected").asBoolean()).isFalse();
         assertThat(call(get("/api/connections/github/preview"), b.ownerToken(), null).getStatus()).isIn(403, 404);
+    }
+
+    @Test
+    void googleSignInUsesPkce() throws Exception {
+        Co c = company();
+        call(put("/api/connections/apps/google_drive"), c.ownerToken(), Map.of("enabled", true));
+        String url = json.readTree(call(post("/api/connections/google_drive/authorize"), c.ownerToken(), null).getContentAsString()).get("url").asText();
+        assertThat(url).contains("code_challenge=").contains("code_challenge_method=S256").contains("access_type=offline");
+        String state = java.net.URLDecoder.decode(stateOf(url), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(crypto.pkceChallenge(crypto.pkceVerifier(state))).isEqualTo(
+                java.net.URLDecoder.decode(UriComponentsBuilder.fromUriString(url).build().getQueryParams().getFirst("code_challenge"), java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void microsoftSignInUsesPkceStoresRotatingTokensAndShowsOutlookEvents() throws Exception {
+        Co c = company();
+        call(put("/api/connections/apps/microsoft_calendar"), c.ownerToken(), Map.of("enabled", true));
+        String url = json.readTree(call(post("/api/connections/microsoft_calendar/authorize"), c.ownerToken(), null).getContentAsString()).get("url").asText();
+        assertThat(url).startsWith("https://login.microsoftonline.com/common/oauth2/v2.0/authorize").contains("client_id=ms-client")
+                .contains("code_challenge_method=S256").contains("offline_access").contains("Calendars.Read");
+        when(http.postForm(anyString(), anyMap())).thenReturn(json.readTree("{\"access_token\":\"eyJ.ms.token\",\"refresh_token\":\"ms-refresh\",\"expires_in\":3600}"));
+        when(http.get(anyString(), anyString())).thenAnswer(inv -> {
+            String u = inv.getArgument(0);
+            if (u.contains("graph.microsoft.com/v1.0/me?")) return json.readTree("{\"mail\":\"me@corp.example\"}");
+            if (u.contains("/calendarView")) return json.readTree("{\"value\":[{\"subject\":\"Planning\",\"start\":{\"dateTime\":\"2026-11-18T10:00:00.0000000\",\"timeZone\":\"UTC\"},\"webLink\":\"https://outlook.office.com/x\"}]}");
+            return json.readTree("{}");
+        });
+        String state = java.net.URLDecoder.decode(stateOf(url), java.nio.charset.StandardCharsets.UTF_8);
+        String next = mvc.perform(get("/api/connections/callback/microsoft_calendar").param("code", "abc").param("state", state)).andReturn().getResponse().getHeader("Location");
+        assertThat(next).contains("status=ok");
+        // the PKCE verifier went to Microsoft's token endpoint
+        org.mockito.ArgumentCaptor<java.util.Map<String, String>> form = org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
+        org.mockito.Mockito.verify(http).postForm(org.mockito.ArgumentMatchers.contains("login.microsoftonline.com/common/oauth2/v2.0/token"), form.capture());
+        assertThat(form.getValue().get("code_verifier")).isEqualTo(crypto.pkceVerifier(state));
+
+        String stored = jdbc.queryForObject("SELECT access_token_enc FROM connections WHERE company_id = ?", String.class, c.companyId());
+        assertThat(stored).doesNotContain("eyJ.ms.token");
+        JsonNode apps = json.readTree(call(get("/api/connections"), c.ownerToken(), null).getContentAsString()).get("apps");
+        JsonNode ms = null;
+        for (JsonNode a : apps) if (a.get("code").asText().equals("microsoft_calendar")) ms = a;
+        assertThat(ms.get("account").asText()).isEqualTo("me@corp.example");
+        JsonNode items = json.readTree(call(get("/api/connections/microsoft_calendar/preview"), c.ownerToken(), null).getContentAsString());
+        assertThat(items.get(0).get("title").asText()).isEqualTo("Planning");
+    }
+
+    @Test
+    void removingAPersonRemovesTheirAppConnections() throws Exception {
+        Co c = company();
+        call(put("/api/connections/apps/github"), c.ownerToken(), Map.of("enabled", true));
+        String emp = employeeToken(c);
+        assertThat(connectGithub(c, emp)).contains("status=ok");
+        Long empId = jdbc.queryForObject("SELECT emp_id FROM users WHERE company_id = ? AND email = ?", Long.class, c.companyId(), "emp" + c.id() + "@example.com");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM connections WHERE company_id = ?", Long.class, c.companyId())).isEqualTo(1L);
+        assertThat(call(delete("/api/employees/" + empId), c.ownerToken(), null).getStatus()).isIn(200, 204);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM connections WHERE company_id = ?", Long.class, c.companyId())).isZero();
+    }
+
+    @Test
+    void secretsCanBeRotatedWithoutLosingSavedSignIns() {
+        ConnectionCrypto oldKey = new ConnectionCrypto("old-secret-old-secret-old-secret-old-0000", "");
+        String enc = oldKey.encrypt("token-1");
+        ConnectionCrypto newKey = new ConnectionCrypto("new-secret-new-secret-new-secret-new-1111", "old-secret-old-secret-old-secret-old-0000");
+        assertThat(newKey.decrypt(enc)).isEqualTo("token-1");
+        assertThat(newKey.needsRotation(enc)).isTrue();
+        assertThat(newKey.needsRotation(newKey.encrypt("x"))).isFalse();
+        // without the old secret listed, it cannot be read
+        ConnectionCrypto forgot = new ConnectionCrypto("new-secret-new-secret-new-secret-new-1111", "");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> forgot.decrypt(enc)).hasMessageContaining("reconnect");
     }
 
     @Test
