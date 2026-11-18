@@ -56,7 +56,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             new Rule("POST", "/api/platform/auth/confirm-2fa", "platform-login", 10, MINUTE),
             new Rule("POST", "/api/platform/auth/register", "platform-register", 5, HOUR),
             new Rule("GET", "/api/invitations/preview", "invite", 20, MINUTE),
-            new Rule("POST", "/api/invitations/accept", "invite", 20, MINUTE)
+            new Rule("POST", "/api/invitations/accept", "invite", 20, MINUTE),
+            new Rule("POST", "/api/connections/*", "connect", 20, TEN_MINUTES),
+            new Rule("GET", "/api/connections/callback/*", "connect-callback", 30, TEN_MINUTES),
+            new Rule("POST", "/api/billing/checkout", "checkout", 10, TEN_MINUTES),
+            new Rule("POST", "/api/billing/webhook/*", "webhook", 600, MINUTE)
     );
 
     private static final int CLEANUP_THRESHOLD = 10_000;
@@ -119,7 +123,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ctx = request.getContextPath();
         if (ctx != null && !ctx.isEmpty() && path.startsWith(ctx)) path = path.substring(ctx.length());
         for (Rule r : RULES) {
-            if (r.method().equals(request.getMethod()) && r.path().equals(path)) return r;
+            boolean same = r.path().endsWith("/*") ? path.startsWith(r.path().substring(0, r.path().length() - 1)) : r.path().equals(path);
+            if (r.method().equals(request.getMethod()) && same) return r;
         }
         return null;
     }

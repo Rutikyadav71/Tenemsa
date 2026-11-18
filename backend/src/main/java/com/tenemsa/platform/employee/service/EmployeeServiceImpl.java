@@ -30,6 +30,15 @@ public class EmployeeServiceImpl implements EmployeeService {
     // (verification, password reset) that this class has no reason to know about.
     @Autowired private EmailService emailService;
     @Autowired private com.tenemsa.platform.company.service.CompanyLimits limits;
+    @Autowired private com.tenemsa.platform.connections.service.ConnectionService connectionService;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /** Sign-in and verification tokens point at the user, so they must go first or the delete is refused by the database. */
+    private void removeTokens(Long companyId, int empId) {
+        for (String table : new String[]{"refresh_tokens", "verification_tokens"}) {
+            jdbc.update("DELETE FROM " + table + " WHERE user_id IN (SELECT id FROM users WHERE company_id = ? AND emp_id = ?)", companyId, empId);
+        }
+    }
 
     @Override
     public Page<User> getAll(Long companyId, Pageable pageable) {
@@ -98,9 +107,12 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    @Transactional
     public void delete(Long companyId, int empId) {
         User user = repo.findByCompanyIdAndEmpId(companyId, empId).orElse(null);
         if (user != null) {
+            removeTokens(companyId, empId);
+            connectionService.removeAllForUser(companyId, user.getId());   // their app sign-ins must not outlive them
             repo.delete(user);
         } else {
             System.out.println("Employee not found with empId: " + empId + " in company " + companyId);
@@ -115,6 +127,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public void deleteMultiple(Long companyId, List<Integer> empIds) {
+        for (Integer id : empIds) if (id != null) removeTokens(companyId, id);
         repo.deleteAllByCompanyIdAndEmpIdIn(companyId, empIds);
     }
 }
