@@ -13,8 +13,26 @@ public class BillingScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(BillingScheduler.class);
     private final BillingService billing;
+    private final BillingNotifier notifier;
 
-    public BillingScheduler(BillingService billing) { this.billing = billing; }
+    public BillingScheduler(BillingService billing, BillingNotifier notifier) { this.billing = billing; this.notifier = notifier; }
+
+    /** Every half hour: email owners whose company has used 80% or 100% of this month's AI allowance. */
+    @Scheduled(fixedDelay = 1_800_000, initialDelay = 120_000)
+    public void aiAlerts() {
+        try { notifier.checkAlerts(); }
+        catch (Exception e) { log.warn("The AI allowance check failed: {}", e.toString()); }
+    }
+
+    @Scheduled(cron = "0 5 3 * * *")
+    public void reconcile() {
+        try {
+            int n = billing.reconcile();
+            if (n > 0) log.info("Corrected {} subscription(s) from Razorpay's records.", n);
+        } catch (Exception e) {
+            log.warn("The Razorpay reconcile failed: {}", e.toString());
+        }
+    }
 
     @Scheduled(cron = "0 15 3 * * *")
     public void daily() {

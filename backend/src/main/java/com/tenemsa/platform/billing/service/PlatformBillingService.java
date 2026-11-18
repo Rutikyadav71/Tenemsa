@@ -17,15 +17,17 @@ import java.util.*;
 public class PlatformBillingService {
 
     public record PlanUpdate(String name, String description, Integer pricePaise, Integer maxUsers, Long monthlyAiTokens,
-                             Integer maxConnections, Boolean active) {}
+                             Integer maxConnections, Boolean active, Integer trialDays) {}
 
     private final PlanRepository plans;
     private final SubscriptionRepository subs;
     private final RazorpayApi razorpay;
     private final PlatformAuditService audit;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    public PlatformBillingService(PlanRepository plans, SubscriptionRepository subs, RazorpayApi razorpay, PlatformAuditService audit) {
-        this.plans = plans; this.subs = subs; this.razorpay = razorpay; this.audit = audit;
+    public PlatformBillingService(PlanRepository plans, SubscriptionRepository subs, RazorpayApi razorpay, PlatformAuditService audit,
+                                 org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        this.plans = plans; this.subs = subs; this.razorpay = razorpay; this.audit = audit; this.jdbc = jdbc;
     }
 
     public Map<String, Object> overview() {
@@ -38,6 +40,37 @@ public class PlatformBillingService {
             list.add(v);
         }
         return Map.of("paymentsEnabled", razorpay.isConfigured(), "plans", list);
+    }
+
+    /**
+     * Money view for the Tenemsa team. Monthly recurring revenue counts every subscription that is paying or is about to
+     * (active, authenticated after a trial, or pending a retry) at its plan's price. Revenue this month adds up the
+     * payments Razorpay reported (subscription charges and token top-ups).
+     */
+    public Map<String, Object> revenue() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        List<Map<String, Object>> byPlan = jdbc.queryForList("SELECT p.code AS plan, p.name AS name, p.price_paise AS price_paise, COUNT(s.id) AS subscribers, "
+                + "SUM(CASE WHEN s.trial = TRUE THEN 1 ELSE 0 END) AS on_trial FROM plans p LEFT JOIN subscriptions s ON s.plan_code = p.code "
+                + "AND s.status IN ('ACTIVE','AUTHENTICATED','PENDING') WHERE p.price_paise > 0 GROUP BY p.code, p.name, p.price_paise, p.sort_order ORDER BY p.sort_order");
+        long mrr = 0; long trials = 0; long paying = 0;
+        for (Map<String, Object> r : byPlan) {
+            long subscribers = ((Number) r.get("subscribers")).longValue();
+            long onTrial = r.get("on_trial") == null ? 0 : ((Number) r.get("on_trial")).longValue();
+            mrr += (subscribers - onTrial) * ((Number) r.get("price_paise")).longValue();
+            trials += onTrial; paying += subscribers - onTrial;
+        }
+        java.time.LocalDateTime start = java.time.LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        Number charged = jdbc.queryForObject("SELECT COALESCE(SUM(amount_paise), 0) FROM billing_events WHERE event_type = 'subscription.charged' AND created_at >= ?", Number.class, start);
+        Number topups = jdbc.queryForObject("SELECT COALESCE(SUM(amount_paise), 0) FROM billing_events WHERE event_type = 'topup.paid' AND created_at >= ?", Number.class, start);
+        m.put("mrrPaise", mrr); m.put("payingCompanies", paying); m.put("trialCompanies", trials);
+        m.put("chargedThisMonthPaise", charged == null ? 0 : charged.longValue());
+        m.put("topupsThisMonthPaise", topups == null ? 0 : topups.longValue());
+        m.put("byPlan", BillingExtrasService.lower(byPlan));
+        m.put("recentSubscriptions", BillingExtrasService.lower(jdbc.queryForList("SELECT c.name AS company, s.plan_code AS plan, s.status AS status, s.trial AS trial, s.current_end AS renews, s.cancel_at_period_end AS ending "
+                + "FROM subscriptions s JOIN companies c ON c.id = s.company_id WHERE s.status <> 'CREATED' ORDER BY s.created_at DESC LIMIT 20")));
+        m.put("recentPayments", BillingExtrasService.lower(jdbc.queryForList("SELECT c.name AS company, e.event_type AS type, e.amount_paise AS amount_paise, e.created_at AS paid_at "
+                + "FROM billing_events e JOIN companies c ON c.id = e.company_id WHERE e.event_type IN ('subscription.charged','topup.paid') ORDER BY e.created_at DESC LIMIT 20")));
+        return m;
     }
 
     /** Edits a plan. A changed price clears the Razorpay plan so a new one (with the new price) is made at the next checkout. */
@@ -60,6 +93,10 @@ public class PlatformBillingService {
         if (u.maxUsers() != null) p.setMaxUsers(u.maxUsers());
         if (u.monthlyAiTokens() != null) p.setMonthlyAiTokens(u.monthlyAiTokens() == 0 ? null : u.monthlyAiTokens());
         if (u.maxConnections() != null) p.setMaxConnections(u.maxConnections());
+        if (u.trialDays() != null) {
+            if (u.trialDays() < 0 || u.trialDays() > 90) throw new PlatformException(400, "The trial must be between 0 and 90 days.");
+            p.setTrialDays(u.trialDays());
+        }
         if (u.active() != null) p.setActive(u.active());
         plans.save(p);
         audit.record(adminId, adminEmail, "PLAN_UPDATED", null, null, "Edited plan " + p.getCode(), ip);

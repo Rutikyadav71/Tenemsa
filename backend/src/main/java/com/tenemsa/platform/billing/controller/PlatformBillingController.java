@@ -28,6 +28,9 @@ public class PlatformBillingController {
     @GetMapping
     public Map<String, Object> overview() { return service.overview(); }
 
+    @GetMapping("/revenue")
+    public Map<String, Object> revenue() { return service.revenue(); }
+
     @PutMapping("/plans/{code}")
     public Map<String, Object> update(@PathVariable String code, @RequestBody PlatformBillingService.PlanUpdate u, HttpServletRequest req) {
         return service.update(code, u, me().id(), me().email(), req.getRemoteAddr());

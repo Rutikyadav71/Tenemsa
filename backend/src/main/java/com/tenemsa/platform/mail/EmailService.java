@@ -104,6 +104,10 @@ public class EmailService {
         return send(toEmail, MailTemplates.platformNotice(name, title, message, severity, url("/")));
     }
 
+    public boolean sendBillingEmail(String toEmail, String name, String subject, String heading, String message, String[][] rows) {
+        return send(toEmail, MailTemplates.billing(name, subject, heading, message, rows, url("/admin/billing")));
+    }
+
     private boolean send(String toEmail, MailTemplates.Mail mail) {
         return send(toEmail, mail.subject(), mail.html(), mail.text());
     }
