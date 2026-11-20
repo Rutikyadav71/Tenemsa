@@ -70,10 +70,10 @@ The older instructions below apply only to databases still on a pre-Phase-4 sche
 
 Documented here so it's an explicit roadmap item, not a silent gap:
 - No CI pipeline (GitHub Actions or otherwise) — every deploy today is manual.
-- No Docker Compose for spinning up the full stack (backend + Postgres + frontend + ml-service) with one command locally.
+- The leave predictor (`ml-service`) is not in the Docker Compose file; it is parked.
 - No monitoring/alerting (Prometheus/Grafana are on the original project roadmap but not started).
 
-These are Phase 10 (DevOps) on the roadmap.
+These are on the roadmap as the DevOps phase.
 
 ## Choosing the database (PostgreSQL or MySQL)
 
@@ -123,3 +123,40 @@ Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and (for renewals) `RAZORPAY_WEBHOO
 ## Connected apps
 
 Set `CONNECTIONS_SECRET`, `BACKEND_URL` and the GitHub/Google client ids and secrets, and register `BACKEND_URL/api/connections/callback/<app>` with each provider. See [connections.md](connections.md).
+
+## Run everything with Docker Compose (Phase 11)
+
+`docker-compose.yml` at the project root starts PostgreSQL, the backend and the website together.
+
+```
+cp .env.docker.example .env      # then set DATABASE_PASSWORD and JWT_SECRET (openssl rand -base64 64)
+docker compose up -d --build
+```
+
+The site is at `http://localhost:3000` and the API at `http://localhost:8080`. Flyway builds the database on first start. Optional features (email, AI, billing, connected apps, file uploads) stay off until you fill in their variables in `.env`.
+
+Things to know:
+- The site's address for the API (`VITE_API_BASE_URL`) and the public-page details (`VITE_SUPPORT_EMAIL`, `VITE_LEGAL_*`) are baked in when the website image is built. Change them in `.env` and run `docker compose up -d --build frontend`.
+- On a real domain, set `FRONTEND_URL`, `BACKEND_URL` and `CORS_ALLOWED_ORIGINS` to the public https addresses, and put a reverse proxy with HTTPS in front. Set `RATE_LIMIT_TRUST_PROXY=true` only when that proxy appends the client address.
+- `DDL_AUTO` defaults to `update` in the compose file. After the first clean start, set it to `validate`.
+- The Dockerfiles and the compose file have been checked for syntax only. They were written without a Docker daemon to build them, so run the first build yourself and read the logs.
+- The platform console is not part of the compose file (see below).
+
+## Health check
+
+`GET /api/health` is public. It answers `200 {"status":"UP","database":"UP"}` when the app can reach its database and `503` with `DOWN` when it cannot. It says nothing else. Use it as the health check on Render, Railway, Fly or a load balancer; the backend image already uses it.
+
+## Go-live checklist
+
+Before real people use it:
+
+1. **Secrets:** `JWT_SECRET` generated and unique; no `.env` file committed; `PLATFORM_SETUP_KEY` removed once both platform admins are registered.
+2. **Database:** managed PostgreSQL with automatic backups, and a restore you have tried once. Document files live in the database, so they are included.
+3. **Addresses:** HTTPS everywhere; `FRONTEND_URL`, `BACKEND_URL`, `CORS_ALLOWED_ORIGINS` set to the real addresses; OAuth and Razorpay callback addresses registered with the providers.
+4. **Email:** a real SMTP sender, with SPF and DKIM set up on your domain, then send yourself a password-reset email and an invitation.
+5. **Legal:** have a lawyer review the Privacy and Terms pages, fill in `VITE_LEGAL_NAME`, `VITE_LEGAL_ADDRESS`, `VITE_SUPPORT_EMAIL`, then set `VITE_LEGAL_REVIEWED=true` to remove the notice on those pages.
+6. **Billing:** Razorpay in test mode first. Trials (`start_at`), plan changes and top-up orders have not been tried against Razorpay, so run one of each, and confirm the webhook arrives.
+7. **AI and connected apps:** if switched on, set a spending alert with the provider; try one question in each feature; check the Microsoft and Google consent screens show your own app name.
+8. **Demo data:** the seeder is off; no demo accounts exist.
+9. **Logs:** `SHOW_SQL` is off by default now; leave it off.
+10. **Smoke test as a new company:** register, add a person by invitation, apply and approve leave, create a project, ask the assistant, open Plan & billing. Then try the same as an employee on a phone.

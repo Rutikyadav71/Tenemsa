@@ -193,7 +193,7 @@ export default function AiChat({ kind, title, subtitle, placeholder, welcomeTitl
         <section className="ai-main" aria-label={title}>
           {blocked && <div style={{ padding: "12px 16px 0" }}><Alert tone={blocked.tone}>{blocked.text}</Alert></div>}
 
-          <div className="ai-thread" role="log" aria-live="polite" aria-busy={busy}>
+          <div className="ai-thread" role="log" tabIndex={0} aria-label="Conversation" aria-live="polite" aria-busy={busy}>
             {opening && <div style={{ display: "grid", gap: 12, padding: 8 }}><Skeleton height={44} radius={12} width="55%" /><Skeleton height={70} radius={12} width="80%" /></div>}
             {empty && (
               <div className="ai-welcome">
