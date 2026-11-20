@@ -1,58 +1,65 @@
 import "../styles/App.css";
+import { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 
-import HomePage from "../features/home/pages/HomePage";
-import EmployeeLogin from "../features/auth/pages/AuthPage";
-import ForgotPasswordPage from "../features/auth/pages/ForgotPasswordPage";
-import ResetPasswordPage from "../features/auth/pages/ResetPasswordPage";
-import VerifyEmailPage from "../features/auth/pages/VerifyEmailPage";
-import OAuthCallbackPage from "../features/auth/pages/OAuthCallbackPage";
-import AdminAuthPage from "../features/auth/pages/AdminAuthPage";
-import RegisterCompanyPage from "../features/company/pages/RegisterCompanyPage";
-import FindWorkspacePage from "../features/company/pages/FindWorkspacePage";
-import AcceptInvitePage from "../features/invitations/pages/AcceptInvitePage";
-import AuditLogPage from "../features/audit/pages/AuditLogPage";
-import InvitationsPage from "../features/invitations/pages/InvitationsPage";
-import ProjectsPage from "../features/projects/pages/ProjectsPage";
-import ProjectBoardPage from "../features/projects/pages/ProjectBoardPage";
-import ProjectBacklogPage from "../features/projects/pages/ProjectBacklogPage";
-import MeetingsPage from "../features/meetings/pages/MeetingsPage";
-import MeetingDetailPage from "../features/meetings/pages/MeetingDetailPage";
-import AiUsagePage from "../features/ai/pages/AiUsagePage";
-import WriterPage from "../features/ai/pages/WriterPage";
-import AppsAssistantPage from "../features/connections/pages/AppsAssistantPage";
-import ConnectionsPage from "../features/connections/pages/ConnectionsPage";
-import ConnectionsDone from "../features/connections/pages/ConnectionsDone";
-import BillingPage from "../features/billing/pages/BillingPage";
-import AnnouncementsPage from "../features/announcements/pages/AnnouncementsPage";
-import AssistantPage from "../features/ai/pages/AssistantPage";
-import TeamLeavesPage from "../features/leave/pages/TeamLeavesPage";
-import DocumentsPage from "../features/documents/pages/DocumentsPage";
-import AnalyticsPage from "../features/analytics/pages/AnalyticsPage";
-import KnowledgePage from "../features/knowledge/pages/KnowledgePage";
-import AskKnowledgePage from "../features/knowledge/pages/AskKnowledgePage";
-import ChatPage from "../features/chat/pages/ChatPage";
-import AttendancePage from "../features/attendance/pages/Attendance";
-import TeamManagement from "../features/team/pages/TeamManagement";
-import AdminManagement from "../features/employees/pages/AdminManagement";
-import AdminNotifications from "../features/notifications/pages/AdminNotifications";
-import UserNotifications from "../features/notifications/pages/UserNotifications";
-import UserLeaveDetails from "../features/leave/pages/UserLeaveDetails";
+import HomePage from "../features/marketing/pages/HomePage";
+const HelpPage = lazy(() => import("../features/help/pages/HelpPage"));
+const HowItWorksPage = lazy(() => import("../features/marketing/pages/HowItWorksPage"));
+const PrivacyPage = lazy(() => import("../features/marketing/pages/PrivacyPage"));
+const TermsPage = lazy(() => import("../features/marketing/pages/TermsPage"));
+const ContactPage = lazy(() => import("../features/marketing/pages/ContactPage"));
+const EmployeeLogin = lazy(() => import("../features/auth/pages/AuthPage"));
+const ForgotPasswordPage = lazy(() => import("../features/auth/pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("../features/auth/pages/ResetPasswordPage"));
+const VerifyEmailPage = lazy(() => import("../features/auth/pages/VerifyEmailPage"));
+const OAuthCallbackPage = lazy(() => import("../features/auth/pages/OAuthCallbackPage"));
+const AdminAuthPage = lazy(() => import("../features/auth/pages/AdminAuthPage"));
+const RegisterCompanyPage = lazy(() => import("../features/company/pages/RegisterCompanyPage"));
+const FindWorkspacePage = lazy(() => import("../features/company/pages/FindWorkspacePage"));
+const AcceptInvitePage = lazy(() => import("../features/invitations/pages/AcceptInvitePage"));
+const AuditLogPage = lazy(() => import("../features/audit/pages/AuditLogPage"));
+const InvitationsPage = lazy(() => import("../features/invitations/pages/InvitationsPage"));
+const ProjectsPage = lazy(() => import("../features/projects/pages/ProjectsPage"));
+const ProjectBoardPage = lazy(() => import("../features/projects/pages/ProjectBoardPage"));
+const ProjectBacklogPage = lazy(() => import("../features/projects/pages/ProjectBacklogPage"));
+const MeetingsPage = lazy(() => import("../features/meetings/pages/MeetingsPage"));
+const MeetingDetailPage = lazy(() => import("../features/meetings/pages/MeetingDetailPage"));
+const AiUsagePage = lazy(() => import("../features/ai/pages/AiUsagePage"));
+const WriterPage = lazy(() => import("../features/ai/pages/WriterPage"));
+const AppsAssistantPage = lazy(() => import("../features/connections/pages/AppsAssistantPage"));
+const ConnectionsPage = lazy(() => import("../features/connections/pages/ConnectionsPage"));
+const ConnectionsDone = lazy(() => import("../features/connections/pages/ConnectionsDone"));
+const BillingPage = lazy(() => import("../features/billing/pages/BillingPage"));
+const AnnouncementsPage = lazy(() => import("../features/announcements/pages/AnnouncementsPage"));
+const AssistantPage = lazy(() => import("../features/ai/pages/AssistantPage"));
+const TeamLeavesPage = lazy(() => import("../features/leave/pages/TeamLeavesPage"));
+const DocumentsPage = lazy(() => import("../features/documents/pages/DocumentsPage"));
+const AnalyticsPage = lazy(() => import("../features/analytics/pages/AnalyticsPage"));
+const KnowledgePage = lazy(() => import("../features/knowledge/pages/KnowledgePage"));
+const AskKnowledgePage = lazy(() => import("../features/knowledge/pages/AskKnowledgePage"));
+const ChatPage = lazy(() => import("../features/chat/pages/ChatPage"));
+const AttendancePage = lazy(() => import("../features/attendance/pages/Attendance"));
+const TeamManagement = lazy(() => import("../features/team/pages/TeamManagement"));
+const AdminManagement = lazy(() => import("../features/employees/pages/AdminManagement"));
+const AdminNotifications = lazy(() => import("../features/notifications/pages/AdminNotifications"));
+const UserNotifications = lazy(() => import("../features/notifications/pages/UserNotifications"));
+const UserLeaveDetails = lazy(() => import("../features/leave/pages/UserLeaveDetails"));
 
-import DashboardPage from "../features/dashboard/pages/DashboardPage";
-import AddEmployee from "../features/employees/pages/AddEmployee";
-import EmployeeList from "../features/employees/pages/EmployeeList";
-import UpdateEmployee from "../features/employees/pages/UpdateEmployee";
-import SettingsPage from "../features/settings/pages/SettingsPage";
-import AdminProfile from "../features/employees/pages/AdminProfile";
-import LeaveManagement from "../features/leave/pages/LeaveManagement";
-import LeaveRequestForm from "../features/leave/pages/LeaveRequestForm";
+const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
+const AddEmployee = lazy(() => import("../features/employees/pages/AddEmployee"));
+const EmployeeList = lazy(() => import("../features/employees/pages/EmployeeList"));
+const UpdateEmployee = lazy(() => import("../features/employees/pages/UpdateEmployee"));
+const SettingsPage = lazy(() => import("../features/settings/pages/SettingsPage"));
+const AdminProfile = lazy(() => import("../features/employees/pages/AdminProfile"));
+const LeaveManagement = lazy(() => import("../features/leave/pages/LeaveManagement"));
+const LeaveRequestForm = lazy(() => import("../features/leave/pages/LeaveRequestForm"));
 
-import UserProfile from "../features/employees/pages/UserProfile";
-import UserLeaveRequestForm from "../features/leave/pages/UserLeaveRequestForm";
+const UserProfile = lazy(() => import("../features/employees/pages/UserProfile"));
+const UserLeaveRequestForm = lazy(() => import("../features/leave/pages/UserLeaveRequestForm"));
 
 import AppShell from "../layouts/shell/AppShell";
 import { NotFound } from "../layouts/shell/GuardPages";
+import PageLoading from "../layouts/shell/PageLoading";
 import { workspaceFor, type Workspace } from "../shared/lib/roles";
 
 interface ProtectedRouteProps {
@@ -72,8 +79,13 @@ const ProtectedRoute = ({ workspace }: ProtectedRouteProps) => {
 export default function App() {
   return (
     <Router>
+      <Suspense fallback={<PageLoading full />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/connections/done" element={<ConnectionsDone />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -112,6 +124,7 @@ export default function App() {
             <Route path="writer" element={<WriterPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="billing" element={<BillingPage />} />
+            <Route path="help" element={<HelpPage workspace="admin" />} />
             <Route path="assistant" element={<AssistantPage />} />
             <Route path="team-leaves" element={<TeamLeavesPage />} />
             <Route path="documents" element={<DocumentsPage />} />
@@ -149,6 +162,7 @@ export default function App() {
             <Route path="knowledge" element={<KnowledgePage />} />
             <Route path="ask-docs" element={<AskKnowledgePage />} />
             <Route path="notifications" element={<UserNotifications />} />
+            <Route path="help" element={<HelpPage workspace="user" />} />
             <Route path="chat" element={<ChatPage />} />
           
             <Route path="*" element={<NotFound home="/user/dashboard" />} />
@@ -156,6 +170,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      </Suspense>
     </Router>
   );
 }

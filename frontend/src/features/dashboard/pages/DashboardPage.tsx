@@ -13,6 +13,7 @@ import {
   LuSparkles, LuTriangleAlert, LuUsersRound, LuVideo,
 } from "react-icons/lu";
 import HeroScene from "../components/HeroScene";
+import GettingStarted from "../../help/components/GettingStarted";
 import KpiCard from "../components/KpiCard";
 import ListCard from "../components/ListCard";
 import OverviewCharts from "../components/OverviewCharts";
@@ -108,6 +109,8 @@ export default function DashboardPage() {
         </div>
         <HeroScene />
       </section>
+
+      {can("user:create") && <GettingStarted base={base} />}
 
       {perms.overview && (
         <>

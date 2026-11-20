@@ -2,7 +2,7 @@ import type { IconType } from "react-icons";
 import {
   LuBell, LuBookOpen, LuBot, LuBuilding2, LuCalendarCheck, LuCalendarDays, LuChartColumn, LuClipboardCheck, LuFileText,
   LuFolderKanban, LuHistory, LuLayoutDashboard, LuMail, LuMessageSquare, LuPenLine, LuShieldCheck, LuSparkles,
-  LuMegaphone, LuCreditCard, LuPlug, LuUserPlus, LuUsers, LuUsersRound, LuVideo, LuGauge, LuLibrary,
+  LuCircleHelp, LuMegaphone, LuCreditCard, LuPlug, LuUserPlus, LuUsers, LuUsersRound, LuVideo, LuGauge, LuLibrary,
 } from "react-icons/lu";
 import { can } from "../../shared/lib/roles";
 import type { Workspace } from "../../shared/lib/roles";
@@ -69,6 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
   ] },
   { id: "resources", label: "Resources", icon: LuFileText, items: [
     { id: "connections", label: "Connected apps", path: "connections", icon: LuPlug, keywords: "github google calendar drive integrations" },
+    { id: "help", label: "Help", path: "help", icon: LuCircleHelp, keywords: "guide how to tutorial support faq" },
     { id: "documents", label: "Documents", path: "documents", icon: LuFileText, perms: ["document:view"], keywords: "files policies" },
   ] },
   { id: "analytics", label: "Analytics", icon: LuChartColumn, items: [
