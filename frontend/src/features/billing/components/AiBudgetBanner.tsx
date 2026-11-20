@@ -10,7 +10,7 @@ export default function AiBudgetBanner() {
   const loc = useLocation();
   const allowed = can("billing:view");
   useEffect(() => { if (allowed) getBilling().then(setO).catch(() => { /* a banner is optional */ }); }, [allowed, loc.pathname]);
-  if (!o || o.usage.aiTokenBudget == null || o.usage.aiTokenBudget <= 0) return null;
+  if (!o?.usage || o.usage.aiTokenBudget == null || o.usage.aiTokenBudget <= 0) return null;
   const pct = o.usage.aiTokensUsed / o.usage.aiTokenBudget;
   if (pct < 0.8) return null;
   const out = pct >= 1;
