@@ -67,3 +67,17 @@ Accessibility pass: axe-core (WCAG 2.0/2.1 A and AA) reports no violations on th
 ## Testing with large data
 
 Run the backend seeder (`docs/seed-data.md`) and sign in as `owner@demo-001.test` / `Demo@1234`, or `demo-005` for a 90-person company. Look for lists that are not paginated, slow tables, long names that break layouts and empty states that never appear.
+
+## Public site, help and production readiness (Phase 11)
+
+**Public site** (`features/marketing`): animated Home page, How it works, Privacy, Terms and Contact, with a shared header and footer (`PublicLayout`). Words live in `features/marketing/content.ts`; company details come from `VITE_*` variables through `shared/lib/site.ts`. Privacy and Terms show a "not reviewed by a lawyer" notice until `VITE_LEGAL_REVIEWED=true`. Scroll-in animation is `Reveal`; it shows content at once for people who ask for reduced motion.
+
+**Help inside the app** (`features/help`): one content file (`content.ts`) holds a guide per page. It drives three things: the Help page (search, role-based guides, "Who is who", questions), the "How this works" card at the top of each main page (open on the first visit, then folded; remembered in this browser), and the setup checklist on the dashboard for people who can add users. To change a guide, edit its entry in `content.ts`; to give a page a card, give the guide the page's `navId`. Chat-style pages are marked `noCard` because they fill the screen. A slim footer (Help, Privacy, Terms, Contact) sits under every signed-in page.
+
+**Speed:** every page except the Home page is loaded on demand (`React.lazy`), with a skeleton while it loads. The first download went from about 1.18 MB to 0.44 MB.
+
+**Forms:** `Field` now labels inputs that sit inside a wrapper element, such as the password box with its show/hide button.
+
+**Checks run on every route** (admin, employee and public, light, dark and phone width): no console errors or crashes when the API fails, no horizontal overflow, no blank pages, and no serious accessibility findings from axe-core (WCAG A and AA rules). Not covered by these checks: colour contrast of every state, screen-reader testing by a person, and real-data layouts.
+
+**Motion:** the public site stops all looping animation when the system asks for reduced motion. The dashboard scene keeps a few slow, small movements in that case (see `hero.css`); remove the `animation` rules there if you want it fully still.

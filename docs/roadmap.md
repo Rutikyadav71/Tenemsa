@@ -193,3 +193,33 @@ New designed emails with a text version, no password in any email, set-your-pass
 - 10a: plans, monthly AI token budget, Razorpay subscriptions, billing page, console Plans. See [billing.md](billing.md).
 - 10b: connected apps (OAuth, read only): GitHub, Google Calendar, Google Drive. See [connections.md](connections.md).
 - 10c: Ask my apps, a saved AI chat that answers from the person's connected apps (read only, metered). See [connections.md](connections.md#ask-my-apps-phase-10c).
+
+## Phase 11: public site, help and production readiness
+
+Public pages and footer, in-app Help center with "How this works" cards and a setup checklist, lazy-loaded pages, accessibility fixes, `/api/health` with a database check, Docker Compose, deployment checklist. See [frontend.md](frontend.md#public-site-help-and-production-readiness-phase-11) and [deployment.md](deployment.md).
+
+## Ideas for the next phase
+
+Ordered by how much they matter before and just after launch. Ideas, not commitments.
+
+**Before real customers**
+1. **CI on every push:** backend tests, frontend type-check and build, and a short browser smoke test (the route sweep from Phase 11 can be turned into one).
+2. **Backups, monitoring and error tracking:** automatic database backups with a tested restore, uptime checks on `/api/health`, and an error tracker for both backend and website.
+3. **Tests against the real database:** run the backend tests on PostgreSQL (Testcontainers) as well as H2; so far SQL has only been proven on H2 and by hand.
+4. **Legal and compliance:** lawyer review of Privacy and Terms, data export and deletion for a company, a short data-processing note for customers.
+
+**Product features people ask for next**
+- **Leave policies:** per-company holiday calendar, leave balances with accrual and carry-forward.
+- **Workflow automation:** "when leave is approved, mark attendance ON_LEAVE", reminders, scheduled reports.
+- **Payroll basics:** payslips, salary history, tax fields.
+- **Onboarding and offboarding checklists** for new joiners and leavers.
+- **Performance:** goals, review cycles, feedback.
+- **Org chart and people directory.**
+- **A phone-friendly installable app (PWA) with push notifications.**
+
+**Tenemsa AI**
+- **Actions with confirmation:** "apply for leave on Friday" shows a draft and asks before doing it.
+- **More connected apps:** Slack, Jira, Notion; link answers to Tenemsa pages as well as app items.
+- **Drive files into the knowledge base** so documents stay up to date by themselves.
+- **An MCP connector** so other assistants can use a company's Tenemsa data with the same permissions.
+- **The leave predictor** (`ml-service`), when you decide to resume it.
